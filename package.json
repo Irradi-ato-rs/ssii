@@ -14,7 +14,7 @@
     "check": "astro check && tsc --noEmit",
     "dev": "astro dev",
     "preview": "astro build && wrangler pages dev ./dist",
-    "deploy": "wrangler deploy",
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
     "@astrojs/cloudflare": "12.6.12",
