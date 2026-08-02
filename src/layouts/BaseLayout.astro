@@ -1,0 +1,25 @@
+---
+// src/layouts/BaseLayout.astro
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = "Sovereign Systemic Integrity Intelligence" } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+    <!-- Global styles or Tailwind CDN if not using build-step Tailwind -->
+  </head>
+  <body class="bg-slate-950 text-white min-h-screen flex flex-col items-center justify-center p-8">
+    <!-- The <slot /> tag is where page-specific content will be injected -->
+    <slot />
+  </body>
+</html>   
