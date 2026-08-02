@@ -1,0 +1,66 @@
+---
+// src/pages/admin.astro
+export const prerender = false;
+import { onBeforePrerenderStart } from 'astro';
+
+// ⚠️ PROTECTION: In production, check Astro.locals.userEmail === 'your-admin-email'
+// For now, we assume only you know this URL.
+
+let pendingRequests = [];
+// Access KV via Astro.env (available in API routes and SSR pages)
+if (typeof Astro.env !== 'undefined' && Astro.env.SSII_KV) {
+  const list = await Astro.env.SSII_KV.list({ prefix: 'pending:' });
+  for (const key of list.keys) {
+    const data = await Astro.env.SSII_KV.get(key.name, { type: 'json' });
+    pendingRequests.push({ key: key.name, ...data });
+  }
+}
+---
+
+<html lang="en">
+<head>
+  <title>SSII Admin Approvals</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 p-8">
+  <div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-black text-white mb-6">🔐 Pending Tenant Approvals</h1>
+    
+    {pendingRequests.length === 0 ? (
+      <p class="text-slate-500">No pending requests.</p>
+    ) : (
+      <div class="space-y-4">
+        {pendingRequests.map((req) => (
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-lg flex justify-between items-center">
+            <div>
+              <p class="text-white font-bold">{req.email}</p>
+              <p class="text-xs text-slate-400">Domain: {req.key.replace('pending:', '')} | Provider: {req.provider}</p>
+              <p class="text-xs text-slate-500">Tenant ID: {req.tenantId}</p>
+            </div>
+            <div class="text-xs text-slate-600">
+              Status: <span class="text-amber-500">PENDING</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+
+    <div class="mt-8 p-4 bg-blue-900/20 border border-blue-800 rounded-lg text-xs text-slate-300">
+      <h3 class="font-bold text-blue-400 mb-2">How to Approve:</h3>
+      <ol class="list-decimal list-inside space-y-1">
+        <li>Copy the <strong>Domain</strong> and <strong>Tenant ID</strong> above.</li>
+        <li>Go to <strong>Cloudflare Dashboard</strong> > <strong>Settings</strong> > <strong>Environment Variables</strong>.</li>
+        <li>Add variables:
+          <ul class="list-disc list-inside ml-4 mt-1 text-slate-400">
+            <li><code>PRIVATE_TENANT_[DOMAIN]_CLIENT_ID</code></li>
+            <li><code>PRIVATE_TENANT_[DOMAIN]_PROVIDER</code> (e.g., <code>entra_id</code>)</li>
+            <li><code>PRIVATE_TENANT_[DOMAIN]_TENANT_ID</code></li>
+          </ul>
+        </li>
+        <li>Save and Redeploy (or just save, as Env Vars are immediate).</li>
+        <li>(Optional) Delete the KV key to clear the pending list.</li>
+      </ol>
+    </div>
+  </div>
+</body>
+</html>   
