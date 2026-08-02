@@ -1,0 +1,32 @@
+---
+// src/pages/register.astro
+export const prerender = false;
+---
+<html>
+  <!-- ... head ... -->
+  <body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen">
+    <div class="max-w-md w-full bg-slate-900 p-8 rounded-xl border border-slate-800">
+      <h1 class="text-2xl font-black text-white mb-4">Request SSII Access</h1>
+      <p class="text-slate-400 text-sm mb-6">Register your organization for self-service onboarding. Approval required.</p>
+      
+      <form action="/api/register" method="POST" class="space-y-4">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Corporate Email</label>
+          <input type="email" name="email" required class="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Identity Provider</label>
+          <select name="provider" class="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white">
+            <option value="entra_id">Microsoft Entra ID</option>
+            <option value="okta">Okta</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Tenant ID / Domain</label>
+          <input type="text" name="tenantId" required placeholder="e.g. 442355f4... or dev-12345.okta.com" class="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white" />
+        </div>
+        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 rounded">Submit Request</button>
+      </form>
+    </div>
+  </body>
+</html>   
