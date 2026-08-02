@@ -1,49 +1,37 @@
 ---
 // src/pages/index.astro
-// No frontmatter needed for static content unless you have imports
+<!-- ⟢✨ Stateless Ephemeral Risk Pipelines -->
+import BaseLayout from '../layouts/BaseLayout.astro';
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <meta name="generator" content={Astro.generator} />
-    <title>Sovereign Systemic Integrity Intelligence</title>
-    <!-- Ensure Tailwind is loaded here if not using a layout -->
-    <!-- <link rel="stylesheet" href="/styles/global.css" /> -->
-  </head>
-  <body class="bg-slate-950 text-white min-h-screen flex flex-col items-center justify-center p-8">
+<BaseLayout title="Sovereign Systemic Integrity Intelligence">
+  <main class="w-full max-w-4xl mx-auto text-center">
+    <h1 class="text-4xl md:text-5xl font-black text-white tracking-tight">
+      Sovereign Systemic Integrity Intelligence
+    </h1>
     
-    <main class="w-full max-w-4xl mx-auto text-center">
-      <!-- ⟢✨ Stateless Ephemeral Risk Pipelines -->
-      <h1 class="text-4xl md:text-5xl font-black text-white tracking-tight">
-        Sovereign Systemic Integrity Intelligence
-      </h1>
-      
-      <p class="text-sm md:text-base text-slate-400 max-w-xl mx-auto mt-4">
-        Real-time cybersecurity structural robustness and continuous maturity tracking built on a 
-        <strong class="text-slate-200">zero-data liability footprint</strong>.
-      </p>
-      
-      <div class="flex flex-col sm:flex-row gap-4 justify-center pt-8">
-        <a href="/login" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-3 rounded-xl text-sm transition shadow-lg shadow-blue-900/20">
-          Authenticate Domain Portal
-        </a>
+    <p class="text-sm md:text-base text-slate-400 max-w-xl mx-auto mt-4">
+      Real-time cybersecurity structural robustness and continuous maturity tracking built on a 
+      <strong class="text-slate-200">zero-data liability footprint</strong>.
+    </p>
+    
+    <div class="flex flex-col sm:flex-row gap-4 justify-center pt-8">
+      <a href="/login" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-3 rounded-xl text-sm transition shadow-lg shadow-blue-900/20">
+        Authenticate Domain Portal
+      </a>
+    </div>
+
+    <!-- Live Simulator Placeholder -->
+    <div class="mt-12 w-full bg-slate-900 border border-slate-800 p-6 rounded-2xl text-left relative overflow-hidden">
+      <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 opacity-40"></div>
+      <div class="text-center py-8 text-slate-500 text-xs">
+        🕹️ Live Simulator Sandbox <br/>
+        <span class="opacity-70">Interactive math engine loading in next step...</span>
       </div>
+    </div>
+  </main>
 
-      <!-- Live Simulator Placeholder -->
-      <div class="mt-12 w-full bg-slate-900 border border-slate-800 p-6 rounded-2xl text-left relative overflow-hidden">
-        <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 opacity-40"></div>
-        <div class="text-center py-8 text-slate-500 text-xs">
-          🕹️ Live Simulator Sandbox <br/>
-          <span class="opacity-70">Interactive math engine loading in next step...</span>
-        </div>
-      </div>
-    </main>
-
-    <footer class="mt-12 text-[10px] text-slate-600">
-      ©2026 Sovereign Systemic Integrity Intelligence. All rights reserved.
-    </footer>
-
-  </body>
-</html>   
+  <footer class="mt-12 text-[10px] text-slate-600">
+    ©2026 Sovereign Systemic Integrity Intelligence. All rights reserved.
+  </footer>
+</BaseLayout>   
