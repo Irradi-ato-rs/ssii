@@ -1,19 +1,13 @@
+// astro.config.mjs
 import { defineConfig } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
+import tailwind from '@astrojs/tailwind';
 
-// https://astro.build/config
 export default defineConfig({
-  site: 'https://ssii.fzoirm.com', // ADD THIS LINE
+  site: 'https://ssii.fzoirm.com',
+  integrations: [tailwind()],
   adapter: cloudflare({
     platformProxy: { enabled: true },
+    imageService: 'compile',
   }),
-  image: {
-    service: {
-      entrypoint: 'astro/assets/services/sharp',
-      config: {
-        // Allow sharp to run at build time only
-        allowBuild: () => true, 
-      }
-    }
-  }
 });   
