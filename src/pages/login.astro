@@ -1,8 +1,5 @@
 ---
 // src/pages/login.astro
-import { onBeforePrerenderStart } from 'astro';
-
-// Get query parameters for error handling
 const url = new URL(Astro.request.url);
 const stat = url.searchParams.get('status');
 const err = url.searchParams.get('error');
@@ -20,7 +17,7 @@ const err = url.searchParams.get('error');
 			
 			<!-- Header -->
 			<div class="text-center mb-6">
-				<h1 class="text-xl font-black text-blue-500 tracking-wider">SSII ACCESS PORTAL</h1>
+				<h1 class="text-xl font-black text-blue-500 tracking-wider">SSII ACCESS</h1>
 				<p class="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Sovereign Systemic Integrity Intelligence</p>
 				<p class="text-[9px] text-slate-500 uppercase tracking-widest mt-1">Stateless Identity Gate</p>
 			</div>
@@ -34,6 +31,11 @@ const err = url.searchParams.get('error');
 			{err === 'unauthorized' && (
 				<div class="bg-rose-950/40 border border-rose-800 text-rose-300 p-3 rounded-lg text-xs mb-4 flex items-start gap-2">
 					<span>🛑</span> Domain Not Registered: Your email domain is not in our active registry.
+				</div>
+			)}
+			{err === 'unauthorized_domain' && (
+				<div class="bg-amber-950/40 border border-amber-800 text-amber-300 p-3 rounded-lg text-xs mb-4 flex items-start gap-2">
+					<span>⏳</span> Pending Approval: Your domain has registered but is awaiting administrator approval.
 				</div>
 			)}
 			{err === 'session_expired' && (
@@ -69,6 +71,19 @@ const err = url.searchParams.get('error');
 					Sign In via Corporate SSO
 				</button>
 			</form>
+
+			<!-- ✅ NEW: Registration Link -->
+			<div class="mt-6 text-center border-t border-slate-800 pt-4">
+				<p class="text-xs text-slate-400">
+					New to Sovereign Systemic Integrity Intelligence?
+				</p>
+				<a href="/register" class="inline-block mt-2 text-sm font-bold text-blue-400 hover:text-blue-300 transition">
+					Register Your Organization →
+				</a>
+				<p class="text-[10px] text-slate-600 mt-1">
+					Self-service onboarding. Administrator approval required.
+				</p>
+			</div>
 
 			<div class="mt-6 text-center">
 				<p class="text-[10px] text-slate-600">
