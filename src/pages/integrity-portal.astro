@@ -1,0 +1,59 @@
+---
+// src/pages/integrity-portal.astro
+const { userEmail, userRole } = Astro.locals;
+// Check for a 'firstVisit' cookie or query param
+const isFirstVisit = Astro.cookies.get('ssii_onboard_complete') === undefined;
+---
+
+<html>
+  <!-- ... head ... -->
+  <body>
+    <!-- Existing Dashboard Code -->
+    
+    {/* ✅ ONBOARDING CHECKLIST (Only shows on first visit) */}
+    {isFirstVisit && (
+      <div id="onboarding-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-blue-500/30 p-8 rounded-2xl max-w-lg w-full shadow-2xl">
+          <h2 class="text-xl font-black text-white mb-4">👋 Welcome to SSII</h2>
+          <p class="text-slate-400 text-sm mb-6">Let's calculate your Systemic Integrity in under 2 minutes.</p>
+          
+          <ul class="space-y-3 text-sm text-slate-300">
+            <li class="flex items-center gap-3">
+              <span class="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-900 text-emerald-400 font-bold text-xs">✓</span>
+              <span>Authenticated via {userRole === 'admin' ? 'Master Admin' : 'Corporate SSO'}</span>
+            </li>
+            <li class="flex items-center gap-3">
+              <span class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-900 text-blue-400 font-bold text-xs">2</span>
+              <span>Input Telemetry (Pre-filled with demo data)</span>
+            </li>
+            <li class="flex items-center gap-3">
+              <span class="flex items-center justify-center w-6 h-6 rounded-full bg-slate-800 text-slate-500 font-bold text-xs">3</span>
+              <span>View Integrity Score</span>
+            </li>
+          </ul>
+
+          <button onclick="startDemoOnboarding()" class="w-full mt-6 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition">
+            Start Interactive Tour
+          </button>
+        </div>
+      </div>
+    )}
+
+    <script>
+      function startDemoOnboarding() {
+        // 1. Auto-fill the form with demo data
+        document.getElementById('vExp').value = 2; // Simulate 2 exploits
+        document.getElementById('sHlt').value = 0.6; // Simulate 60% health
+        
+        // 2. Trigger the compute button automatically
+        document.getElementById('subBtn').click();
+        
+        // 3. Set cookie to hide modal next time
+        document.cookie = "ssii_onboard_complete=true; path=/; max-age=31536000";
+        
+        // 4. Close modal
+        document.getElementById('onboarding-modal').classList.add('hidden');
+      }
+    </script>
+  </body>
+</html>   
