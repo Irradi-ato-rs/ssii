@@ -1,42 +1,31 @@
----
 // src/pages/index.astro
----
-<html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width" />
-		<title>Sovereign Systemic Integrity Intelligence</title>
-		<script src="https://tailwindcss.com"></script>
-	</head>
-	<body class="bg-slate-950 text-slate-100 min-h-screen p-6">
-		<main class="max-w-4xl mx-auto text-center space-y-8">
-			<h1 class="text-4xl font-black text-white">Sovereign Systemic Integrity Intelligence</h1>
-			<!-- Simplified for conciseness -->
-			<div id="app" class="w-full bg-slate-900 p-6 rounded-2xl">
-				<div class="grid grid-cols-3 gap-4 text-white">
-					<div>A: <span id="metric-a-display">4.00</span></div>
-					<div>B: <span id="metric-b-display">1.00</span></div>
-					<div>Δ: <span id="gap-display">0.00</span></div>
-				</div>
-                <input type="range" class="range-slider w-full mt-4" min="0" max="1" step="0.05" value="1">
-			</div>
-		</main>
-		<script>
-			// Math engine initialization and logic
-			const weights = [0.4, 0.3, 0.3];
-			const tau = 0.80;
-			const matrix = [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]];
-			const sliders = document.querySelectorAll('.range-slider');
-			// ... (logic remains functionally identical to original for calculations)
-			function calculateMathEngine() {
-				// Simplified visualization of calculation logic
-				let metricA = 4.0;
-				let metricB = 1.0;
-				// ... implementation
-				document.getElementById('metric-a-display').textContent = metricA.toFixed(2);
-				document.getElementById('metric-b-display').textContent = metricB.toFixed(2);
-			}
-			sliders.forEach(s => s.addEventListener('input', calculateMathEngine));
-		</script>
-	</body>
-</html>
+⟢✨ Stateless Ephemeral Risk Pipelines 
+        <h1 class="text-4xl md:text-5xl font-black text-white tracking-tight">
+ Sovereign Systemic Integrity Intelligence
+ </h1>
+ 
+ <p class="text-sm md:text-base text-slate-400 max-w-xl mx-auto">
+ Real-time cybersecurity structural robustness and continuous maturity tracking built on a 
+ <strong class="text-slate-200">zero-data liability footprint</strong>.
+ </p>
+ 
+ <div class="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+ <a href="/login" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-3 rounded-xl text-sm transition shadow-lg shadow-blue-900/20">
+ Authenticate Domain Portal
+ </a>
+ </div>
+
+ <!-- Live Simulator Placeholder -->
+ <div class="mt-12 w-full bg-slate-900 border border-slate-800 p-6 rounded-2xl text-left relative overflow-hidden">
+ <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 opacity-40"></div>
+ <div class="text-center py-8 text-slate-500 text-xs">
+ 🕹️ Live Simulator Sandbox <br/>
+ <span class="opacity-70">Interactive math engine loading in next step...</span>
+ </div>
+ </div>
+ </main>
+
+ <footer class="mt-12 text-[10px] text-slate-600">
+ ©2026 Sovereign Systemic Integrity Intelligence. All rights reserved.
+ </footer>
+</body>
