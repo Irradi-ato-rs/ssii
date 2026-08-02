@@ -1,4 +1,9 @@
 // src/pages/api/auth/federate.ts
+export const prerender = false; // CRITICAL: Must be first
+
+import type { APIRoute } from 'astro';
+
+// src/pages/api/auth/federate.ts
 import type { APIRoute } from 'astro';
 
 // Simple Tenant Registry (Expand this as needed)
