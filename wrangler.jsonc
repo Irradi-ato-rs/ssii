@@ -1,0 +1,12 @@
+// wrangler.jsonc
+{
+  "name": "ssii",
+  "compatibility_date": "2026-08-02",
+  "compatibility_flags": ["nodejs_compat"],
+  "kv_namespaces": [
+    {
+      "binding": "SSII_KV",
+      "id": "YOUR_KV_NAMESPACE_ID_HERE" 
+    }
+  ]
+}   
