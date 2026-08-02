@@ -5,8 +5,8 @@
   "compatibility_flags": ["nodejs_compat"],
   "kv_namespaces": [
     {
-      "binding": "SSII_KV",
-      "id": "YOUR_KV_NAMESPACE_ID_HERE" 
+      "binding": "KV_BINDING",
+      "id": "0f1c337be7344e60835cab4f7b4abe1c" 
     }
   ]
 }   
