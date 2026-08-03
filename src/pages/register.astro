@@ -2,31 +2,41 @@
 // src/pages/register.astro
 export const prerender = false;
 ---
-<html>
-  <!-- ... head ... -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VoidMetric Access</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
   <body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen">
     <div class="max-w-md w-full bg-slate-900 p-8 rounded-xl border border-slate-800">
-      <h1 class="text-2xl font-black text-white mb-4">Request SSII Access</h1>
-      <p class="text-slate-400 text-sm mb-6">Register your organization for self-service onboarding. Approval required.</p>
+      <h1 class="text-2xl font-black text-white mb-4">VoidMetric Access</h1>
+      <p class="text-slate-400 text-sm mb-6">
+        Enter your corporate email to authenticate via your organization's Identity Provider.
+      </p>
       
       <form action="/api/register" method="POST" class="space-y-4">
         <div>
-          <label class="block text-xs text-slate-400 mb-1">Corporate Email</label>
-          <input type="email" name="email" required class="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white" />
+          <label for="email" class="block text-xs text-slate-400 mb-1">Corporate Email</label>
+          <input 
+            type="email" 
+            id="email"
+            name="email" 
+            required 
+            placeholder="you@company.com" 
+            class="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white focus:outline-none focus:border-blue-500" 
+          />
         </div>
-        <div>
-          <label class="block text-xs text-slate-400 mb-1">Identity Provider</label>
-          <select name="provider" class="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white">
-            <option value="entra_id">Microsoft Entra ID</option>
-            <option value="okta">Okta</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs text-slate-400 mb-1">Tenant ID / Domain</label>
-          <input type="text" name="tenantId" required placeholder="e.g. 442355f4... or dev-12345.okta.com" class="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white" />
-        </div>
-        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 rounded">Submit Request</button>
+        
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded transition-colors">
+          Continue to Login
+        </button>
       </form>
+
+      <p class="mt-6 text-xs text-slate-500 text-center">
+        Restricted to authorized enterprise domains.
+      </p>
     </div>
   </body>
 </html>   

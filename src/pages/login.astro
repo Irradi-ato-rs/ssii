@@ -1,5 +1,6 @@
 ---
 // src/pages/login.astro
+export const prerender = false;
 const url = new URL(Astro.request.url);
 const stat = url.searchParams.get('status');
 const err = url.searchParams.get('error');
@@ -9,7 +10,7 @@ const err = url.searchParams.get('error');
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width" />
-		<title>SSII Access Portal / iclassed</title>
+		<title>VoidMetric Access</title>
 		<script src="https://cdn.tailwindcss.com"></script>
 	</head>
 	<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4">
@@ -17,40 +18,35 @@ const err = url.searchParams.get('error');
 			
 			<!-- Header -->
 			<div class="text-center mb-6">
-				<h1 class="text-xl font-black text-blue-500 tracking-wider">SSII STARTER</h1>
-				<p class="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Sovereign Systemic Integrity Intelligence</p>
-				<p class="text-[9px] text-slate-500 uppercase tracking-widest mt-1">Stateless Identity Gate</p>
+				<h1 class="text-xl font-black text-blue-500 tracking-wider">VOIDMETRIC</h1>
+				<p class="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Stateless Integrity Intelligence</p>
+				<p class="text-[9px] text-slate-500 uppercase tracking-widest mt-1">Zero-Persistence Security</p>
 			</div>
 
 			<!-- Status Messages -->
 			{stat === 'logged_out' && (
 				<div class="bg-emerald-950/40 border border-emerald-800 text-emerald-300 p-3 rounded-lg text-xs mb-4 flex items-start gap-2">
-					<span>✓</span> Session safely closed. Local cryptographic token cache cleared.
+					<span>✓</span> Session safely closed. No data persisted.
 				</div>
 			)}
 			{err === 'unauthorized' && (
 				<div class="bg-rose-950/40 border border-rose-800 text-rose-300 p-3 rounded-lg text-xs mb-4 flex items-start gap-2">
-					<span>🛑</span> Domain Not Registered: Your email domain is not in our active registry.
-				</div>
-			)}
-			{err === 'unauthorized_domain' && (
-				<div class="bg-amber-950/40 border border-amber-800 text-amber-300 p-3 rounded-lg text-xs mb-4 flex items-start gap-2">
-					<span>⏳</span> Pending Approval: Your domain has registered but is awaiting administrator approval.
+					<span>🛑</span> Access Denied: Your organization's domain is not registered.
 				</div>
 			)}
 			{err === 'session_expired' && (
 				<div class="bg-amber-950/40 border border-amber-800 text-amber-300 p-3 rounded-lg text-xs mb-4 flex items-start gap-2">
-					<span>⚠️</span> Session expired. For security, sessions close after 8 hours.
+					<span>⚠️</span> Session expired. Please sign in again.
 				</div>
 			)}
 			{err === 'token_validation_failure' && (
 				<div class="bg-rose-950/40 border border-rose-800 text-rose-300 p-3 rounded-lg text-xs mb-4 flex items-start gap-2">
-					<span>🛑</span> Cryptographic Handshake Failed: Token signature cannot be verified.
+					<span>🛑</span> Authentication Failed: Invalid identity token.
 				</div>
 			)}
 
 			<!-- Login Form -->
-			<form action="/api/auth/federate" method="POST" class="space-y-4">
+			<form action="/api/register" method="POST" class="space-y-4">
 				<div>
 					<label class="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">
 						Corporate Email Address
@@ -63,32 +59,32 @@ const err = url.searchParams.get('error');
 						class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition" 
 					/>
 					<p class="text-[10px] text-slate-500 mt-2">
-						Supported: Entra ID, Okta. Auto-detects tenant based on domain.
+						Authorized domains only (e.g., iclassed.com).
 					</p>
 				</div>
 				
 				<button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold p-3 rounded-lg text-sm transition shadow-lg shadow-blue-900/20">
-					Sign In via Corporate SSO
+					Sign In via SSO
 				</button>
 			</form>
 
-			<!-- ✅ NEW: Registration Link -->
+			<!-- Registration Link -->
 			<div class="mt-6 text-center border-t border-slate-800 pt-4">
 				<p class="text-xs text-slate-400">
-					New to Sovereign Systemic Integrity Intelligence?
+					Organization not registered?
 				</p>
 				<a href="/register" class="inline-block mt-2 text-sm font-bold text-blue-400 hover:text-blue-300 transition">
-					Register Your Organization →
+					Contact Support to Onboard →
 				</a>
 				<p class="text-[10px] text-slate-600 mt-1">
-					Self-service onboarding. Administrator approval required.
+					Manual provisioning required for new tenants.
 				</p>
 			</div>
 
 			<div class="mt-6 text-center">
 				<p class="text-[10px] text-slate-600">
-					Secured by <strong>Sovereign Systemic Integrity Intelligence</strong>.<br/>
-					Zero Data Liability Footprint.
+					Secured by <strong>VoidMetric</strong>.<br/>
+					No Data Stored. Ever.
 				</p>
 			</div>
 		</div>
