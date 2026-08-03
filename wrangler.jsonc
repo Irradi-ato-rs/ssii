@@ -1,7 +1,7 @@
 {
   "name": "ssii",
-  "compatibility_date": "2026-08-02",
+  "compatibility_date": "2026-08-03",
   "compatibility_flags": ["nodejs_compat"],
-  "pages_build_output_dir": "./dist", 
   "observability": { "enabled": true }
+  // REMOVE "pages_build_output_dir" - It is handled by the Dashboard settings
 }   
