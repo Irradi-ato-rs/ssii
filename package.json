@@ -14,6 +14,7 @@
     "check": "astro check && tsc --noEmit",
     "dev": "astro dev",
     "preview": "astro build && wrangler pages dev ./dist",
+    "build": "node scripts/generate-build-id.js && astro build",
     "deploy": "echo 'SSII runs it'"
   },
   "dependencies": {
