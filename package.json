@@ -9,7 +9,7 @@
   },
   "scripts": {
     "astro": "astro",
-    "build": "astro build",
+    "build": "node -e \"require('fs').writeFileSync('public/.build-id', Date.now().toString())\" && astro build",
     "cf-typegen": "wrangler types",
     "check": "astro check && tsc --noEmit",
     "dev": "astro dev",
@@ -25,6 +25,8 @@
     "typescript": "5.9.3"
   },
   "devDependencies": {
+    "@astrojs/tailwind": "^6.0.0",
+    "tailwindcss": "^3.4.0",
     "wrangler": "4.88.0"
   },
   "cloudflare": {
