@@ -9,5 +9,16 @@
     "directory": "./dist",
     "not_found_handling": "404-page"
   },
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  
+  "kv_namespaces": [
+    {
+      "binding": "VM_TENANT_DIRECTORY",
+      "id": "01d2aa05ebdf4a32b966bcd37d712bfe"
+    },
+    {
+      "binding": "VM_PROPRIETARY_PARSERS",
+      "id": "fa7275bedb434ee8b9f9b82555930827"
+    }
+  ]
 }   
