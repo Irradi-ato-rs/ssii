@@ -3,7 +3,7 @@ export const prerender = false;
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
-import { getIdPConfig } from '../../config/tenants'; // Import helper
+import { getIdPConfig } from '../../../config/tenants'; // Import helper
 
 export const GET: APIRoute = async ({ request, url }) => {
   try {
