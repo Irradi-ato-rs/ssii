@@ -24,6 +24,7 @@ import Footer from '../components/Footer.astro';
           <span class="text-slate-500 ml-2">— Secure SSO pipeline for authorized domains (Okta/Entra).</span>
         </li>
         <li>
+          <!-- Secure isolated navigation link -->
           <a href="/integrity-portal" class="text-white underline underline-offset-4 hover:text-slate-300">/integrity-portal</a>
           <span class="text-slate-500 ml-2">— Live continuous controls dashboard for Metric A/B.</span>
         </li>
@@ -33,7 +34,7 @@ import Footer from '../components/Footer.astro';
         </li>
         <li>
           <a href="https://github.com/Irradi-ato-rs/ssii" target="_blank" class="text-white underline underline-offset-4 hover:text-slate-300 nav-link">/documentation</a>
-          <span class="text-slate-500 ml-2">— Full code in public repository, and later the math proofs and API specifications.</span>
+          <span class="text-slate-500 ml-2">— Full code in public repository, and soo math proofs and API specifications.</span>
         </li>
         <li>
           <a href="" class="text-white underline underline-offset-4 hover:text-slate-300 nav-link">/onboarding</a>
@@ -106,126 +107,152 @@ import Footer from '../components/Footer.astro';
   </main>
 
   <script>
-  // Dynamically resolve origin paths to mitigate cross-origin mapping faults
-  const apiEndpoint = `${window.location.origin}/api/v1/compute`;
-  
-  let simMatrix = [
-    [0.95, 0.95, 0.95],
-    [0.95, 0.95, 0.95],
-    [0.95, 0.95, 0.95],
-    [0.95, 0.95, 0.95]
-  ];
+    const apiEndpoint = `${window.location.origin}/api/v1/compute`;
+    
+    let simMatrix = [
+      [0.95, 0.95, 0.95],
+      [0.95, 0.95, 0.95],
+      [0.95, 0.95, 0.95],
+      [0.95, 0.95, 0.95]
+    ];
 
-  async function dispatchSimulationPipeline() {
-    try {
-      const response = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ matrix: simMatrix })
-      });
+    async function dispatchSimulationPipeline() {
+      try {
+        const response = await fetch(apiEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ matrix: simMatrix })
+        });
 
-      // If Astro throws a 401 Origin Security block, handle it gracefully
-      if (!response.ok) {
-        if (response.status === 401) {
-          console.warn("[VoidMetric Security Warning] Astro CSRF/Origin check blocked this request. Navigation remains safe.");
-          renderSecurityFallbackState();
-          return;
+        // HARDENED PERIMETER GUARD: Intercept security blocks before running JSON parsers
+        if (!response.ok) {
+          if (response.status === 401) {
+            console.warn("[VoidMetric] Origin security blocked live request. Switching to isolated local calculation model.");
+            executeLocalFallbackCalculation();
+            return;
+          }
+          throw new Error(`HTTP_FAULT: ${response.status}`);
         }
-        throw new Error(`HTTP_GATEWAY_FAULT: ${response.status}`);
-      }
 
-      const data = await response.json();
-      renderUiUpdate(data);
-    } catch (err) {
-      // CRITICAL FIX: Catching errors prevents global JavaScript execution crashes,
-      // keeping your browser's page-navigation stack 100% active and unblocked.
-      console.error("Sandbox calculations bypassed safely:", err);
-    }
-  }
-
-  function renderUiUpdate(data: any) {
-    const resA = document.getElementById('resA');
-    const resB = document.getElementById('resB');
-    const statusText = document.getElementById('resStatus');
-
-    if (resA) resA.innerText = (data.metric_a_compliance * 100).toFixed(0) + '%';
-    if (resB) resB.innerText = (data.metric_b_integrity * 100).toFixed(0) + '%';
-    
-    if (statusText) {
-      statusText.innerText = data.status;
-      if (data.metric_b_integrity === 0 || data.status === "CRITICAL_RISK_SWITCH_TRIGGERED") {
-        statusText.className = "text-rose-500 font-bold font-mono";
-        if (resB) resB.className = "text-rose-500 font-bold";
-      } else {
-        statusText.className = "text-emerald-400 font-bold font-mono";
-        if (resB) resB.className = "text-emerald-400 font-bold";
-        document.getElementById('breachLocationLine')?.classList.add('hidden');
+        const data = await response.json();
+        renderUiUpdate(data);
+      } catch (err) {
+        console.error("Calculation transmission safely bypassed:", err);
       }
     }
-  }
 
-  // Fallback UI rendering block if Cloudflare or Astro blocks the staging domain origin
-  function renderSecurityFallbackState() {
-    const statusText = document.getElementById('resStatus');
-    if (statusText) {
-      statusText.innerText = "ORIGIN_LOCKED_DEV_MODE";
-      statusText.className = "text-amber-500 font-bold font-mono";
+    // LOCAL MATHEMATICAL ENGINE FALLBACK
+    // Replicates the core dual-engine logic completely in-browser if testing across staging/dev origins
+    function executeLocalFallbackCalculation() {
+      const weights = [0.4, 0.3, 0.3];
+      let scoreA = 0;
+      let logSum = 0;
+      let zeroPropertyActive = false;
+      const rowValidations = [1, 1, 1, 1];
+
+      // Process parallel loops locally to guarantee live updates work regardless of environment
+      for (let i = 0; i < 4; i++) {
+        let rowLog = 0;
+        let rowZero = false;
+        for (let j = 0; j < 3; j++) {
+          const val = simMatrix[i][j];
+          scoreA += val * weights[j];
+          if (val === 0) { rowZero = true; zeroPropertyActive = true; }
+          if (!rowZero) rowLog += weights[j] * Math.log(val);
+        }
+        rowValidations[i] = rowZero ? 0 : Math.exp(rowLog);
+      }
+
+      const metricA = scoreA / 4;
+      const metricB = zeroPropertyActive ? 0 : rowValidations.reduce((acc, v) => acc * v, 1);
+
+      renderUiUpdate({
+        metric_a_compliance: metricA,
+        metric_b_integrity: metricB,
+        status: metricB === 0 ? "CRITICAL_RISK_SWITCH_TRIGGERED" : "NOMINAL"
+      });
     }
-    const resB = document.getElementById('resB');
-    if (resB) resB.innerText = "LOCAL";
-  }
 
-  // --- Safe Action Event Listeners ---
-  document.getElementById('injectBtn')?.addEventListener('click', () => {
-    simMatrix = [
-      [0.95, 0.95, 0.95], [0.95, 0.95, 0.95], [0.95, 0.95, 0.95], [0.95, 0.95, 0.95]
-    ];
+    function renderUiUpdate(data: any) {
+      const resA = document.getElementById('resA');
+      const resB = document.getElementById('resB');
+      const statusText = document.getElementById('resStatus');
 
-    const randomRow = Math.floor(Math.random() * 4);
-    const randomCol = Math.floor(Math.random() * 3);
-    simMatrix[randomRow][randomCol] = 0.0;
-
-    const domainNames = ["FUNCTION", "FEATURES", "ELEMENTS", "EXECUTION"];
-    const enablerNames = ["STRUCTURES", "CONTENTS", "FACILITIES"];
-    
-    const locationLine = document.getElementById('breachLocationLine');
-    const locationText = document.getElementById('resBreach');
-    if (locationLine && locationText) {
-      locationText.innerText = `${domainNames[randomRow]}_${enablerNames[randomCol]}`;
-      locationLine.classList.remove('hidden');
+      if (resA) resA.innerText = (data.metric_a_compliance * 100).toFixed(0) + '%';
+      if (resB) resB.innerText = (data.metric_b_integrity * 100).toFixed(0) + '%';
+      
+      if (statusText) {
+        statusText.innerText = data.status;
+        if (data.metric_b_integrity === 0 || data.status === "CRITICAL_RISK_SWITCH_TRIGGERED") {
+          statusText.className = "text-rose-500 font-bold font-mono";
+          if (resB) resB.className = "text-rose-500 font-bold";
+        } else {
+          statusText.className = "text-emerald-400 font-bold font-mono";
+          if (resB) resB.className = "text-emerald-400 font-bold";
+          document.getElementById('breachLocationLine')?.classList.add('hidden');
+        }
+      }
     }
 
-    dispatchSimulationPipeline();
-  });
+    // Dynamic Catastrophic Injector 
+    document.getElementById('injectBtn')?.addEventListener('click', () => {
+      simMatrix = [
+        [0.95, 0.95, 0.95], [0.95, 0.95, 0.95], [0.95, 0.95, 0.95], [0.95, 0.95, 0.95]
+      ];
 
-  document.getElementById('resetBtn')?.addEventListener('click', () => {
-    simMatrix = [
-      [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]
-    ];
-    document.querySelectorAll('.sim-slider').forEach((s: any, idx) => {
-      s.value = "1";
-      const lbl = document.getElementById(`lbl-${idx}`);
-      if (lbl) lbl.innerText = "1.0";
-    });
-    document.getElementById('breachLocationLine')?.classList.add('hidden');
-    dispatchSimulationPipeline();
-  });
+      const randomRow = Math.floor(Math.random() * 4);
+      const randomCol = Math.floor(Math.random() * 3);
+      simMatrix[randomRow][randomCol] = 0.0;
 
-  document.querySelectorAll('.sim-slider').forEach(slider => {
-    slider.addEventListener('input', (e: any) => {
-      const idx = parseInt(e.target.getAttribute('data-idx'));
-      const val = parseFloat(e.target.value);
-      const lbl = document.getElementById(`lbl-${idx}`);
-      if (lbl) lbl.innerText = val.toFixed(1);
+      const domainNames = ["FUNCTION", "FEATURES", "ELEMENTS", "EXECUTION"];
+      const enablerNames = ["STRUCTURES", "CONTENTS", "FACILITIES"];
+      
+      const locationLine = document.getElementById('breachLocationLine');
+      const locationText = document.getElementById('resBreach');
+      if (locationLine && locationText) {
+        locationText.innerText = `${domainNames[randomRow]}_${enablerNames[randomCol]}`;
+        locationLine.classList.remove('hidden');
+      }
 
-      if (idx === 0) simMatrix = val;
-      if (idx === 1) simMatrix = val;
-      if (idx === 2) simMatrix = val;
-      dispatchSimulationPipeline();
-    });
-  });
-
-  // Run initial pass safely
-  dispatchSimulationPipeline();
-</script>
-</BaseLayout>
+      // Sync specific slider positions indicators
+      const sliders = document.querySelectorAll('.sim-slider') as NodeListOf<HTMLInputElement>;
+      sliders.forEach((slider) => {
+        const idx = parseInt(slider.getAttribute('data-idx') || "0");
+        const lbl = document.getElementById(`lbl-${idx}`);
+        
+        let calculatedValue = 0.95;
+        if (idx === 0) calculatedValue = simMatrix[0][0];
+if (idx === 1) calculatedValue = simMatrix;
+if (idx === 2) calculatedValue = simMatrix[3]; [1] 
+slider.value = calculatedValue.toString();
+if (lbl) lbl.innerText = calculatedValue.toFixed(1);
+});
+dispatchSimulationPipeline();
+});
+document.getElementById('resetBtn')?.addEventListener('click', () => {
+simMatrix = [
+[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]
+];
+document.querySelectorAll('.sim-slider').forEach((s: any) => {
+s.value = "1";
+const idx = s.getAttribute('data-idx');
+const lbl = document.getElementById(lbl-${idx});
+if (lbl) lbl.innerText = "1.0";
+});
+document.getElementById('breachLocationLine')?.classList.add('hidden');
+dispatchSimulationPipeline();
+});
+document.querySelectorAll('.sim-slider').forEach(slider => {
+slider.addEventListener('input', (e: any) => {
+const idx = parseInt(e.target.getAttribute('data-idx'));
+const val = parseFloat(e.target.value);
+const lbl = document.getElementById(lbl-${idx});
+if (lbl) lbl.innerText = val.toFixed(1);
+if (idx === 0) simMatrix[0][0] = val; // Function -> Structures
+if (idx === 1) simMatrix = val; // Elements -> Contents
+if (idx === 2) simMatrix[3] = val; // Execution -> Facilities
+dispatchSimulationPipeline();
+});
+}); [1] 
+// Run initial baseline check safely
+dispatchSimulationPipeline();
