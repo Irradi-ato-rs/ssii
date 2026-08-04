@@ -1,145 +1,115 @@
+---
 // src/pages/index.astro
 export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
 
-// FIX #1: Define the server-side timestamp variable here to allow compile passes
+// Calculate year at compile time for pure static performance
 const currentYear = new Date().getFullYear();
 ---
 
 <BaseLayout title="VoidMetric | Sovereign Systemic Integrity Intelligence">
-  <main class="w-full max-w-4xl mx-auto text-center pt-12 pb-20 px-4">
+  <main class="w-full max-w-2xl mx-auto px-4 py-16 text-left text-slate-300 font-mono text-xs leading-relaxed selection:bg-slate-800">
     
-    <!-- Hero Section -->
-    <div class="mb-12">
-      <h1 class="text-4xl md:text-6xl font-black text-white tracking-tight mb-4 bg-gradient-to-r from-blue-400 via-purple-400 to-emerald-400 bg-clip-text text-transparent">
-        VOIDMETRIC
-      </h1>
-      <p class="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto px-2">
-        Exposing <span class="text-blue-400 font-bold">Security Theater</span> with mathematical honesty.
-      </p>
-      <p class="text-sm text-slate-500 mt-2">
-        Zero-Persistence. Edge-Native. The Risk Switch Engine.
-      </p>
-    </div>
+    
+    <header class="mb-12 space-y-2">
+      <h1 class="text-xl font-bold tracking-tight text-white">VOIDMETRIC</h1>
+      <p class="text-slate-400">Sovereign Systemic Integrity Intelligence</p>
+      <p class="text-slate-500">Zero-Persistence. Edge-Native. Non-Linear Operational Validation Engine.</p>
+    </header>
 
-    <!-- Navigation Grid (Deployed Features) -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto mb-16">
-      
-      <!-- 1. Login / Enterprise Access -->
-      <a href="/login" class="group block p-6 bg-slate-900 border border-slate-800 rounded-2xl hover:border-blue-500/50 hover:bg-slate-800/50 transition-all text-left">
-        <div class="text-3xl mb-3">🔒</div>
-        <h3 class="text-lg font-bold text-white mb-1 group-hover:text-blue-400 transition">Enterprise Access</h3>
-        <p class="text-xs text-slate-400">Secure SSO login for authorized domains (Okta/Entra).</p>
-      </a>
+    <!-- Navigation Directory (Simple Markdown-Style Links) -->
+    <section class="mb-12 space-y-4">
+      <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— SYSTEM DIRECTORY</h2>
+      <ul class="space-y-3">
+        <li>
+          <a href="/login" class="text-white underline underline-offset-4 hover:text-slate-300">/login</a>
+          <span class="text-slate-500 ml-2">— Secure SSO pipeline for authorized domains (Okta/Entra).</span>
+        </li>
+        <li>
+          <a href="/integrity-portal" class="text-white underline underline-offset-4 hover:text-slate-300">/integrity-portal</a>
+          <span class="text-slate-500 ml-2">— Live continuous controls dashboard for Metric A/B.</span>
+        </li>
+        <li>
+          <a href="https://github.com" target="_blank" class="text-white underline underline-offset-4 hover:text-slate-300">/documentation</a>
+          <span class="text-slate-500 ml-2">— Academic whitepaper, mathematical proofs, and API specifications.</span>
+        </li>
+        <li>
+          <a href="mailto:support@voidmetric.com" class="text-white underline underline-offset-4 hover:text-slate-300">/onboarding</a>
+          <span class="text-slate-500 ml-2">— Request tenant network provisioning parameters.</span>
+        </li>
+      </ul>
+    </section>
 
-      <!-- 2. Integrity Portal (Protected) -->
-      <a href="/integrity-portal" class="group block p-6 bg-slate-900 border border-slate-800 rounded-2xl hover:border-emerald-500/50 hover:bg-slate-800/50 transition-all text-left">
-        <div class="text-3xl mb-3">📊</div>
-        <h3 class="text-lg font-bold text-white mb-1 group-hover:text-emerald-400 transition">Integrity Portal</h3>
-        <p class="text-xs text-slate-400">Live dashboard for Metric A/B and Risk Switch status.</p>
-      </a>
-
-      <!-- 3. Public Docs / README -->
-      <a href="https://github.com/your-username/voidmetric" target="_blank" class="group block p-6 bg-slate-900 border border-slate-800 rounded-2xl hover:border-purple-500/50 hover:bg-slate-800/50 transition-all text-left">
-        <div class="text-3xl mb-3">📄</div>
-        <h3 class="text-lg font-bold text-white mb-1 group-hover:text-purple-400 transition">Documentation</h3>
-        <p class="text-xs text-slate-400">Read the whitepaper, math proofs, and API specs.</p>
-      </a>
-
-      <!-- 4. Contact / Support -->
-      <a href="mailto:support@voidmetric.com" class="group block p-6 bg-slate-900 border border-slate-800 rounded-2xl hover:border-amber-500/50 hover:bg-slate-800/50 transition-all text-left">
-        <div class="text-3xl mb-3">📬</div>
-        <h3 class="text-lg font-bold text-white mb-1 group-hover:text-amber-400 transition">Onboarding</h3>
-        <p class="text-xs text-slate-400">Request access for your organization's domain.</p>
-      </a>
-    </div>
-
-    <!-- Live Math Simulator (Public Demo Panel Layout) -->
-    <div id="simCard" class="w-full max-w-2xl mx-auto bg-slate-950 border border-slate-800 p-6 md:p-8 rounded-2xl text-left relative overflow-hidden shadow-2xl transition-all duration-300">
-      <div id="glowBar" class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-500 opacity-70 transition-all"></div>
-      
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-xl font-bold text-white flex items-center gap-2">
-          🧪 Live Mathematical Sandbox
-        </h2>
-        <span class="text-[10px] uppercase tracking-wider text-slate-400 bg-slate-900 border border-slate-800 px-2 py-1 rounded font-mono">
-          Edge Engine Active
-        </span>
+    <!-- Live Math Simulator (Raw Typography Interface Layout) -->
+    <section class="mb-16 space-y-6 pt-8 border-t border-slate-900">
+      <div class="space-y-1">
+        <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— LIVE MATHEMATICAL SIMULATOR</h2>
+        <p class="text-slate-400">
+          Demonstrating the **Zero Property** (Risk Switch). Inject an exploit vector to test how Metric B collapses to zero while traditional additive metrics (Metric A) mask systemic failure.
+        </p>
       </div>
 
-      <p class="text-xs md:text-sm text-slate-400 mb-6 leading-relaxed">
-        Verify the **Zero Property** instantly. Click the macro trigger button to inject an unexpected exploit (0.0), or manually fine-tune the slider grid to observe how lopsided postures are exponentially penalized.
-      </p>
-
-      <!-- Macro Quick Injects Row -->
-      <div class="flex flex-col sm:flex-row gap-3 mb-8">
-        <button id="injectBtn" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs uppercase tracking-wider py-3 rounded-xl transition shadow-lg shadow-blue-900/10">
-          Inject Catastrophic Failure (0.0)
+      <!-- Action Commands -->
+      <div class="flex gap-4">
+        <button id="injectBtn" class="text-white underline underline-offset-4 hover:text-slate-300 font-bold text-left cursor-pointer">
+          [RUN_SIMULATION: INJECT_CRITICAL_FAILURE]
         </button>
-        <button id="resetBtn" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 font-bold text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition">
-          Reset Matrix (1.0)
+        <button id="resetBtn" class="text-slate-500 underline underline-offset-4 hover:text-slate-400 text-left cursor-pointer">
+          [RESET_MATRIX]
         </button>
       </div>
 
-      <!-- Live Calculated Output Board Indicators -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 text-center relative overflow-hidden">
-          <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono">Metric A: Compliance</p>
-          <p id="resA" class="text-3xl font-black font-mono text-slate-300 mt-1">100%</p>
-          <div class="w-full bg-slate-800 h-1 rounded-full mt-3 overflow-hidden">
-            <div id="barA" class="bg-slate-400 h-full w-full transition-all duration-300"></div>
-          </div>
-        </div>
-        <div id="integrityStatCard" class="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 text-center transition-all duration-300">
-          <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono">Metric B: Integrity</p>
-          <p id="resB" class="text-3xl font-black font-mono text-emerald-400 mt-1 transition-colors">100%</p>
-          <p class="text-[9px] text-slate-500 font-mono mt-2">Weighted Product</p>
-        </div>
-        <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 flex flex-col justify-center items-center text-center">
-          <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono mb-1.5">System Status</p>
-          <span id="resStatus" class="px-2.5 py-1 text-[10px] font-black font-mono rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">
-            NOMINAL
-          </span>
-        </div>
+      <!-- Raw Text Posture Outputs Board -->
+      <div class="space-y-1.5 pt-2">
+        <div>METRIC A (COMPLIANCE EFFORT) : <span id="resA" class="text-white font-bold">100%</span></div>
+        <div>METRIC B (SYSTEMIC INTEGRITY) : <span id="resB" class="text-emerald-400 font-bold transition-colors">100%</span></div>
+        <div>CORE OPERATIONAL STATUS     : <span id="resStatus" class="text-emerald-400 font-bold transition-colors font-mono">NOMINAL</span></div>
       </div>
 
-      <!-- Quick Interactive Grid Sliders -->
-      <div class="border-t border-slate-900 pt-6 space-y-4">
-        <h4 class="text-[10px] font-bold tracking-widest uppercase text-slate-500 font-mono">Manual Matrix Adjustments</h4>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div class="space-y-1">
-            <div class="flex justify-between text-[11px] font-mono"><span class="text-slate-400">Function (E1)</span><span id="lbl-0" class="text-cyan-400">1.0</span></div>
-            <input type="range" min="0" max="1" step="0.05" value="1" data-idx="0" class="sim-slider w-full h-1 bg-slate-800 appearance-none rounded cursor-pointer accent-cyan-500" />
+      <!-- Direct Functional Sliders -->
+      <div class="space-y-3 pt-4 border-t border-slate-900">
+        <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Manual Matrix Controls</span>
+        
+        <div class="space-y-2 max-w-md">
+          <div class="flex justify-between items-center">
+            <span>Function (E1: Structure) :</span>
+            <div class="flex items-center gap-2">
+              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="0" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
+              <span id="lbl-0" class="text-white min-w-[24px] text-right">1.0</span>
+            </div>
           </div>
-          <div class="space-y-1">
-            <div class="flex justify-between text-[11px] font-mono"><span class="text-slate-400">Elements (E3)</span><span id="lbl-1" class="text-cyan-400">1.0</span></div>
-            <input type="range" min="0" max="1" step="0.05" value="1" data-idx="1" class="sim-slider w-full h-1 bg-slate-800 appearance-none rounded cursor-pointer accent-cyan-500" />
+
+          <div class="flex justify-between items-center">
+            <span>Elements (E3: Facilities):</span>
+            <div class="flex items-center gap-2">
+              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="1" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
+              <span id="lbl-1" class="text-white min-w-[24px] text-right">1.0</span>
+            </div>
           </div>
-          <div class="space-y-1">
-            <div class="flex justify-between text-[11px] font-mono"><span class="text-slate-400">Execution (E3)</span><span id="lbl-2" class="text-cyan-400">1.0</span></div>
-            <input type="range" min="0" max="1" step="0.05" value="1" data-idx="2" class="sim-slider w-full h-1 bg-slate-800 appearance-none rounded cursor-pointer accent-cyan-500" />
+
+          <div class="flex justify-between items-center">
+            <span>Execution (E3: Facilities):</span>
+            <div class="flex items-center gap-2">
+              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="2" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
+              <span id="lbl-2" class="text-white min-w-[24px] text-right">1.0</span>
+            </div>
           </div>
         </div>
       </div>
+    </section>
 
-    </div>
+    <!-- Semantic Standard Footer -->
+    <footer class="border-t border-slate-900 pt-8 text-[10px] text-slate-600 space-y-1">
+      <p>&copy; {currentYear} VoidMetric. Licensed under BSD 2-Clause.</p>
+      <p>Sovereign Systemic Integrity Intelligence ⟢</p>
+    </footer>
 
   </main>
 
-  <footer class="mt-12 text-[10px] text-slate-600 border-t border-slate-900 pt-8 pb-4">
-    <p>
-      <span style="font-size:15px;font-weight:bold;">&copy; {currentYear}</span> 
-      VoidMetric. Licensed under BSD 2-Clause.
-    </p>
-    <p class="mt-1">Sovereign Systemic Integrity Intelligence ⟢</p>
-  </footer>
-
   <script>
-    // FIX #2: Explicitly establish origin checks using window context mapping 
-    // to bypass the strict checkOrigin CSRF 401 configuration errors at runtime.
+    // Map API endpoint dynamically using origin window structures to bypass 401 CSRF parameters
     const apiEndpoint = `${window.location.origin}/api/v1/compute`;
     
-    // Internal simulator matrix coordinates state mapping cache
     let simMatrix = [
       [1.0, 1.0, 1.0],
       [1.0, 1.0, 1.0],
@@ -155,78 +125,79 @@ const currentYear = new Date().getFullYear();
           body: JSON.stringify({ matrix: simMatrix })
         });
 
-        if (!response.ok) throw new Error(`HTTP Matrix Fault: ${response.status}`);
+        if (!response.ok) throw new Error(`HTTP_GATEWAY_FAULT: ${response.status}`);
         const data = await response.json();
         renderUiUpdate(data);
       } catch (err) {
-        console.error("Sandbox calculations interrupted:", err);
+        console.error("Calculation transmission interrupted:", err);
       }
     }
 
     function renderUiUpdate(data) {
-      const pctA = (data.metric_a_compliance * 100).toFixed(0) + '%';
-      const pctB = (data.metric_b_integrity * 100).toFixed(0) + '%';
-
-      document.getElementById('resA').innerText = pctA;
-      document.getElementById('barA').style.width = pctA;
-      document.getElementById('resB').innerText = pctB;
+      document.getElementById('resA').innerText = (data.metric_a_compliance * 100).toFixed(0) + '%';
+      document.getElementById('resB').innerText = (data.metric_b_integrity * 100).toFixed(0) + '%';
       
-      const badge = document.getElementById('resStatus');
-      const card = document.getElementById('simCard');
-      const glow = document.getElementById('glowBar');
-      const bStat = document.getElementById('resB');
-      const iCard = document.getElementById('integrityStatCard');
+      const statusText = document.getElementById('resStatus');
+      const bText = document.getElementById('resB');
+      
+      statusText.innerText = data.status;
 
-badge.innerText = data.status;
-if (data.metric_b_integrity === 0 || data.status === "CRITICAL_RISK_SWITCH_TRIGGERED") {
-badge.className = "px-2.5 py-1 text-[10px] font-black font-mono rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 uppercase tracking-wider animate-pulse";
-glow.className = "absolute top-0 left-0 right-0 h-1 bg-rose-500 transition-all";
-bStat.className = "text-3xl font-black font-mono text-rose-500 mt-1 transition-colors";
-iCard.className = "bg-rose-950/20 p-4 rounded-xl border border-rose-500/30 text-center transition-all duration-300";
-} else {
-badge.className = "px-2.5 py-1 text-[10px] font-black font-mono rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider";
-glow.className = "absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-500 opacity-70 transition-all";
-bStat.className = "text-3xl font-black font-mono text-emerald-400 mt-1 transition-colors";
-iCard.className = "bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 text-center transition-all duration-300";
-}
-}
-// Connect Macro Trigger Action Button
-document.getElementById('injectBtn').addEventListener('click', () => {
-// Force injection profile: Elements -> Facilities drops straight to zero
-simMatrix = [
-[0.95, 0.90, 0.95],
-[0.90, 0.95, 0.90],
-[0.95, 0.90, 0.00],
-[0.90, 0.90, 0.95]
-];
-// Update UI slider values indicators to match the mock injection values
-(document.querySelectorAll('.sim-slider')[0] as HTMLInputElement).value = "0.95";
-(document.querySelectorAll('.sim-slider')[1] as HTMLInputElement).value = "0.00";
-(document.querySelectorAll('.sim-slider')[2] as HTMLInputElement).value = "0.95";
-document.getElementById('lbl-0').innerText = "0.95";
-document.getElementById('lbl-1').innerText = "0.00";
-document.getElementById('lbl-2').innerText = "0.95";
-dispatchSimulationPipeline();
-});
-// Connect Reset Interface Button
-document.getElementById('resetBtn').addEventListener('click', () => {
-simMatrix = [[1,1,1],[1,1,1],[1,1,1],[1,1,1]];
-document.querySelectorAll('.sim-slider').forEach((s: any, idx) => {
-s.value = "1";
-document.getElementById(lbl-${idx}).innerText = "1.0";
-});
-dispatchSimulationPipeline();
-});
-// Connect Sliders Event Listeners Matrix Loops
-document.querySelectorAll('.sim-slider').forEach(slider => {
-slider.addEventListener('input', (e: any) => {
-const idx = parseInt(e.target.getAttribute('data-idx'));
-const val = parseFloat(e.target.value);
-document.getElementById(lbl-${idx}).innerText = val.toFixed(1);
-// Map sliders to specific structural matrix points
-if (idx === 0) simMatrix[0][0] = val; // Function -> Structure
-if (idx === 1) simMatrix[2][2] = val; // Elements -> Facilities
-if (idx === 2) simMatrix[3][2] = val; // Execution -> Facilities
-dispatchSimulationPipeline();
-});
-});
+      if (data.metric_b_integrity === 0 || data.status === "CRITICAL_RISK_SWITCH_TRIGGERED") {
+        statusText.className = "text-rose-500 font-bold font-mono";
+        bText.className = "text-rose-500 font-bold";
+      } else {
+        statusText.className = "text-emerald-400 font-bold font-mono";
+        bText.className = "text-emerald-400 font-bold";
+      }
+    }
+
+    // Connect Macro Trigger Action
+    document.getElementById('injectBtn').addEventListener('click', () => {
+      simMatrix = [
+        [0.95, 0.90, 0.95],
+        [0.90, 0.95, 0.90],
+        [0.95, 0.90, 0.00], 
+        [0.90, 0.90, 0.95]
+      ];
+      
+      // Sync raw slider positions to match macro payload metrics
+      const sliders = document.querySelectorAll('.sim-slider');
+      (sliders[0] as HTMLInputElement).value = "0.95";
+      (sliders[1] as HTMLInputElement).value = "0.00";
+      (sliders[2] as HTMLInputElement).value = "0.95";
+      
+      document.getElementById('lbl-0').innerText = "0.95";
+      document.getElementById('lbl-1').innerText = "0.00";
+      document.getElementById('lbl-2').innerText = "0.95";
+
+      dispatchSimulationPipeline();
+    });
+
+    // Connect Reset Action
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      simMatrix = [
+        [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]
+      ];
+      document.querySelectorAll('.sim-slider').forEach((s: any, idx) => {
+        s.value = "1";
+        document.getElementById(`lbl-${idx}`).innerText = "1.0";
+      });
+      dispatchSimulationPipeline();
+    });
+
+    // Monitor Input Sliders Matrix Changes
+    document.querySelectorAll('.sim-slider').forEach(slider => {
+      slider.addEventListener('input', (e: any) => {
+        const idx = parseInt(e.target.getAttribute('data-idx'));
+        const val = parseFloat(e.target.value);
+        document.getElementById(`lbl-${idx}`).innerText = val.toFixed(1);
+
+        if (idx === 0) simMatrix[0][0] = val; // Function -> Structure
+        if (idx === 1) simMatrix[2][2] = val; // Elements -> Facilities
+        if (idx === 2) simMatrix[3][2] = val; // Execution -> Facilities
+
+        dispatchSimulationPipeline();
+      });
+    });
+  </script>
+</BaseLayout>
