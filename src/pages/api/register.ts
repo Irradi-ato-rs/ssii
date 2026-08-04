@@ -2,8 +2,6 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { getIdPConfig } from '../../config/tenants';
-import { v4 as uuidv4 } from 'uuid';
-import { env } from 'cloudflare:workers';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
@@ -28,21 +26,26 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
-    // 2. Resolve Secrets
-    const clientId = env[config.clientIdEnv];
+    // 2. Resolve Environment Secrets via standard Cloudflare Workers Global Context
+    // FIX: Using globalThis process context to resolve runtime environment flags cleanly
+    const clientId = (globalThis as any).process?.env?.[config.clientIdEnv] || (globalThis as any)[config.clientIdEnv];
     if (!clientId) {
       console.error(`MISSING SECRET: ${config.clientIdEnv}`);
       return new Response('Configuration error: Missing Client ID', { status: 500 });
     }
 
-    // 3. Generate State with Domain Encoded (Critical for Multi-Tenant Callback)
-    const statePayload = { domain, nonce: uuidv4() };
-    const state = btoa(JSON.stringify(statePayload)); // Base64 encode
+    // 3. Generate State Payload via Edge-Native Web Crypto APIs
+    // FIX: Replaced third-party Node uuidv4 package with high-performance crypto.randomUUID()
+    const statePayload = { domain, nonce: crypto.randomUUID() };
+    const state = btoa(JSON.stringify(statePayload)); // Safe url-agnostic serialization
 
-    const url = new URL(request.url);
-    const origin = url.origin;
+    // 4. Resolve the True Canonical Request Origin
+    // FIX: Extracted host headers to guarantee redirect alignment on staging/production links
+    const host = request.headers.get('host') || new URL(request.url).host;
+    const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    const origin = `${protocol}://${host}`;
 
-    // 4. Construct IdP Authorization URL
+    // 5. Construct IdP Authorization URL
     const authUrl = new URL(config.authorizationEndpoint);
     authUrl.searchParams.set('client_id', clientId);
     authUrl.searchParams.set('redirect_uri', `${origin}/api/auth/callback`);
@@ -51,8 +54,9 @@ export const POST: APIRoute = async ({ request }) => {
     authUrl.searchParams.set('state', state);
     authUrl.searchParams.set('login_hint', email);
 
-    // 5. Set State Cookie & Redirect
+    // 6. Set State Cookie & Redirect
     const headers = new Headers();
+    // SameSite=Lax is required for cross-domain OAuth redirection handshakes
     headers.append('Set-Cookie', `oidc_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=300`);
     headers.append('Location', authUrl.toString());
 
@@ -62,4 +66,4 @@ export const POST: APIRoute = async ({ request }) => {
     console.error('Registration Error:', error);
     return new Response('Internal Server Error', { status: 500 });
   }
-};   
+};
