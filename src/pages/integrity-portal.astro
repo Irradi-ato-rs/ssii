@@ -8,8 +8,9 @@ if (!Astro.locals.user) {
 }
 
 const user = Astro.locals.user;
-// Check for 'firstVisit' cookie
-const isFirstVisit = Astro.cookies.get('ssii_onboard_complete') === undefined;
+
+// FIX #1: Use the standard Astro .has() method to evaluate cookie presence
+const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
 ---
 
 <html lang="en">
@@ -35,7 +36,7 @@ const isFirstVisit = Astro.cookies.get('ssii_onboard_complete') === undefined;
         </div>
       </div>
 
-      <!-- ✅ ONBOARDING MODAL (Only shows on first visit) -->
+      <!-- ONBOARDING MODAL -->
       {isFirstVisit && (
         <div id="onboarding-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
           <div class="bg-slate-900 border border-blue-500/30 p-8 rounded-2xl max-w-lg w-full shadow-2xl">
@@ -57,7 +58,8 @@ const isFirstVisit = Astro.cookies.get('ssii_onboard_complete') === undefined;
               </li>
             </ul>
 
-            <button onclick="startDemoOnboarding()" class="w-full mt-6 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition">
+            <!-- FIX #2: Removed the broken inline onclick attribute -->
+            <button id="startTourBtn" class="w-full mt-6 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition cursor-pointer">
               Start Interactive Tour
             </button>
           </div>
@@ -72,7 +74,7 @@ const isFirstVisit = Astro.cookies.get('ssii_onboard_complete') === undefined;
           Observe how <strong>Metric A</strong> remains high while <strong>Metric B</strong> collapses.
         </p>
         
-        <button id="testMath" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-lg transition shadow-lg shadow-blue-900/20">
+        <button id="testMath" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-lg transition shadow-lg shadow-blue-900/20 cursor-pointer">
           Run Demo Calculation
         </button>
 
@@ -91,41 +93,50 @@ const isFirstVisit = Astro.cookies.get('ssii_onboard_complete') === undefined;
               <p id="resStatus" class="text-sm font-bold text-white uppercase">-</p>
             </div>
           </div>
-          {user.role === 'engineer' || user.role === 'admin' ? (
+          
+          { (user.role === 'engineer' || user.role === 'admin') && (
             <div class="mt-4 bg-slate-950 p-4 rounded border border-slate-800">
               <p class="text-xs text-slate-500 uppercase mb-2">Row Validations (Engineer View)</p>
               <pre id="resRows" class="text-xs font-mono text-slate-300 overflow-x-auto">-</pre>
             </div>
-          ) : ''}
+          )}
         </div>
       </div>
 
     </div>
 
     <script>
-      // Onboarding Logic
-      function startDemoOnboarding() {
-        // Trigger the compute button automatically
-        document.getElementById('testMath').click();
-        
-        // Set cookie to hide modal next time
-        document.cookie = "ssii_onboard_complete=true; path=/; max-age=31536000";
-        
-        // Close modal
-        document.getElementById('onboarding-modal').classList.add('hidden');
+      // Fix #3: Reconstructed routing to target dynamic canonical endpoints natively 
+      const apiEndpoint = `${window.location.origin}/api/v1/compute`;
+
+      // FIX #4: Setup clean programmatic Event Listener for the Onboarding Tour Button
+      const tourBtn = document.getElementById('startTourBtn');
+      if (tourBtn) {
+        tourBtn.addEventListener('click', () => {
+          // Trigger the compute button automatically
+          document.getElementById('testMath')?.click();
+          
+          // Set cookie to hide modal next time
+          document.cookie = "ssii_onboard_complete=true; path=/; max-age=31536000; SameSite=Strict";
+          
+          // Close modal
+          document.getElementById('onboarding-modal')?.classList.add('hidden');
+        });
       }
 
       // Demo Calculation Logic
-      document.getElementById('testMath').addEventListener('click', async () => {
-        const btn = document.getElementById('testMath');
+      document.getElementById('testMath')?.addEventListener('click', async () => {
+        const btn = document.getElementById('testMath') as HTMLButtonElement;
         const results = document.getElementById('results');
         
+        if (!btn || !results) return;
+
         btn.disabled = true;
         btn.innerText = "Computing...";
         results.classList.add('hidden');
 
         try {
-          const response = await fetch('/api/v1/compute', {
+          const response = await fetch(apiEndpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -138,14 +149,18 @@ const isFirstVisit = Astro.cookies.get('ssii_onboard_complete') === undefined;
             })
           });
 
+          if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
           const data = await response.json();
 
-          document.getElementById('resA').innerText = data.metric_a_compliance;
-          document.getElementById('resB').innerText = data.metric_b_integrity;
-          document.getElementById('resStatus').innerText = data.status;
+          document.getElementById('resA')!.innerText = (data.metric_a_compliance * 100).toFixed(1) + '%';
+          document.getElementById('resB')!.innerText = (data.metric_b_integrity * 100).toFixed(1) + '%';
+          document.getElementById('resStatus')!.innerText = data.status;
           
-          if (data.row_validations) {
-            document.getElementById('resRows').innerText = JSON.stringify(data.row_validations, null, 2);
+          // FIX #5: Added an existential null-check constraint to prevent JS crashes 
+          // when non-engineer users hide the target container block element
+          const rowsDisplay = document.getElementById('resRows');
+          if (rowsDisplay && data.row_validations) {
+            rowsDisplay.innerText = JSON.stringify(data.row_validations, null, 2);
           }
 
           results.classList.remove('hidden');
@@ -158,4 +173,4 @@ const isFirstVisit = Astro.cookies.get('ssii_onboard_complete') === undefined;
       });
     </script>
   </body>
-</html>   
+</html>
