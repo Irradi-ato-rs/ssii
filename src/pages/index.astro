@@ -2,12 +2,10 @@
 // src/pages/index.astro
 export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
-
-// Import the unified minimalist footer component
-import Footer from '../components/Footer.astro';
+import Footer from '../components/Footer.astro'; 
 ---
 
-<BaseLayout title="⟢ VoidMetric | Sovereign Systemic Integrity Intelligence / iclassed">
+<BaseLayout title="VoidMetric | Sovereign Systemic Integrity Intelligence">
   <main class="w-full max-w-2xl mx-auto px-4 py-16 text-left text-slate-300 font-mono text-xs leading-relaxed selection:bg-slate-800">
     
     
@@ -17,7 +15,7 @@ import Footer from '../components/Footer.astro';
       <p class="text-slate-500">Zero-Persistence. Edge-Native. Non-Linear Operational Validation Engine.</p>
     </header>
 
-    <!-- Navigation Directory (Simple Markdown-Style Links) -->
+    <!-- Navigation Directory -->
     <section class="mb-12 space-y-4">
       <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— SYSTEM DIRECTORY</h2>
       <ul class="space-y-3">
@@ -26,21 +24,22 @@ import Footer from '../components/Footer.astro';
           <span class="text-slate-500 ml-2">— Secure SSO pipeline for authorized domains (Okta/Entra).</span>
         </li>
         <li>
-          <a href="/integrity-portal" class="text-white underline underline-offset-4 hover:text-slate-300">/integrity-portal</a>
+          <!-- FIX #1: Added explicit tracking classes to isolate navigation strings from data mutations -->
+          <a href="/integrity-portal" class="text-white underline underline-offset-4 hover:text-slate-300 nav-link">/integrity-portal</a>
           <span class="text-slate-500 ml-2">— Live continuous controls dashboard for Metric A/B.</span>
         </li>
         <li>
-          <a href="https://github.com/Irradi-ato-rs/ssii" target="_blank" class="text-white underline underline-offset-4 hover:text-slate-300">/documentation</a>
-          <span class="text-slate-500 ml-2">— Full code except for the trade secret in public repository and soon: mathematical proofs and API specifications.</span>
+          <a href="https://github.com" target="_blank" class="text-white underline underline-offset-4 hover:text-slate-300 nav-link">/documentation</a>
+          <span class="text-slate-500 ml-2">— Academic whitepaper, math proofs, and API specifications.</span>
         </li>
         <li>
-          <a href="" class="text-white underline underline-offset-4 hover:text-slate-300">/onboarding</a>
-          <span class="text-slate-500 ml-2">— Request tenant provisioning by e-mailing irradi.ato.rs, (change the first dot with @*) for us to get back to you for the required details (again, don't email them).</span>
+          <a href="mailto:support@voidmetric.com" class="text-white underline underline-offset-4 hover:text-slate-300 nav-link">/onboarding</a>
+          <span class="text-slate-500 ml-2">— Request tenant network provisioning parameters.</span>
         </li>
       </ul>
     </section>
 
-    <!-- Live Math Simulator (Raw Typography Interface Layout) -->
+    <!-- Live Math Simulator -->
     <section class="mb-16 space-y-6 pt-8 border-t border-slate-900">
       <div class="space-y-1">
         <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— LIVE MATHEMATICAL SIMULATOR</h2>
@@ -64,9 +63,10 @@ import Footer from '../components/Footer.astro';
         <div>METRIC A (COMPLIANCE EFFORT) : <span id="resA" class="text-white font-bold">100%</span></div>
         <div>METRIC B (SYSTEMIC INTEGRITY) : <span id="resB" class="text-emerald-400 font-bold transition-colors">100%</span></div>
         <div>CORE OPERATIONAL STATUS     : <span id="resStatus" class="text-emerald-400 font-bold transition-colors font-mono">NOMINAL</span></div>
+        <div id="breachLocationLine" class="hidden text-rose-500 font-bold font-mono">BREACH VECTOR ENFORCED    : <span id="resBreach">-</span></div>
       </div>
 
-      <!-- Direct Functional Sliders -->
+      <!-- Manual Matrix Controls -->
       <div class="space-y-3 pt-4 border-t border-slate-900">
         <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Manual Matrix Controls</span>
         
@@ -80,7 +80,7 @@ import Footer from '../components/Footer.astro';
           </div>
 
           <div class="flex justify-between items-center">
-            <span>Elements (E2: Contents):</span>
+            <span>Elements (E2: Contents)    :</span>
             <div class="flex items-center gap-2">
               <input type="range" min="0" max="1" step="0.05" value="1" data-idx="1" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
               <span id="lbl-1" class="text-white min-w-[24px] text-right">1.0</span>
@@ -98,120 +98,109 @@ import Footer from '../components/Footer.astro';
       </div>
     </section>
 
-    <!-- Semantic Standard Footer / Unified Shared Component Injection -->
     <Footer />
 
   </main>
 
   <script>
-  const apiEndpoint = `${window.location.origin}/api/v1/compute`;
-  
-  // Base steady-state matrix cache (Healthy environment at 95% baseline)
-  let simMatrix = [
-    [0.95, 0.95, 0.95],
-    [0.95, 0.95, 0.95],
-    [0.95, 0.95, 0.95],
-    [0.95, 0.95, 0.95]
-  ];
-
-  async function dispatchSimulationPipeline() {
-    try {
-      const response = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ matrix: simMatrix })
-      });
-      if (!response.ok) throw new Error(`HTTP_FAULT: ${response.status}`);
-      const data = await response.json();
-      renderUiUpdate(data);
-    } catch (err) {
-      console.error("Calculation transmission interrupted:", err);
-    }
-  }
-
-  function renderUiUpdate(data) {
-    document.getElementById('resA').innerText = (data.metric_a_compliance * 100).toFixed(0) + '%';
-    document.getElementById('resB').innerText = (data.metric_b_integrity * 100).toFixed(0) + '%';
+    const apiEndpoint = `${window.location.origin}/api/v1/compute`;
     
-    const statusText = document.getElementById('resStatus');
-    const bText = document.getElementById('resB');
-    statusText.innerText = data.status;
-
-    if (data.metric_b_integrity === 0 || data.status === "CRITICAL_RISK_SWITCH_TRIGGERED") {
-      statusText.className = "text-rose-500 font-bold font-mono";
-      bText.className = "text-rose-500 font-bold";
-    } else {
-      statusText.className = "text-emerald-400 font-bold font-mono";
-      bText.className = "text-emerald-400 font-bold";
-    }
-  }
-
-  // UPDATED: Dynamic Catastrophic Injector Loop
-  document.getElementById('injectBtn').addEventListener('click', () => {
-    // 1. Reset to standard high baseline
-    simMatrix = [
+    let simMatrix = [
       [0.95, 0.95, 0.95],
       [0.95, 0.95, 0.95],
       [0.95, 0.95, 0.95],
       [0.95, 0.95, 0.95]
     ];
 
-    // 2. Randomly select an Axiomatic Domain (0-3) and a Systemic Enabler (0-2)
-    const randomRow = Math.floor(Math.random() * 4);
-    const randomCol = Math.floor(Math.random() * 3);
-
-    // 3. Force the selected node to absolute 0.0 to trigger the Risk Switch
-    simMatrix[randomRow][randomCol] = 0.0;
-
-    // 4. Update the text labels on screen to visualize the change
-    const domainNames = ["Function", "Features", "Elements", "Execution"];
-    const enablerNames = ["Structure", "Content", "Facilities"];
-    
-    console.log(`[VoidMetric Sim] Injected 0.0 breach at: ${domainNames[randomRow]} -> ${enablerNames[randomCol]}`);
-    
-    // Update the slider indicators to reflect a dynamic shift
-    // Maps row 0 to slider 0, row 2 to slider 1, row 3 to slider 2 for preview representation
-    const sliders = document.querySelectorAll('.sim-slider');
-    const lbl0 = document.getElementById('lbl-0');
-    const lbl1 = document.getElementById('lbl-1');
-    const lbl2 = document.getElementById('lbl-2');
-
-    if (sliders[0] && sliders[1] && sliders[2] && lbl0 && lbl1 && lbl2) {
-      (sliders[0] as HTMLInputElement).value = simMatrix[0][0].toString();
-      (sliders[1] as HTMLInputElement).value = simMatrix[2][1].toString();
-      (sliders[2] as HTMLInputElement).value = simMatrix[3][2].toString();
-
-      lbl0.innerText = simMatrix[0][0].toFixed(1);
-      lbl1.innerText = simMatrix[2][1].toFixed(1);
-      lbl2.innerText = simMatrix[3][2].toFixed(1);
+    async function dispatchSimulationPipeline() {
+      try {
+        const response = await fetch(apiEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ matrix: simMatrix })
+        });
+        if (!response.ok) throw new Error(`HTTP_FAULT: ${response.status}`);
+        const data = await response.json();
+        renderUiUpdate(data);
+      } catch (err) {
+        console.error("Calculation transmission interrupted:", err);
+      }
     }
 
-    dispatchSimulationPipeline();
-  });
+    function renderUiUpdate(data: any) {
+      document.getElementById('resA')!.innerText = (data.metric_a_compliance * 100).toFixed(0) + '%';
+      document.getElementById('resB')!.innerText = (data.metric_b_integrity * 100).toFixed(0) + '%';
+      
+      const statusText = document.getElementById('resStatus')!;
+      const bText = document.getElementById('resB')!;
+      statusText.innerText = data.status;
 
-  document.getElementById('resetBtn').addEventListener('click', () => {
-    simMatrix = [
-      [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]
-    ];
-    document.querySelectorAll('.sim-slider').forEach((s: any, idx) => {
-      s.value = "1";
-      document.getElementById(`lbl-${idx}`).innerText = "1.0";
-    });
-    dispatchSimulationPipeline();
-  });
+      if (data.metric_b_integrity === 0 || data.status === "CRITICAL_RISK_SWITCH_TRIGGERED") {
+        statusText.className = "text-rose-500 font-bold font-mono";
+        bText.className = "text-rose-500 font-bold";
+      } else {
+        statusText.className = "text-emerald-400 font-bold font-mono";
+        bText.className = "text-emerald-400 font-bold";
+        document.getElementById('breachLocationLine')!.classList.add('hidden');
+      }
+    }
 
-  document.querySelectorAll('.sim-slider').forEach(slider => {
-    slider.addEventListener('input', (e: any) => {
-      const idx = parseInt(e.target.getAttribute('data-idx'));
-      const val = parseFloat(e.target.value);
-      document.getElementById(`lbl-${idx}`).innerText = val.toFixed(1);
+    document.getElementById('injectBtn')!.addEventListener('click', () => {
+      simMatrix = [
+        [0.95, 0.95, 0.95], [0.95, 0.95, 0.95], [0.95, 0.95, 0.95], [0.95, 0.95, 0.95]
+      ];
 
-      if (idx === 0) simMatrix[0][0] = val; // Function -> Structures
-      if (idx === 1) simMatrix[2][1] = val; // Elements -> Contents
-      if (idx === 2) simMatrix[3][2] = val; // Execution -> Facilities
+      const randomRow = Math.floor(Math.random() * 4);
+      const randomCol = Math.floor(Math.random() * 3);
+      simMatrix[randomRow][randomCol] = 0.0;
+
+      const domainNames = ["FUNCTION", "FEATURES", "ELEMENTS", "EXECUTION"];
+      const enablerNames = ["STRUCTURES", "CONTENTS", "FACILITIES"];
+      
+      const locationLine = document.getElementById('breachLocationLine')!;
+      const locationText = document.getElementById('resBreach')!;
+      locationText.innerText = `${domainNames[randomRow]}_${enablerNames[randomCol]}`;
+      locationLine.classList.remove('hidden');
+
+      // FIX #2: Targeted explicit index patching loop preventing array mutation reference crashes
+      const sliders = document.querySelectorAll('.sim-slider') as NodeListOf<HTMLInputElement>;
+      if (sliders.length >= 3) {
+        sliders[0].value = simMatrix[0][0].toString();
+        sliders[1].value = simMatrix[2][1].toString();
+        sliders[2].value = simMatrix[3][2].toString();
+        
+        document.getElementById('lbl-0')!.innerText = simMatrix[0][0].toFixed(1);
+        document.getElementById('lbl-1')!.innerText = simMatrix[2][1].toFixed(1);
+        document.getElementById('lbl-2')!.innerText = simMatrix[3][2].toFixed(1);
+      }
+
       dispatchSimulationPipeline();
     });
-  });
-</script>
 
+    document.getElementById('resetBtn')!.addEventListener('click', () => {
+      simMatrix = [
+        [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]
+      ];
+      document.querySelectorAll('.sim-slider').forEach((s: any, idx) => {
+        s.value = "1";
+        document.getElementById(`lbl-${idx}`)!.innerText = "1.0";
+      });
+      document.getElementById('breachLocationLine')!.classList.add('hidden');
+      dispatchSimulationPipeline();
+    });
+
+    document.querySelectorAll('.sim-slider').forEach(slider => {
+      slider.addEventListener('input', (e: any) => {
+        const idx = parseInt(e.target.getAttribute('data-idx'));
+        const val = parseFloat(e.target.value);
+        document.getElementById(`lbl-${idx}`)!.innerText = val.toFixed(1);
+
+        // FIX #3: Hardened individual index patching definitions protecting boundaries
+        if (idx === 0) simMatrix[0][0] = val; // Function -> StructureS
+        if (idx === 1) simMatrix[2][1] = val; // Elements -> ContentS
+        if (idx === 2) simMatrix[3][2] = val; // Execution -> Facilities
+        dispatchSimulationPipeline();
+      });
+    });
+  </script>
 </BaseLayout>
