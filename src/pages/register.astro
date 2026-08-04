@@ -1,42 +1,5 @@
 ---
 // src/pages/register.astro
-export const prerender = false;
----
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VoidMetric Access</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-  </head>
-  <body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen">
-    <div class="max-w-md w-full bg-slate-900 p-8 rounded-xl border border-slate-800">
-      <h1 class="text-2xl font-black text-white mb-4">VoidMetric Access</h1>
-      <p class="text-slate-400 text-sm mb-6">
-        Enter your corporate email to authenticate via your organization's Identity Provider.
-      </p>
-      
-      <form action="/api/register" method="POST" class="space-y-4">
-        <div>
-          <label for="email" class="block text-xs text-slate-400 mb-1">Corporate Email</label>
-          <input 
-            type="email" 
-            id="email"
-            name="email" 
-            required 
-            placeholder="you@company.com" 
-            class="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white focus:outline-none focus:border-blue-500" 
-          />
-        </div>
-        
-        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded transition-colors">
-          Continue to Login
-        </button>
-      </form>
-
-      <p class="mt-6 text-xs text-slate-500 text-center">
-        Restricted to authorized enterprise domains.
-      </p>
-    </div>
-  </body>
-</html>   
+// Redirect to login since self-service is disabled
+return Astro.redirect('/login');
+---   

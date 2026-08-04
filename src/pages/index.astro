@@ -1,37 +1,134 @@
 ---
 // src/pages/index.astro
-/* ⟢✨ Stateless Ephemeral Risk Pipelines */
+export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
 ---
 
-<BaseLayout title="Sovereign Systemic Integrity Intelligence">
-  <main class="w-full max-w-4xl mx-auto text-center">
-    <h1 class="text-4xl md:text-5xl font-black text-white tracking-tight">
-      Sovereign Systemic Integrity Intelligence
-    </h1>
+<BaseLayout title="VoidMetric | Sovereign Systemic Integrity Intelligence">
+  <main class="w-full max-w-4xl mx-auto text-center pt-12 pb-20">
     
-    <p class="text-sm md:text-base text-slate-400 max-w-xl mx-auto mt-4">
-      Real-time cybersecurity structural robustness and continuous maturity tracking built on a 
-      <strong class="text-slate-200">zero-data liability footprint</strong>.
-    </p>
-    
-    <div class="flex flex-col sm:flex-row gap-4 justify-center pt-8">
-      <a href="/login" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-3 rounded-xl text-sm transition shadow-lg shadow-blue-900/20">
-        Authenticate Domain Portal
+    <!-- Hero Section -->
+    <div class="mb-12">
+      <h1 class="text-4xl md:text-6xl font-black text-white tracking-tight mb-4">
+        VOIDMETRIC
+      </h1>
+      <p class="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto">
+        Exposing <span class="text-blue-400 font-bold">Security Theater</span> with mathematical honesty.
+      </p>
+      <p class="text-sm text-slate-500 mt-2">
+        Zero-Persistence. Edge-Native. The Risk Switch Engine.
+      </p>
+    </div>
+
+    <!-- Navigation Grid (Deployed Features) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto mb-16">
+      
+      <!-- 1. Login / Enterprise Access -->
+      <a href="/login" class="group block p-6 bg-slate-900 border border-slate-800 rounded-2xl hover:border-blue-500/50 hover:bg-slate-800/50 transition-all">
+        <div class="text-3xl mb-3">🔒</div>
+        <h3 class="text-lg font-bold text-white mb-1 group-hover:text-blue-400 transition">Enterprise Access</h3>
+        <p class="text-xs text-slate-400">Secure SSO login for authorized domains (Okta/Entra).</p>
+      </a>
+
+      <!-- 2. Integrity Portal (Protected) -->
+      <a href="/integrity-portal" class="group block p-6 bg-slate-900 border border-slate-800 rounded-2xl hover:border-emerald-500/50 hover:bg-slate-800/50 transition-all">
+        <div class="text-3xl mb-3">📊</div>
+        <h3 class="text-lg font-bold text-white mb-1 group-hover:text-emerald-400 transition">Integrity Portal</h3>
+        <p class="text-xs text-slate-400">Live dashboard for Metric A/B and Risk Switch status.</p>
+      </a>
+
+      <!-- 3. Public Docs / README -->
+      <a href="https://github.com/your-username/voidmetric" target="_blank" class="group block p-6 bg-slate-900 border border-slate-800 rounded-2xl hover:border-purple-500/50 hover:bg-slate-800/50 transition-all">
+        <div class="text-3xl mb-3">📄</div>
+        <h3 class="text-lg font-bold text-white mb-1 group-hover:text-purple-400 transition">Documentation</h3>
+        <p class="text-xs text-slate-400">Read the whitepaper, math proofs, and API specs.</p>
+      </a>
+
+      <!-- 4. Contact / Support -->
+      <a href="mailto:support@voidmetric.com" class="group block p-6 bg-slate-900 border border-slate-800 rounded-2xl hover:border-amber-500/50 hover:bg-slate-800/50 transition-all">
+        <div class="text-3xl mb-3">📬</div>
+        <h3 class="text-lg font-bold text-white mb-1 group-hover:text-amber-400 transition">Onboarding</h3>
+        <p class="text-xs text-slate-400">Request access for your organization's domain.</p>
       </a>
     </div>
 
-    <!-- Live Simulator Placeholder -->
-    <div class="mt-12 w-full bg-slate-900 border border-slate-800 p-6 rounded-2xl text-left relative overflow-hidden">
-      <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 opacity-40"></div>
-      <div class="text-center py-8 text-slate-500 text-xs">
-        🕹️ Live Simulator Sandbox <br/>
-        <span class="opacity-70">Interactive math engine loading in next step...</span>
+    <!-- Live Math Simulator (Public Demo) -->
+    <div class="w-full max-w-2xl mx-auto bg-slate-950 border border-slate-800 p-8 rounded-2xl text-left relative overflow-hidden shadow-2xl">
+      <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-500 opacity-50"></div>
+      
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-bold text-white">🧪 Live Math Simulator</h2>
+        <span class="text-[10px] uppercase tracking-wider text-slate-500 bg-slate-900 px-2 py-1 rounded">Public Demo</span>
+      </div>
+
+      <p class="text-sm text-slate-400 mb-6">
+        Verify the <strong>Zero Property</strong> instantly. Click below to inject a critical failure (0.0) into the matrix.
+        Watch <strong>Metric B</strong> collapse while <strong>Metric A</strong> remains deceptively high.
+      </p>
+
+      <button id="demoBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition shadow-lg shadow-blue-900/20 mb-6">
+        Run Simulation: Inject Critical Failure
+      </button>
+
+      <div id="simResults" class="hidden grid grid-cols-3 gap-4">
+        <div class="bg-slate-900 p-4 rounded border border-slate-800 text-center">
+          <p class="text-[10px] text-slate-500 uppercase">Metric A</p>
+          <p id="resA" class="text-xl font-mono text-emerald-400">-</p>
+        </div>
+        <div class="bg-slate-900 p-4 rounded border border-slate-800 text-center">
+          <p class="text-[10px] text-slate-500 uppercase">Metric B</p>
+          <p id="resB" class="text-xl font-mono text-red-400">-</p>
+        </div>
+        <div class="bg-slate-900 p-4 rounded border border-slate-800 text-center">
+          <p class="text-[10px] text-slate-500 uppercase">Status</p>
+          <p id="resStatus" class="text-xs font-bold text-white uppercase">-</p>
+        </div>
       </div>
     </div>
+
   </main>
 
-  <footer class="mt-12 text-[10px] text-slate-600">
-    ©2026 Systemic Integrity Sovereign Intelligence⟢. All rights reserved.
+  <footer class="mt-12 text-[10px] text-slate-600 border-t border-slate-900 pt-8 pb-4">
+    <p><span style="font-size:15px;font-weight:bold;">©<script>document.write(new Date().getFullYear())</script></span> VoidMetric. Licensed under BSD 2-Clause.</p>
+    <p class="mt-1">Sovereign Systemic Integrity Intelligence ⟢</p>
   </footer>
+
+  <script>
+    document.getElementById('demoBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('demoBtn');
+      const results = document.getElementById('simResults');
+      
+      btn.disabled = true;
+      btn.innerText = "Computing...";
+      results.classList.add('hidden');
+
+      try {
+        const response = await fetch('/api/v1/compute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            matrix: [
+              [0.95, 0.90, 0.95],
+              [0.90, 0.95, 0.90],
+              [0.95, 0.90, 0.00], // Critical Failure
+              [0.90, 0.90, 0.95]
+            ]
+          })
+        });
+
+        const data = await response.json();
+
+        document.getElementById('resA').innerText = data.metric_a_compliance;
+        document.getElementById('resB').innerText = data.metric_b_integrity;
+        document.getElementById('resStatus').innerText = data.status;
+
+        results.classList.remove('hidden');
+      } catch (err) {
+        alert('Simulation failed: ' + err);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Run Simulation Again";
+      }
+    });
+  </script>
 </BaseLayout>   
