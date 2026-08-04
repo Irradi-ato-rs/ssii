@@ -1,64 +1,87 @@
-# Astro Starter Kit: Blog
+# VoidMetric (Open-Framework Core)
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/templates/tree/main/astro-blog-starter-template)
+VoidMetric is a novel dual-math risk orchestration paradigm designed to deconstruct "Compliance Theater" (the watermelon metric effect, where an infrastructure posture appears green and compliant on paper while harboring fatal operational exploits). 
 
-![Astro Template Preview](https://github.com/withastro/astro/assets/2244813/ff10799f-a816-4703-b967-c78997e8323d)
+This repository houses the public open-core architecture, built natively using **Astro**, **Tailwind CSS**, and optimized for zero-cold-start execution inside serverless **Cloudflare Pages** and **Cloudflare Workers** environments.
 
-<!-- dash-content-start -->
+## 1. Architectural Matrix Fabric
 
-Create a blog with Astro and deploy it on Cloudflare Workers as a [static website](https://developers.cloudflare.com/workers/static-assets/).
+VoidMetric operationalizes [Systemic Integrity Axiomatic 4 and Enablers 3](https://irradi.ato.rs/p/systemic-integrity-axiomatic-enablers.html). It maps corporate risk as a static 4 × 3 continuous matrix crossing four **Axiomatic Domains (I)** against three **Systemic Enablers (J)**:
 
-Features:
+| Axiomatic Domain (i) | Structures (j=0) | Contents (j=1) | Facilities (j=2) |
+| :--- | :--- | :--- | :--- |
+| **1. Function** | Architecture / Policy | Logic / Source Code | Cloud Environments |
+| **2. Features** | RBAC / Identity Gov | Crypto Parameters | API Gateways |
+| **3. Elements** | Configurations / Secrets | Data Assets / Payload | Storage Buckets |
+| **4. Execution** | Runtime Environments | Log / Telemetry Pipelines| Compute Infrastructure |
 
-- ✅ Minimal styling (make it your own!)
-- ✅ 100/100 Lighthouse performance
-- ✅ SEO-friendly with canonical URLs and OpenGraph data
-- ✅ Sitemap support
-- ✅ RSS Feed support
-- ✅ Markdown & MDX support
-- ✅ Built-in Observability logging
+Input metrics are continuously streamed via automated edge scripts and normalized such that \(C_{i,j} \in [0.0, 1.0]\).
 
-<!-- dash-content-end -->
+---
 
-## Getting Started
+## 2. The Dual-Engine Core Mathematics
 
-Outside of this repo, you can start a new project with this template using [C3](https://developers.cloudflare.com/pages/get-started/c3/) (the `create-cloudflare` CLI):
+### Metric A: Continuous Maturity Matrix (Additive)
+Tracks cumulative administrative effort, organizational spend, and checkmark compliance over time via double-summation:
+\[\text{Score}_A = \frac{1}{4} \sum_{i=1}^{4} \sum_{j=1}^{3} (C_{i,j} \times w_j)\]
 
-```bash
-npm create cloudflare@latest -- --template=cloudflare/templates/astro-blog-starter-template
+### Metric B: The Operational Blueprint (Multiplicative)
+An uncompromising series system that enforces the **Zero Property** (Risk Switch). Individual row verification vectors are aggregated via a weighted geometric product to prevent high compliance boundaries from masking critical vulnerabilities:
+\[V_i = \prod_{j=1}^{3} (C_{i,j})^{w_j}\]
+\[\text{SI}_{\text{Live}} = \prod_{i=1}^{4} V_i = \prod_{i=1}^{4} \prod_{j=1}^{3} (C_{i,j})^{w_j}\]
+
+> **Theorem 1 (The Zero Property):** If ∃ (k,m) such that \(C_{k,m} = 0.0\), then \(\text{SI}_{\text{Live}} = 0.0\). A single critical vulnerability completely collapses the operational integrity index, acting as a deterministic system circuit-breaker.
+
+---
+
+## 3. Project File Directory Matrix
+
+```text
+├── .github/workflows/    <-- CI Automation pipeline validations
+├── src/
+│   ├── components/
+│   │   └── Footer.astro  <-- Shared minimalist footer component module
+│   ├── layouts/
+│   │   └── BaseLayout.astro
+│   └── pages/
+│       ├── api/v1/
+│       │   └── compute.ts <-- Core headless V1 serverless math endpoint
+│       ├── architecture.astro   <-- Brutalist open system blueprint
+│       ├── index.astro          <-- Typography-driven interactive home node
+│       ├── integrity-portal.astro <-- Continuous monitoring portal & audio klaxons
+│       └── register.astro       <-- Multi-solution dynamic registration board
+├── astro.config.mjs       <-- Cloudflare Serverless configuration adaptations
+└── wrangler.toml          <-- Cloudflare Worker infrastructure mappings
 ```
 
-A live public deployment of this template is available at [https://astro-blog-starter-template.templates.workers.dev](https://astro-blog-starter-template.templates.workers.dev)
+---
 
-## 🚀 Project Structure
+## 4. API Endpoints & Verification
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+### Ingestion Validation Interface (`POST /api/v1/compute`)
+Accepts a raw JSON numerical matrix array payload and returns parallel compliance/integrity metrics outputs.
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+#### Sandbox Evaluation via cURL:
+```bash
+curl -X POST https://fzoirm.com \
+  -H "Content-Type: application/json" \
+  -d '{"matrix": [[0.95,0.9,0.95],[0.9,0.95,0.9],[0.95,0.9,0.0],[0.9,0.9,0.95]]}'
+```
 
-The `src/content/` directory contains "collections" of related Markdown and MDX documents. Use `getCollection()` to retrieve posts from `src/content/blog/`, and type-check your frontmatter using an optional schema. See [Astro's Content Collections docs](https://docs.astro.build/en/guides/content-collections/) to learn more.
+#### Core Output Blueprint:
+```json
+{
+  "metric_a_compliance": 0.8438,
+  "metric_b_integrity": 0.0000,
+  "row_validations": [0.9331, 0.9164, 0.0000, 0.9167],
+  "status": "CRITICAL_RISK_SWITCH_TRIGGERED"
+}
+```
 
-Any static assets, like images, can be placed in the `public/` directory.
+---
 
-## 🧞 Commands
+## 5. Security & Operational Boundaries
 
-All commands are run from the root of the project, from a terminal:
+This public framework handles **anonymous, normalized metrics grids only**. 
 
-| Command                           | Action                                           |
-| :-------------------------------- | :----------------------------------------------- |
-| `npm install`                     | Installs dependencies                            |
-| `npm run dev`                     | Starts local dev server at `localhost:4321`      |
-| `npm run build`                   | Build your production site to `./dist/`          |
-| `npm run preview`                 | Preview your build locally, before deploying     |
-| `npm run astro ...`               | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help`         | Get help using the Astro CLI                     |
-| `npm run build && npm run deploy` | Deploy your production site to Cloudflare        |
-| `npm wrangler tail`               | View real-time logs for all Workers              |
-
-## 👀 Want to learn more?
-
-Check out [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
-
-## Credit
-
-This theme is based off of the lovely [Bear Blog](https://github.com/HermanMartinus/bearblog/).
+For enterprise and sovereign customers connecting active logging environments (**Tenable, Microsoft Sentinel, CrowdStrike, AWS CloudTrail**), data ingestion, string parsers, normalization functions ($f_{\text{norm}}$), and custom SLA definitions are handled inside separate, private repositories and isolated processing workers. This guarantees that your enterprise log configurations and connection maps are completely hidden while ensuring runtime transparency.
