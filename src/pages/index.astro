@@ -106,110 +106,126 @@ import Footer from '../components/Footer.astro';
   </main>
 
   <script>
-    const apiEndpoint = `${window.location.origin}/api/v1/compute`;
+  // Dynamically resolve origin paths to mitigate cross-origin mapping faults
+  const apiEndpoint = `${window.location.origin}/api/v1/compute`;
+  
+  let simMatrix = [
+    [0.95, 0.95, 0.95],
+    [0.95, 0.95, 0.95],
+    [0.95, 0.95, 0.95],
+    [0.95, 0.95, 0.95]
+  ];
+
+  async function dispatchSimulationPipeline() {
+    try {
+      const response = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matrix: simMatrix })
+      });
+
+      // If Astro throws a 401 Origin Security block, handle it gracefully
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.warn("[VoidMetric Security Warning] Astro CSRF/Origin check blocked this request. Navigation remains safe.");
+          renderSecurityFallbackState();
+          return;
+        }
+        throw new Error(`HTTP_GATEWAY_FAULT: ${response.status}`);
+      }
+
+      const data = await response.json();
+      renderUiUpdate(data);
+    } catch (err) {
+      // CRITICAL FIX: Catching errors prevents global JavaScript execution crashes,
+      // keeping your browser's page-navigation stack 100% active and unblocked.
+      console.error("Sandbox calculations bypassed safely:", err);
+    }
+  }
+
+  function renderUiUpdate(data: any) {
+    const resA = document.getElementById('resA');
+    const resB = document.getElementById('resB');
+    const statusText = document.getElementById('resStatus');
+
+    if (resA) resA.innerText = (data.metric_a_compliance * 100).toFixed(0) + '%';
+    if (resB) resB.innerText = (data.metric_b_integrity * 100).toFixed(0) + '%';
     
-    let simMatrix = [
-      [0.95, 0.95, 0.95],
-      [0.95, 0.95, 0.95],
-      [0.95, 0.95, 0.95],
-      [0.95, 0.95, 0.95]
+    if (statusText) {
+      statusText.innerText = data.status;
+      if (data.metric_b_integrity === 0 || data.status === "CRITICAL_RISK_SWITCH_TRIGGERED") {
+        statusText.className = "text-rose-500 font-bold font-mono";
+        if (resB) resB.className = "text-rose-500 font-bold";
+      } else {
+        statusText.className = "text-emerald-400 font-bold font-mono";
+        if (resB) resB.className = "text-emerald-400 font-bold";
+        document.getElementById('breachLocationLine')?.classList.add('hidden');
+      }
+    }
+  }
+
+  // Fallback UI rendering block if Cloudflare or Astro blocks the staging domain origin
+  function renderSecurityFallbackState() {
+    const statusText = document.getElementById('resStatus');
+    if (statusText) {
+      statusText.innerText = "ORIGIN_LOCKED_DEV_MODE";
+      statusText.className = "text-amber-500 font-bold font-mono";
+    }
+    const resB = document.getElementById('resB');
+    if (resB) resB.innerText = "LOCAL";
+  }
+
+  // --- Safe Action Event Listeners ---
+  document.getElementById('injectBtn')?.addEventListener('click', () => {
+    simMatrix = [
+      [0.95, 0.95, 0.95], [0.95, 0.95, 0.95], [0.95, 0.95, 0.95], [0.95, 0.95, 0.95]
     ];
 
-    async function dispatchSimulationPipeline() {
-      try {
-        const response = await fetch(apiEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ matrix: simMatrix })
-        });
-        if (!response.ok) throw new Error(`HTTP_FAULT: ${response.status}`);
-        const data = await response.json();
-        renderUiUpdate(data);
-      } catch (err) {
-        console.error("Calculation transmission interrupted:", err);
-      }
+    const randomRow = Math.floor(Math.random() * 4);
+    const randomCol = Math.floor(Math.random() * 3);
+    simMatrix[randomRow][randomCol] = 0.0;
+
+    const domainNames = ["FUNCTION", "FEATURES", "ELEMENTS", "EXECUTION"];
+    const enablerNames = ["STRUCTURES", "CONTENTS", "FACILITIES"];
+    
+    const locationLine = document.getElementById('breachLocationLine');
+    const locationText = document.getElementById('resBreach');
+    if (locationLine && locationText) {
+      locationText.innerText = `${domainNames[randomRow]}_${enablerNames[randomCol]}`;
+      locationLine.classList.remove('hidden');
     }
 
-    function renderUiUpdate(data: any) {
-      const resA = document.getElementById('resA');
-      const resB = document.getElementById('resB');
-      const statusText = document.getElementById('resStatus');
-      const breachLine = document.getElementById('breachLocationLine');
+    dispatchSimulationPipeline();
+  });
 
-      if (resA) resA.innerText = (data.metric_a_compliance * 100).toFixed(0) + '%';
-      if (resB) resB.innerText = (data.metric_b_integrity * 100).toFixed(0) + '%';
-      
-      if (statusText) {
-        statusText.innerText = data.status;
-        if (data.metric_b_integrity === 0 || data.status === "CRITICAL_RISK_SWITCH_TRIGGERED") {
-          statusText.className = "text-rose-500 font-bold font-mono";
-          if (resB) resB.className = "text-rose-500 font-bold";
-        } else {
-          statusText.className = "text-emerald-400 font-bold font-mono";
-          if (resB) resB.className = "text-emerald-400 font-bold";
-          if (breachLine) breachLine.classList.add('hidden');
-        }
-      }
-    }
+  document.getElementById('resetBtn')?.addEventListener('click', () => {
+    simMatrix = [
+      [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]
+    ];
+    document.querySelectorAll('.sim-slider').forEach((s: any, idx) => {
+      s.value = "1";
+      const lbl = document.getElementById(`lbl-${idx}`);
+      if (lbl) lbl.innerText = "1.0";
+    });
+    document.getElementById('breachLocationLine')?.classList.add('hidden');
+    dispatchSimulationPipeline();
+  });
 
-    // Dynamic Catastrophic Injector 
-    document.getElementById('injectBtn')?.addEventListener('click', () => {
-      simMatrix = [
-        [0.95, 0.95, 0.95], [0.95, 0.95, 0.95], [0.95, 0.95, 0.95], [0.95, 0.95, 0.95]
-      ];
+  document.querySelectorAll('.sim-slider').forEach(slider => {
+    slider.addEventListener('input', (e: any) => {
+      const idx = parseInt(e.target.getAttribute('data-idx'));
+      const val = parseFloat(e.target.value);
+      const lbl = document.getElementById(`lbl-${idx}`);
+      if (lbl) lbl.innerText = val.toFixed(1);
 
-      const randomRow = Math.floor(Math.random() * 4);
-      const randomCol = Math.floor(Math.random() * 3);
-      simMatrix[randomRow][randomCol] = 0.0;
-
-      const domainNames = ["FUNCTION", "FEATURES", "ELEMENTS", "EXECUTION"];
-      const enablerNames = ["STRUCTURES", "CONTENTS", "FACILITIES"];
-      
-      const locationLine = document.getElementById('breachLocationLine');
-      const locationText = document.getElementById('resBreach');
-      if (locationLine && locationText) {
-        locationText.innerText = `${domainNames[randomRow]}_${enablerNames[randomCol]}`;
-        locationLine.classList.remove('hidden');
-      }
-
-      // FIX: Check every single index before writing properties to avoid navigation thread crashes
-      const sliders = document.querySelectorAll('.sim-slider') as NodeListOf<HTMLInputElement>;
-      sliders.forEach((slider) => {
-        const idx = parseInt(slider.getAttribute('data-idx') || "0");
-        if (idx === 0) { slider.value = simMatrix[0][0].toString(); document.getElementById('lbl-0')!.innerText = simMatrix[0][0].toFixed(1); }
-        if (idx === 1) { slider.value = simMatrix[2][1].toString(); document.getElementById('lbl-1')!.innerText = simMatrix[2][1].toFixed(1); }
-        if (idx === 2) { slider.value = simMatrix[3][2].toString(); document.getElementById('lbl-2')!.innerText = simMatrix[3][2].toFixed(1); }
-      });
-
+      if (idx === 0) simMatrix = val;
+      if (idx === 1) simMatrix = val;
+      if (idx === 2) simMatrix = val;
       dispatchSimulationPipeline();
     });
+  });
 
-    document.getElementById('resetBtn')?.addEventListener('click', () => {
-      simMatrix = [
-        [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]
-      ];
-      document.querySelectorAll('.sim-slider').forEach((s: any, idx) => {
-        s.value = "1";
-        const lbl = document.getElementById(`lbl-${idx}`);
-        if (lbl) lbl.innerText = "1.0";
-      });
-      document.getElementById('breachLocationLine')?.classList.add('hidden');
-      dispatchSimulationPipeline();
-    });
-
-    document.querySelectorAll('.sim-slider').forEach(slider => {
-      slider.addEventListener('input', (e: any) => {
-        const idx = parseInt(e.target.getAttribute('data-idx'));
-        const val = parseFloat(e.target.value);
-        const lbl = document.getElementById(`lbl-${idx}`);
-        if (lbl) lbl.innerText = val.toFixed(1);
-
-        // FIX: Hardened boundaries using dynamic sub-array assignments
-        if (idx === 0) simMatrix[0][0] = val; // Function -> Structures
-        if (idx === 1) simMatrix[2][1] = val; // Elements -> Contents
-        if (idx === 2) simMatrix[3][2] = val; // Execution -> Facilities
-        dispatchSimulationPipeline();
-      });
-    });
-  </script>
+  // Run initial pass safely
+  dispatchSimulationPipeline();
+</script>
 </BaseLayout>
