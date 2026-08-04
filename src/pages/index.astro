@@ -3,11 +3,11 @@
 export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
 
-// Calculate year at compile time for pure static performance
-const currentYear = new Date().getFullYear();
+// Import the unified minimalist footer component
+import Footer from '../components/Footer.astro';
 ---
 
-<BaseLayout title="VoidMetric | Sovereign Systemic Integrity Intelligence">
+<BaseLayout title="⟢ VoidMetric | Sovereign Systemic Integrity Intelligence / iclassed">
   <main class="w-full max-w-2xl mx-auto px-4 py-16 text-left text-slate-300 font-mono text-xs leading-relaxed selection:bg-slate-800">
     
     
@@ -98,10 +98,7 @@ const currentYear = new Date().getFullYear();
       </div>
     </section>
 
-    <!-- Semantic Standard Footer -->
-    <footer class="border-t border-slate-900 pt-8 text-[10px] text-slate-600 space-y-1">
-      <p>&copy; {currentYear} VoidMetric. Licensed under BSD 2-Clause.</p>
-      <p>Sovereign Systemic Integrity Intelligence ⟢</p>
+    <!-- Semantic Standard Footer / Unified Shared Component Injection -->
     </footer>
 
   </main>
