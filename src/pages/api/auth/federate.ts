@@ -42,7 +42,7 @@ export const POST: APIRoute = async ({ request }) => {
     const params = new URLSearchParams({
       client_id: clientId,
       response_type: 'code',
-      scope: 'openid email profile groups',
+      scope: 'openid email profile',
       redirect_uri: redirectUri,
       state: domain
     });
