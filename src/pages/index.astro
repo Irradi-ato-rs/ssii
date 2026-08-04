@@ -89,9 +89,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   </main>
 
   <footer class="mt-12 text-[10px] text-slate-600 border-t border-slate-900 pt-8 pb-4">
-    <p><span style="font-size:15px;font-weight:bold;">©<script>document.write(new Date().getFullYear())</script></span> VoidMetric. Licensed under BSD 2-Clause.</p>
-    <p class="mt-1">Sovereign Systemic Integrity Intelligence ⟢</p>
-  </footer>
+  <p>
+    <span style="font-size:15px;font-weight:bold;">&copy; {currentYear}</span> 
+    VoidMetric. Licensed under BSD 2-Clause.
+  </p>
+  <p class="mt-1">Sovereign Systemic Integrity Intelligence ⟢</p>
+</footer>
+
 
   <script>
     document.getElementById('demoBtn').addEventListener('click', async () => {
