@@ -31,10 +31,10 @@ const currentYear = new Date().getFullYear();
         </li>
         <li>
           <a href="https://github.com/Irradi-ato-rs/ssii" target="_blank" class="text-white underline underline-offset-4 hover:text-slate-300">/documentation</a>
-          <span class="text-slate-500 ml-2">— Academic whitepaper, mathematical proofs, and API specifications.</span>
+          <span class="text-slate-500 ml-2">— Full code except for the trade secret in public repository and soon: mathematical proofs and API specifications.</span>
         </li>
         <li>
-          <a href="https://irradi.ato.rs" class="text-white underline underline-offset-4 hover:text-slate-300">/onboarding</a>
+          <a href="" class="text-white underline underline-offset-4 hover:text-slate-300">/onboarding</a>
           <span class="text-slate-500 ml-2">— Request tenant provisioning by e-mailing irradi.ato.rs, (change the first dot with @*) for us to get back to you for the required details (again, don't email them).</span>
         </li>
       </ul>
@@ -72,7 +72,7 @@ const currentYear = new Date().getFullYear();
         
         <div class="space-y-2 max-w-md">
           <div class="flex justify-between items-center">
-            <span>Function (E1: Structure) :</span>
+            <span>Function (E1: Structures) :</span>
             <div class="flex items-center gap-2">
               <input type="range" min="0" max="1" step="0.05" value="1" data-idx="0" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
               <span id="lbl-0" class="text-white min-w-[24px] text-right">1.0</span>
@@ -80,7 +80,7 @@ const currentYear = new Date().getFullYear();
           </div>
 
           <div class="flex justify-between items-center">
-            <span>Elements (E3: Facilities):</span>
+            <span>Elements (E2: Contents):</span>
             <div class="flex items-center gap-2">
               <input type="range" min="0" max="1" step="0.05" value="1" data-idx="1" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
               <span id="lbl-1" class="text-white min-w-[24px] text-right">1.0</span>
@@ -107,97 +107,114 @@ const currentYear = new Date().getFullYear();
   </main>
 
   <script>
-    // Map API endpoint dynamically using origin window structures to bypass 401 CSRF parameters
-    const apiEndpoint = `${window.location.origin}/api/v1/compute`;
+  const apiEndpoint = `${window.location.origin}/api/v1/compute`;
+  
+  // Base steady-state matrix cache (Healthy environment at 95% baseline)
+  let simMatrix = [
+    [0.95, 0.95, 0.95],
+    [0.95, 0.95, 0.95],
+    [0.95, 0.95, 0.95],
+    [0.95, 0.95, 0.95]
+  ];
+
+  async function dispatchSimulationPipeline() {
+    try {
+      const response = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matrix: simMatrix })
+      });
+      if (!response.ok) throw new Error(`HTTP_FAULT: ${response.status}`);
+      const data = await response.json();
+      renderUiUpdate(data);
+    } catch (err) {
+      console.error("Calculation transmission interrupted:", err);
+    }
+  }
+
+  function renderUiUpdate(data) {
+    document.getElementById('resA').innerText = (data.metric_a_compliance * 100).toFixed(0) + '%';
+    document.getElementById('resB').innerText = (data.metric_b_integrity * 100).toFixed(0) + '%';
     
-    let simMatrix = [
-      [1.0, 1.0, 1.0],
-      [1.0, 1.0, 1.0],
-      [1.0, 1.0, 1.0],
-      [1.0, 1.0, 1.0]
+    const statusText = document.getElementById('resStatus');
+    const bText = document.getElementById('resB');
+    statusText.innerText = data.status;
+
+    if (data.metric_b_integrity === 0 || data.status === "CRITICAL_RISK_SWITCH_TRIGGERED") {
+      statusText.className = "text-rose-500 font-bold font-mono";
+      bText.className = "text-rose-500 font-bold";
+    } else {
+      statusText.className = "text-emerald-400 font-bold font-mono";
+      bText.className = "text-emerald-400 font-bold";
+    }
+  }
+
+  // UPDATED: Dynamic Catastrophic Injector Loop
+  document.getElementById('injectBtn').addEventListener('click', () => {
+    // 1. Reset to standard high baseline
+    simMatrix = [
+      [0.95, 0.95, 0.95],
+      [0.95, 0.95, 0.95],
+      [0.95, 0.95, 0.95],
+      [0.95, 0.95, 0.95]
     ];
 
-    async function dispatchSimulationPipeline() {
-      try {
-        const response = await fetch(apiEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ matrix: simMatrix })
-        });
+    // 2. Randomly select an Axiomatic Domain (0-3) and a Systemic Enabler (0-2)
+    const randomRow = Math.floor(Math.random() * 4);
+    const randomCol = Math.floor(Math.random() * 3);
 
-        if (!response.ok) throw new Error(`HTTP_GATEWAY_FAULT: ${response.status}`);
-        const data = await response.json();
-        renderUiUpdate(data);
-      } catch (err) {
-        console.error("Calculation transmission interrupted:", err);
-      }
+    // 3. Force the selected node to absolute 0.0 to trigger the Risk Switch
+    simMatrix[randomRow][randomCol] = 0.0;
+
+    // 4. Update the text labels on screen to visualize the change
+    const domainNames = ["Function", "Features", "Elements", "Execution"];
+    const enablerNames = ["Structure", "Content", "Facilities"];
+    
+    console.log(`[VoidMetric Sim] Injected 0.0 breach at: ${domainNames[randomRow]} -> ${enablerNames[randomCol]}`);
+    
+    // Update the slider indicators to reflect a dynamic shift
+    // Maps row 0 to slider 0, row 2 to slider 1, row 3 to slider 2 for preview representation
+    const sliders = document.querySelectorAll('.sim-slider');
+    const lbl0 = document.getElementById('lbl-0');
+    const lbl1 = document.getElementById('lbl-1');
+    const lbl2 = document.getElementById('lbl-2');
+
+    if (sliders[0] && sliders[1] && sliders[2] && lbl0 && lbl1 && lbl2) {
+      (sliders[0] as HTMLInputElement).value = simMatrix[0][0].toString();
+      (sliders[1] as HTMLInputElement).value = simMatrix[2][1].toString();
+      (sliders[2] as HTMLInputElement).value = simMatrix[3][2].toString();
+
+      lbl0.innerText = simMatrix[0][0].toFixed(1);
+      lbl1.innerText = simMatrix[2][1].toFixed(1);
+      lbl2.innerText = simMatrix[3][2].toFixed(1);
     }
 
-    function renderUiUpdate(data) {
-      document.getElementById('resA').innerText = (data.metric_a_compliance * 100).toFixed(0) + '%';
-      document.getElementById('resB').innerText = (data.metric_b_integrity * 100).toFixed(0) + '%';
-      
-      const statusText = document.getElementById('resStatus');
-      const bText = document.getElementById('resB');
-      
-      statusText.innerText = data.status;
+    dispatchSimulationPipeline();
+  });
 
-      if (data.metric_b_integrity === 0 || data.status === "CRITICAL_RISK_SWITCH_TRIGGERED") {
-        statusText.className = "text-rose-500 font-bold font-mono";
-        bText.className = "text-rose-500 font-bold";
-      } else {
-        statusText.className = "text-emerald-400 font-bold font-mono";
-        bText.className = "text-emerald-400 font-bold";
-      }
-    }
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    simMatrix = [
+      [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]
+    ];
+    document.querySelectorAll('.sim-slider').forEach((s: any, idx) => {
+      s.value = "1";
+      document.getElementById(`lbl-${idx}`).innerText = "1.0";
+    });
+    dispatchSimulationPipeline();
+  });
 
-    // Connect Macro Trigger Action
-    document.getElementById('injectBtn').addEventListener('click', () => {
-      simMatrix = [
-        [0.95, 0.90, 0.95],
-        [0.90, 0.95, 0.90],
-        [0.95, 0.90, 0.00], 
-        [0.90, 0.90, 0.95]
-      ];
-      
-      // Sync raw slider positions to match macro payload metrics
-      const sliders = document.querySelectorAll('.sim-slider');
-      (sliders[0] as HTMLInputElement).value = "0.95";
-      (sliders[1] as HTMLInputElement).value = "0.00";
-      (sliders[2] as HTMLInputElement).value = "0.95";
-      
-      document.getElementById('lbl-0').innerText = "0.95";
-      document.getElementById('lbl-1').innerText = "0.00";
-      document.getElementById('lbl-2').innerText = "0.95";
+  document.querySelectorAll('.sim-slider').forEach(slider => {
+    slider.addEventListener('input', (e: any) => {
+      const idx = parseInt(e.target.getAttribute('data-idx'));
+      const val = parseFloat(e.target.value);
+      document.getElementById(`lbl-${idx}`).innerText = val.toFixed(1);
 
+      if (idx === 0) simMatrix[0][0] = val; // Function -> Structures
+      if (idx === 1) simMatrix[2][1] = val; // Elements -> Contents
+      if (idx === 2) simMatrix[3][2] = val; // Execution -> Facilities
       dispatchSimulationPipeline();
     });
+  });
+</script>
 
-    // Connect Reset Action
-    document.getElementById('resetBtn').addEventListener('click', () => {
-      simMatrix = [
-        [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]
-      ];
-      document.querySelectorAll('.sim-slider').forEach((s: any, idx) => {
-        s.value = "1";
-        document.getElementById(`lbl-${idx}`).innerText = "1.0";
-      });
-      dispatchSimulationPipeline();
-    });
-
-    // Monitor Input Sliders Matrix Changes
-    document.querySelectorAll('.sim-slider').forEach(slider => {
-      slider.addEventListener('input', (e: any) => {
-        const idx = parseInt(e.target.getAttribute('data-idx'));
-        const val = parseFloat(e.target.value);
-        document.getElementById(`lbl-${idx}`).innerText = val.toFixed(1);
-
-        if (idx === 0) simMatrix[0][0] = val; // Function -> Structure
-        if (idx === 1) simMatrix[2][2] = val; // Elements -> Facilities
-        if (idx === 2) simMatrix[3][2] = val; // Execution -> Facilities
-
-        dispatchSimulationPipeline();
-      });
-    });
-  </script>
 </BaseLayout>
