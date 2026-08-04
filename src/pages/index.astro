@@ -24,8 +24,7 @@ import Footer from '../components/Footer.astro';
           <span class="text-slate-500 ml-2">— Secure SSO pipeline for authorized domains (Okta/Entra).</span>
         </li>
         <li>
-          <!-- FIX #1: Added explicit tracking classes to isolate navigation strings from data mutations -->
-          <a href="/integrity-portal" class="text-white underline underline-offset-4 hover:text-slate-300 nav-link">/integrity-portal</a>
+          <a href="/integrity-portal" class="text-white underline underline-offset-4 hover:text-slate-300">/integrity-portal</a>
           <span class="text-slate-500 ml-2">— Live continuous controls dashboard for Metric A/B.</span>
         </li>
         <li>
@@ -34,7 +33,7 @@ import Footer from '../components/Footer.astro';
         </li>
         <li>
           <a href="https://github.com/Irradi-ato-rs/ssii" target="_blank" class="text-white underline underline-offset-4 hover:text-slate-300 nav-link">/documentation</a>
-          <span class="text-slate-500 ml-2">— Full code in public repository, and soo math proofs and API specifications.</span>
+          <span class="text-slate-500 ml-2">— Full code in public repository, and later the math proofs and API specifications.</span>
         </li>
         <li>
           <a href="" class="text-white underline underline-offset-4 hover:text-slate-300 nav-link">/onboarding</a>
@@ -132,24 +131,29 @@ import Footer from '../components/Footer.astro';
     }
 
     function renderUiUpdate(data: any) {
-      document.getElementById('resA')!.innerText = (data.metric_a_compliance * 100).toFixed(0) + '%';
-      document.getElementById('resB')!.innerText = (data.metric_b_integrity * 100).toFixed(0) + '%';
-      
-      const statusText = document.getElementById('resStatus')!;
-      const bText = document.getElementById('resB')!;
-      statusText.innerText = data.status;
+      const resA = document.getElementById('resA');
+      const resB = document.getElementById('resB');
+      const statusText = document.getElementById('resStatus');
+      const breachLine = document.getElementById('breachLocationLine');
 
-      if (data.metric_b_integrity === 0 || data.status === "CRITICAL_RISK_SWITCH_TRIGGERED") {
-        statusText.className = "text-rose-500 font-bold font-mono";
-        bText.className = "text-rose-500 font-bold";
-      } else {
-        statusText.className = "text-emerald-400 font-bold font-mono";
-        bText.className = "text-emerald-400 font-bold";
-        document.getElementById('breachLocationLine')!.classList.add('hidden');
+      if (resA) resA.innerText = (data.metric_a_compliance * 100).toFixed(0) + '%';
+      if (resB) resB.innerText = (data.metric_b_integrity * 100).toFixed(0) + '%';
+      
+      if (statusText) {
+        statusText.innerText = data.status;
+        if (data.metric_b_integrity === 0 || data.status === "CRITICAL_RISK_SWITCH_TRIGGERED") {
+          statusText.className = "text-rose-500 font-bold font-mono";
+          if (resB) resB.className = "text-rose-500 font-bold";
+        } else {
+          statusText.className = "text-emerald-400 font-bold font-mono";
+          if (resB) resB.className = "text-emerald-400 font-bold";
+          if (breachLine) breachLine.classList.add('hidden');
+        }
       }
     }
 
-    document.getElementById('injectBtn')!.addEventListener('click', () => {
+    // Dynamic Catastrophic Injector 
+    document.getElementById('injectBtn')?.addEventListener('click', () => {
       simMatrix = [
         [0.95, 0.95, 0.95], [0.95, 0.95, 0.95], [0.95, 0.95, 0.95], [0.95, 0.95, 0.95]
       ];
@@ -161,35 +165,35 @@ import Footer from '../components/Footer.astro';
       const domainNames = ["FUNCTION", "FEATURES", "ELEMENTS", "EXECUTION"];
       const enablerNames = ["STRUCTURES", "CONTENTS", "FACILITIES"];
       
-      const locationLine = document.getElementById('breachLocationLine')!;
-      const locationText = document.getElementById('resBreach')!;
-      locationText.innerText = `${domainNames[randomRow]}_${enablerNames[randomCol]}`;
-      locationLine.classList.remove('hidden');
-
-      // FIX #2: Targeted explicit index patching loop preventing array mutation reference crashes
-      const sliders = document.querySelectorAll('.sim-slider') as NodeListOf<HTMLInputElement>;
-      if (sliders.length >= 3) {
-        sliders[0].value = simMatrix[0][0].toString();
-        sliders[1].value = simMatrix[2][1].toString();
-        sliders[2].value = simMatrix[3][2].toString();
-        
-        document.getElementById('lbl-0')!.innerText = simMatrix[0][0].toFixed(1);
-        document.getElementById('lbl-1')!.innerText = simMatrix[2][1].toFixed(1);
-        document.getElementById('lbl-2')!.innerText = simMatrix[3][2].toFixed(1);
+      const locationLine = document.getElementById('breachLocationLine');
+      const locationText = document.getElementById('resBreach');
+      if (locationLine && locationText) {
+        locationText.innerText = `${domainNames[randomRow]}_${enablerNames[randomCol]}`;
+        locationLine.classList.remove('hidden');
       }
+
+      // FIX: Check every single index before writing properties to avoid navigation thread crashes
+      const sliders = document.querySelectorAll('.sim-slider') as NodeListOf<HTMLInputElement>;
+      sliders.forEach((slider) => {
+        const idx = parseInt(slider.getAttribute('data-idx') || "0");
+        if (idx === 0) { slider.value = simMatrix[0][0].toString(); document.getElementById('lbl-0')!.innerText = simMatrix[0][0].toFixed(1); }
+        if (idx === 1) { slider.value = simMatrix[2][1].toString(); document.getElementById('lbl-1')!.innerText = simMatrix[2][1].toFixed(1); }
+        if (idx === 2) { slider.value = simMatrix[3][2].toString(); document.getElementById('lbl-2')!.innerText = simMatrix[3][2].toFixed(1); }
+      });
 
       dispatchSimulationPipeline();
     });
 
-    document.getElementById('resetBtn')!.addEventListener('click', () => {
+    document.getElementById('resetBtn')?.addEventListener('click', () => {
       simMatrix = [
         [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]
       ];
       document.querySelectorAll('.sim-slider').forEach((s: any, idx) => {
         s.value = "1";
-        document.getElementById(`lbl-${idx}`)!.innerText = "1.0";
+        const lbl = document.getElementById(`lbl-${idx}`);
+        if (lbl) lbl.innerText = "1.0";
       });
-      document.getElementById('breachLocationLine')!.classList.add('hidden');
+      document.getElementById('breachLocationLine')?.classList.add('hidden');
       dispatchSimulationPipeline();
     });
 
@@ -197,11 +201,12 @@ import Footer from '../components/Footer.astro';
       slider.addEventListener('input', (e: any) => {
         const idx = parseInt(e.target.getAttribute('data-idx'));
         const val = parseFloat(e.target.value);
-        document.getElementById(`lbl-${idx}`)!.innerText = val.toFixed(1);
+        const lbl = document.getElementById(`lbl-${idx}`);
+        if (lbl) lbl.innerText = val.toFixed(1);
 
-        // FIX #3: Hardened individual index patching definitions protecting boundaries
-        if (idx === 0) simMatrix[0][0] = val; // Function -> StructureS
-        if (idx === 1) simMatrix[2][1] = val; // Elements -> ContentS
+        // FIX: Hardened boundaries using dynamic sub-array assignments
+        if (idx === 0) simMatrix[0][0] = val; // Function -> Structures
+        if (idx === 1) simMatrix[2][1] = val; // Elements -> Contents
         if (idx === 2) simMatrix[3][2] = val; // Execution -> Facilities
         dispatchSimulationPipeline();
       });
