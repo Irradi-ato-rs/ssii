@@ -3,8 +3,10 @@ export const prerender = false;
 import type { APIRoute } from 'astro';
 import { getIdPConfig } from '../../config/tenants';
 import { v4 as uuidv4 } from 'uuid';
+// 1. IMPORT ENV FROM CLOUDFLARE MODULE
+import { env } from 'cloudflare:workers'; 
 
-export const POST: APIRoute = async ({ request, env }) => { // 1. Add 'env' to arguments
+export const POST: APIRoute = async ({ request }) => { // 2. Remove 'env' from arguments
   const formData = await request.formData();
   const email = formData.get('email')?.toString();
 
@@ -30,7 +32,7 @@ export const POST: APIRoute = async ({ request, env }) => { // 1. Add 'env' to a
 
   const authUrl = new URL(config.authorizationEndpoint);
   
-  // 2. Resolve the actual Client ID from env using the key name
+  // 3. ACCESS VIA IMPORTED 'env' OBJECT
   const clientId = env[config.clientIdEnv]; 
   
   if (!clientId) {
@@ -38,7 +40,7 @@ export const POST: APIRoute = async ({ request, env }) => { // 1. Add 'env' to a
     return new Response('Configuration error', { status: 500 });
   }
 
-  authUrl.searchParams.set('client_id', clientId); // 3. Use the resolved value
+  authUrl.searchParams.set('client_id', clientId);
   authUrl.searchParams.set('redirect_uri', `${origin}/api/auth/callback`);
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('scope', 'openid profile email groups');
