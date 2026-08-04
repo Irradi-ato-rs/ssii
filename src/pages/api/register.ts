@@ -3,7 +3,7 @@ export const prerender = false;
 import type { APIRoute } from 'astro';
 import { getIdPConfig } from '../../config/tenants';
 import { v4 as uuidv4 } from 'uuid';
-import { env } from 'cloudflare:workers'; // CRITICAL: Import env from module
+import { env } from 'cloudflare:workers';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
@@ -14,9 +14,10 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response('Invalid email address', { status: 400 });
     }
 
+    const domain = email.split('@')[1].toLowerCase();
     const config = getIdPConfig(email);
 
-    // 1. Check if domain is pre-approved in tenants.ts
+    // 1. Check if domain is pre-approved
     if (!config) {
       return new Response(JSON.stringify({ 
         error: 'Domain not authorized', 
@@ -27,17 +28,17 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
-    // 2. Resolve Secrets via Imported Env
+    // 2. Resolve Secrets
     const clientId = env[config.clientIdEnv];
-    const clientSecret = env[config.clientSecretEnv]; // Optional check, mostly needed in callback
-
     if (!clientId) {
       console.error(`MISSING SECRET: ${config.clientIdEnv}`);
       return new Response('Configuration error: Missing Client ID', { status: 500 });
     }
 
-    // 3. Generate CSRF State
-    const state = uuidv4();
+    // 3. Generate State with Domain Encoded (Critical for Multi-Tenant Callback)
+    const statePayload = { domain, nonce: uuidv4() };
+    const state = btoa(JSON.stringify(statePayload)); // Base64 encode
+
     const url = new URL(request.url);
     const origin = url.origin;
 
