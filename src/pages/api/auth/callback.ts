@@ -178,4 +178,10 @@ export const GET: APIRoute = async (context) => {
     return new Response(null, { 
       status: 302, 
       headers: responseHeaders 
-    });   
+    });
+
+  } catch (error) {
+    console.error('[VoidMetric Auth Exception] Crash caught inside callback execution channel:', error);
+    return new Response(`Internal Server Error`, { status: 500 });
+  }
+};   
