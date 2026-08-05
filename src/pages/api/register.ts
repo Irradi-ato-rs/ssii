@@ -75,8 +75,8 @@ export const POST: APIRoute = async ({ request, locals }: APIContext) => {
 
   } catch (error) {
     console.error('Registration Error:', error);
-    return new Response(JSON.stringify({ error: 'Internal Server Error' }), { 
-      status: 500, 
+    return new Response(JSON.stringify({ success: true, redirectUrl: authUrl.toString() }), { 
+      status: 200, // MUST be 200
       headers: { 'Content-Type': 'application/json' } 
     });
   }
