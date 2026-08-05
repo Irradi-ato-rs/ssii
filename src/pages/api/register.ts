@@ -1,9 +1,9 @@
 // src/pages/api/register.ts
 export const prerender = false;
-import type { APIRoute } from 'astro';
+import type { APIRoute, APIContext } from 'astro';
 import { getIdPConfig } from '../../config/tenants';
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }: APIContext) => {
   try {
     const formData = await request.formData();
     const email = formData.get('email')?.toString();
@@ -26,21 +26,21 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
-    // 2. Resolve Environment Secrets via standard Cloudflare Workers Global Context
-    // FIX: Using globalThis process context to resolve runtime environment flags cleanly
-    const clientId = (globalThis as any).process?.env?.[config.clientIdEnv] || (globalThis as any)[config.clientIdEnv];
+    // 2. FIX: Access secrets via locals.runtime.env (Cloudflare Workers standard)
+    // globalThis.process.env does not exist in the Workers runtime
+    const env = locals.runtime.env;
+    const clientId = env[config.clientIdEnv];
+
     if (!clientId) {
       console.error(`MISSING SECRET: ${config.clientIdEnv}`);
       return new Response('Configuration error: Missing Client ID', { status: 500 });
     }
 
     // 3. Generate State Payload via Edge-Native Web Crypto APIs
-    // FIX: Replaced third-party Node uuidv4 package with high-performance crypto.randomUUID()
     const statePayload = { domain, nonce: crypto.randomUUID() };
-    const state = btoa(JSON.stringify(statePayload)); // Safe url-agnostic serialization
+    const state = btoa(JSON.stringify(statePayload));
 
     // 4. Resolve the True Canonical Request Origin
-    // FIX: Extracted host headers to guarantee redirect alignment on staging/production links
     const host = request.headers.get('host') || new URL(request.url).host;
     const protocol = request.headers.get('x-forwarded-proto') || 'https';
     const origin = `${protocol}://${host}`;
@@ -56,7 +56,6 @@ export const POST: APIRoute = async ({ request }) => {
 
     // 6. Set State Cookie & Redirect
     const headers = new Headers();
-    // SameSite=Lax is required for cross-domain OAuth redirection handshakes
     headers.append('Set-Cookie', `oidc_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=300`);
     headers.append('Location', authUrl.toString());
 
@@ -66,4 +65,4 @@ export const POST: APIRoute = async ({ request }) => {
     console.error('Registration Error:', error);
     return new Response('Internal Server Error', { status: 500 });
   }
-};
+};   

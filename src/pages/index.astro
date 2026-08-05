@@ -2,12 +2,13 @@
 // src/pages/index.astro
 export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
-import Footer from '../components/Footer.astro';
+import Footer from '../components/Footer.astro'; 
 ---
 
 <BaseLayout title="VoidMetric | Sovereign Systemic Integrity Intelligence">
   <main class="w-full max-w-2xl mx-auto px-4 py-16 text-left text-slate-300 font-mono text-xs leading-relaxed selection:bg-slate-800">
-
+    
+    
     <header class="mb-12 space-y-2">
       <h1 class="text-xl font-bold tracking-tight text-white">VOIDMETRIC</h1>
       <p class="text-slate-400">Sovereign Systemic Integrity Intelligence</p>
@@ -19,25 +20,25 @@ import Footer from '../components/Footer.astro';
       <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— SYSTEM DIRECTORY</h2>
       <ul class="space-y-3">
         <li>
-          <a href="/login" data-astro-reload class="text-white underline underline-offset-4 hover:text-slate-300 native-route">/login</a>
+          <a href="/login" class="text-white underline underline-offset-4 hover:text-slate-300">/login</a>
           <span class="text-slate-500 ml-2">— Secure SSO pipeline for authorized domains (Okta/Entra).</span>
         </li>
         <li>
-          <a href="/integrity-portal" data-astro-reload class="text-white underline underline-offset-4 hover:text-slate-300 native-route">/integrity-portal</a>
+          <a href="/integrity-portal" class="text-white underline underline-offset-4 hover:text-slate-300">/integrity-portal</a>
           <span class="text-slate-500 ml-2">— Live continuous controls dashboard for Metric A/B.</span>
         </li>
         <li>
-          <a href="/architecture" data-astro-reload class="text-white underline underline-offset-4 hover:text-slate-300 native-route">/architecture</a>
-          <span class="text-slate-500 ml-2">— System blueprints, non-linear math specifications and stateless edge pipelines.</span>
-        </li>
-        <li>
-          <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="text-white underline underline-offset-4 hover:text-slate-300">/documentation</a>
-          <span class="text-slate-500 ml-2">— Full code in public repository, and soon math proofs and API specifications.</span>
-        </li>
-        <li>
-          <a href="/onboarding" data-astro-reload class="text-white underline underline-offset-4 hover:text-slate-300 native-route">/onboarding</a>
-          <span class="text-slate-500 ml-2">— Request tenant network provisioning parameters. E-mail irradi.ato.rs, replace first dot with @.</span>
-        </li>
+ <a href="/architecture" class="text-white underline underline-offset-4 hover:text-slate-300 nav-link">/architecture</a>
+ <span class="text-slate-500 ml-2">— System blueprints, non-linear math specifications and stateless edge pipelines.</span>
+ </li>
+ <li>
+ <a href="https://github.com/Irradi-ato-rs/ssii" target="_blank" class="text-white underline underline-offset-4 hover:text-slate-300 nav-link">/documentation</a>
+ <span class="text-slate-500 ml-2">— Full code in public repository with exception to the core mechanisms, and soon math proofs and API specifications.</span>
+ </li>
+ <li>
+ <a href="" class="text-white underline underline-offset-4 hover:text-slate-300 nav-link">/onboarding</a>
+ <span class="text-slate-500 ml-2">— Tenant provisioning parameters. E-mail irradi.ato.rs, replace first dot with @*. Make a request, this is important, don't send any private information. We'll help you how to process required system data for onboarding purposes only.</span>
+ </li>
       </ul>
     </section>
 
@@ -52,10 +53,10 @@ import Footer from '../components/Footer.astro';
 
       <!-- Action Commands -->
       <div class="flex gap-4">
-        <button id="injectBtn" type="button" class="text-white underline underline-offset-4 hover:text-slate-300 font-bold text-left cursor-pointer">
+        <button id="injectBtn" class="text-white underline underline-offset-4 hover:text-slate-300 font-bold text-left cursor-pointer">
           [RUN_SIMULATION: INJECT_CRITICAL_FAILURE]
         </button>
-        <button id="resetBtn" type="button" class="text-slate-500 underline underline-offset-4 hover:text-slate-400 text-left cursor-pointer">
+        <button id="resetBtn" class="text-slate-500 underline underline-offset-4 hover:text-slate-400 text-left cursor-pointer">
           [RESET_MATRIX]
         </button>
       </div>
@@ -71,7 +72,7 @@ import Footer from '../components/Footer.astro';
       <!-- Manual Matrix Controls -->
       <div class="space-y-3 pt-4 border-t border-slate-900">
         <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Manual Matrix Controls</span>
-
+        
         <div class="space-y-2 max-w-md">
           <div class="flex justify-between items-center">
             <span>Function (E1: Structures) :</span>
@@ -101,166 +102,114 @@ import Footer from '../components/Footer.astro';
     </section>
 
     <Footer />
-  </main>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const apiEndpoint = `${window.location.origin}/api/v1/compute`;
 
-      let simMatrix = [
-        [0.95, 0.95, 0.95],
-        [0.95, 0.95, 0.95],
-        [0.95, 0.95, 0.95],
-        [0.95, 0.95, 0.95]
+  </main>
+
+  <script>
+    const apiEndpoint = `${window.location.origin}/api/v1/compute`;
+    
+    let simMatrix = [
+      [0.95, 0.95, 0.95],
+      [0.95, 0.95, 0.95],
+      [0.95, 0.95, 0.95],
+      [0.95, 0.95, 0.95]
+    ];
+
+    async function dispatchSimulationPipeline() {
+      try {
+        const response = await fetch(apiEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ matrix: simMatrix })
+        });
+        if (!response.ok) throw new Error(`HTTP_FAULT: ${response.status}`);
+        const data = await response.json();
+        renderUiUpdate(data);
+      } catch (err) {
+        console.error("Calculation transmission interrupted:", err);
+      }
+    }
+
+    function renderUiUpdate(data: any) {
+      const resA = document.getElementById('resA');
+      const resB = document.getElementById('resB');
+      const statusText = document.getElementById('resStatus');
+      const breachLine = document.getElementById('breachLocationLine');
+
+      if (resA) resA.innerText = (data.metric_a_compliance * 100).toFixed(0) + '%';
+      if (resB) resB.innerText = (data.metric_b_integrity * 100).toFixed(0) + '%';
+      
+      if (statusText) {
+        statusText.innerText = data.status;
+        if (data.metric_b_integrity === 0 || data.status === "CRITICAL_RISK_SWITCH_TRIGGERED") {
+          statusText.className = "text-rose-500 font-bold font-mono";
+          if (resB) resB.className = "text-rose-500 font-bold";
+        } else {
+          statusText.className = "text-emerald-400 font-bold font-mono";
+          if (resB) resB.className = "text-emerald-400 font-bold";
+          if (breachLine) breachLine.classList.add('hidden');
+        }
+      }
+    }
+
+    // Dynamic Catastrophic Injector 
+    document.getElementById('injectBtn')?.addEventListener('click', () => {
+      simMatrix = [
+        [0.95, 0.95, 0.95], [0.95, 0.95, 0.95], [0.95, 0.95, 0.95], [0.95, 0.95, 0.95]
       ];
 
-      // Explicitly allow navigation paths to fire cleanly without scripting lockouts
-      document.querySelectorAll('.native-route').forEach(link => {
-        link.addEventListener('click', (e) => {
-          e.stopPropagation();
-        });
-      });
+      const randomRow = Math.floor(Math.random() * 4);
+      const randomCol = Math.floor(Math.random() * 3);
+      simMatrix[randomRow][randomCol] = 0.0;
 
-      async function dispatchSimulationPipeline() {
-        try {
-          const response = await fetch(apiEndpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ matrix: simMatrix })
-          });
-          if (!response.ok) throw new Error(`HTTP_FAULT: ${response.status}`);
-          const data = await response.json();
-          renderUiUpdate(data);
-        } catch (err) {
-          console.error("Calculation transmission interrupted:", err);
-        }
+      const domainNames = ["FUNCTION", "FEATURES", "ELEMENTS", "EXECUTION"];
+      const enablerNames = ["STRUCTURES", "CONTENTS", "FACILITIES"];
+      
+      const locationLine = document.getElementById('breachLocationLine');
+      const locationText = document.getElementById('resBreach');
+      if (locationLine && locationText) {
+        locationText.innerText = `${domainNames[randomRow]}_${enablerNames[randomCol]}`;
+        locationLine.classList.remove('hidden');
       }
 
-      function renderUiUpdate(data: any) {
-        const resA = document.getElementById('resA');
-        const resB = document.getElementById('resB');
-        const statusText = document.getElementById('resStatus');
-        const breachLine = document.getElementById('breachLocationLine');
-
-        // Extract parameters safely matching your core backend schema fields
-        const compScore = data.metric_a_compliance ?? data.metricAMaturityIndex ?? 0;
-        const integScore = data.metric_b_integrity ?? data.metricBLiveIntegrity ?? 0;
-
-        if (resA) resA.innerText = (compScore * 100).toFixed(0) + '%';
-        if (resB) resB.innerText = (integScore * 100).toFixed(0) + '%';
-
-        if (statusText) {
-          statusText.innerText = data.status || (integScore < 0.20 ? "CRITICAL_RISK_SWITCH_TRIGGERED" : "NOMINAL");
-          if (integScore === 0 || statusText.innerText === "CRITICAL_RISK_SWITCH_TRIGGERED") {
-            statusText.className = "text-rose-500 font-bold font-mono";
-            if (resB) resB.className = "text-rose-500 font-bold";
-          } else {
-            statusText.className = "text-emerald-400 font-bold font-mono";
-            if (resB) resB.className = "text-emerald-400 font-bold";
-            if (breachLine && !document.getElementById('injectBtn')?.dataset.activeBreach) {
-              breachLine.classList.add('hidden');
-            }
-          }
-        }
-      }
-      // Dynamic Catastrophic Injector Trigger
-      document.getElementById('injectBtn')?.addEventListener('click', (e) => {
-        e.preventDefault();
-
-        simMatrix = [
-          [0.95, 0.95, 0.95],
-          [0.95, 0.95, 0.95],
-          [0.95, 0.95, 0.95],
-          [0.95, 0.95, 0.95]
-        ];
-
-        const randomRow = Math.floor(Math.random() * 4);
-        const randomCol = Math.floor(Math.random() * 3);
-        simMatrix[randomRow][randomCol] = 0.0;
-
-        const domainNames = ["FUNCTION", "FEATURES", "ELEMENTS", "EXECUTION"];
-        const enablerNames = ["STRUCTURES", "CONTENTS", "FACILITIES"];
-
-        const locationLine = document.getElementById('breachLocationLine');
-        const locationText = document.getElementById('resBreach');
-        const injectBtn = document.getElementById('injectBtn');
-
-        if (locationLine && locationText && injectBtn) {
-          locationText.innerText = `${domainNames[randomRow]} // ${enablerNames[randomCol]}`;
-          locationLine.classList.remove('hidden');
-          injectBtn.dataset.activeBreach = "true";
-        }
-
-        // Sync sliders visually to match structural drops
-        const sliders = document.querySelectorAll('.sim-slider');
-        sliders.forEach((slider) => {
-          const s = slider as HTMLInputElement;
-          const idx = parseInt(s.getAttribute('data-idx') || '0');
-          if (idx === randomCol) {
-            s.value = "0";
-            const label = document.getElementById(`lbl-${idx}`);
-            if (label) label.innerText = "0.0";
-          }
-        });
-
-        dispatchSimulationPipeline();
+      // FIX: Check every single index before writing properties to avoid navigation thread crashes
+      const sliders = document.querySelectorAll('.sim-slider') as NodeListOf<HTMLInputElement>;
+      sliders.forEach((slider) => {
+        const idx = parseInt(slider.getAttribute('data-idx') || "0");
+        if (idx === 0) { slider.value = simMatrix[0][0].toString(); document.getElementById('lbl-0')!.innerText = simMatrix[0][0].toFixed(1); }
+        if (idx === 1) { slider.value = simMatrix[2][1].toString(); document.getElementById('lbl-1')!.innerText = simMatrix[2][1].toFixed(1); }
+        if (idx === 2) { slider.value = simMatrix[3][2].toString(); document.getElementById('lbl-2')!.innerText = simMatrix[3][2].toFixed(1); }
       });
 
-      // Reset Board Action
-      document.getElementById('resetBtn')?.addEventListener('click', (e) => {
-        e.preventDefault();
-
-        const injectBtn = document.getElementById('injectBtn');
-        if (injectBtn) delete injectBtn.dataset.activeBreach;
-
-        const breachLine = document.getElementById('breachLocationLine');
-        if (breachLine) breachLine.classList.add('hidden');
-
-        simMatrix = [
-          [0.95, 0.95, 0.95],
-          [0.95, 0.95, 0.95],
-          [0.95, 0.95, 0.95],
-          [0.95, 0.95, 0.95]
-        ];
-
-        // Reset slide configurations back to standard baselines
-        const sliders = document.querySelectorAll('.sim-slider');
-        sliders.forEach((slider) => {
-          const s = slider as HTMLInputElement;
-          s.value = "1";
-          const idx = s.getAttribute('data-idx');
-          const label = document.getElementById(`lbl-${idx}`);
-          if (label) label.innerText = "1.0";
-        });
-
-        dispatchSimulationPipeline();
-      });
-
-      // Update parameters from input slider controls
-      document.querySelectorAll('.sim-slider').forEach(slider => {
-        slider.addEventListener('input', (e) => {
-          const target = e.target as HTMLInputElement;
-          const idx = parseInt(target.getAttribute('data-idx') || '0');
-          const val = parseFloat(target.value);
-
-          const label = document.getElementById(`lbl-${idx}`);
-          if (label) label.innerText = val.toFixed(1);
-
-          // Clear active injector labels if manually modifying settings
-          const injectBtn = document.getElementById('injectBtn');
-          if (val > 0 && injectBtn) {
-            delete injectBtn.dataset.activeBreach;
-          }
-
-          // Propagate column configurations evenly for baseline matrix calculation simulation
-          for (let i = 0; i < 4; i++) {
-            simMatrix[i][idx] = val;
-          }
-          dispatchSimulationPipeline();
-        });
-      });
-
-      // Initial execution run to set default state metrics bounds on screen load
       dispatchSimulationPipeline();
+    });
+
+    document.getElementById('resetBtn')?.addEventListener('click', () => {
+      simMatrix = [
+        [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]
+      ];
+      document.querySelectorAll('.sim-slider').forEach((s: any, idx) => {
+        s.value = "1";
+        const lbl = document.getElementById(`lbl-${idx}`);
+        if (lbl) lbl.innerText = "1.0";
+      });
+      document.getElementById('breachLocationLine')?.classList.add('hidden');
+      dispatchSimulationPipeline();
+    });
+
+    document.querySelectorAll('.sim-slider').forEach(slider => {
+      slider.addEventListener('input', (e: any) => {
+        const idx = parseInt(e.target.getAttribute('data-idx'));
+        const val = parseFloat(e.target.value);
+        const lbl = document.getElementById(`lbl-${idx}`);
+        if (lbl) lbl.innerText = val.toFixed(1);
+
+        // FIX: Hardened boundaries using dynamic sub-array assignments
+        if (idx === 0) simMatrix[0][0] = val; // Function -> Structures
+        if (idx === 1) simMatrix[2][1] = val; // Elements -> Contents
+        if (idx === 2) simMatrix[3][2] = val; // Execution -> Facilities
+        dispatchSimulationPipeline();
+      });
     });
   </script>
 </BaseLayout>
