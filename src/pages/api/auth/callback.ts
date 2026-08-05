@@ -152,7 +152,13 @@ export const GET: APIRoute = async (context) => {
     // Redirect to Dashboard
     headers.append('Location', '/integrity-portal');
 
-    return new Response(null, { status: 302, headers });
+    console.log('=== CALLBACK SUCCESS ===');
+    console.log('Setting Cookie:', `aim_session_token=${idToken.substring(0, 10)}...`);
+    console.log('Redirecting to:', '/integrity-portal');
+
+    return new Response(null, { status: 302, headers: responseHeaders });   
+
+    //return new Response(null, { status: 302, headers });
     // TEMPORARY FIX FOR DEBUGGING
     // Remove 'Secure' if testing on HTTP, set SameSite=None if cross-site
     responseHeaders.append('Set-Cookie', `aim_session_token=${idToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=3600`);   
