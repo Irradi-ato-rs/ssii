@@ -13,12 +13,22 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const { request, locals, cookies } = context;
   const url = new URL(request.url);
 
-  // 1. Structural Bypass: Skip evaluation for baseline routing zones to prevent loops
-  if (url.pathname.startsWith('/api/auth') || url.pathname === '/' || url.pathname === '/login') {
+  // 1. ROBUST TRAILING-SLASH NORMALIZATION
+  // Strips trailing slashes seamlessly to prevent Cloudflare Pages routing bypass bugs
+  let cleanPath = url.pathname;
+  if (cleanPath.length > 1 && cleanPath.endsWith('/')) {
+    cleanPath = cleanPath.slice(0, -1);
+  }
+
+  // 2. EXPLICIT PUBLIC ROUTE ALLOW-LIST
+  // Whitelists all informational nodes required before an active session is established
+  const publicRoutes = ['/', '/login', '/architecture', '/onboarding'];
+
+  if (url.pathname.startsWith('/api/auth') || publicRoutes.includes(cleanPath)) {
     return next();
   }
 
-  // 2. Extract Token Parameters Safely from standard Cookie strings
+  // 3. Extract Session Parameters safely via Astro Cookie API
   const sessionToken = cookies.get('aim_session_token');
 
   if (!sessionToken || !sessionToken.value) {
@@ -27,7 +37,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   try {
-    // Access environment variables natively via Astro request context parameters
     const runtimeEnv = locals.runtime?.env || (globalThis as any).process?.env;
     const tenantDirectory = runtimeEnv?.VM_TENANT_DIRECTORY as KVNamespace | undefined;
 
@@ -37,17 +46,19 @@ export const onRequest = defineMiddleware(async (context, next) => {
       return context.redirect('/?error=infrastructure_environment_fault');
     }
 
-    // 3. Inspect the unverified token envelope to identify domain origins (Stateless Routing)
+    // 4. Inspect the unverified token envelope to isolate domain roots (Stateless Routing)
     const tokenChunks = sessionToken.value.split('.');
     if (tokenChunks.length !== 3) throw new Error('Malformed structural envelope signature matching criteria');
     
+    // Target the second chunk index [1] to safely extract the payload section
     const rawEnvelopePayload = JSON.parse(atob(tokenChunks[1]));
     const userEmailClaim = rawEnvelopePayload.email || rawEnvelopePayload.sub || '';
-    const extractedDomain = userEmailClaim.split('@')[1];
+    const domainArray = userEmailClaim.split('@');
+    const extractedDomain = domainArray[domainArray.length - 1]?.toLowerCase();
 
     if (!extractedDomain) throw new Error('Identity claim missing explicit tenant domain context routing values');
 
-    // 4. Resolve the explicit tenant profile dynamically out of Cloudflare's hidden storage vault
+    // 5. Fetch the explicit tenant profile dynamically out of Cloudflare's hidden storage vault
     const serializedConfig = await tenantDirectory.get(`domain:${extractedDomain}`);
     if (!serializedConfig) {
       console.error(`[VoidMetric Middleware] Domain routing configuration unrecognized: ${extractedDomain}`);
@@ -64,7 +75,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       return context.redirect('/?error=configuration_runtime_fault');
     }
 
-    // 5. Asymmetric JWKS cryptographic evaluation signature check against the tenant profile endpoints
+    // 6. Asymmetric JWKS cryptographic signature check against the tenant profile endpoints
     const JWKS = createRemoteJWKSet(new URL(targetConfig.jwksUri));
     const { payload } = await jwtVerify(sessionToken.value, JWKS, {
       issuer: targetConfig.issuer,
@@ -73,7 +84,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       clockTolerance: '30s'
     });
 
-    // 6. Map identity group claims directly to HTML authorization roles
+    // 7. Map directory group claims directly to security access roles
     const directoryGroups = (payload.groups || payload.roles || []) as string[];
     let evaluatedRole: 'admin' | 'executive' | 'engineer' = 'engineer'; 
 
@@ -83,7 +94,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       evaluatedRole = 'executive';
     }
 
-    // 7. Establish the active global user identity variables mapping context
+    // Establish the active global user identity variables mapping context
     locals.user = {
       email: userEmailClaim,
       role: evaluatedRole,
