@@ -12,7 +12,7 @@ interface DynamicIdPConfig {
 }
 
 export const GET: APIRoute = async (context) => {
-  const { request, locals } = context;
+  const { request, locals, cookies } = context;
   try {
     const requestUrl = new URL(request.url);
     const searchParams = requestUrl.searchParams;
@@ -26,18 +26,12 @@ export const GET: APIRoute = async (context) => {
     }
 
     if (!code || !state) {
-      return new Response('Missing authorization criteria code or state parameters', { status: 400 });
+      return new Response('Missing code or state parameters', { status: 400 });
     }
 
     // 1. Validate State Parameter Matrix against session context cookies
-    const cookies = request.headers.get('Cookie') || '';
-    const stateCookieValue = cookies
-      .split(';')
-      .map(c => c.trim())
-      .find(c => c.startsWith('oidc_state='))
-      ?.split('=')[1];
-    
-    if (!stateCookieValue || stateCookieValue !== state) {
+    const stateCookie = cookies.get('oidc_state');
+    if (!stateCookie || stateCookie.value !== state) {
       console.error('[VoidMetric Auth] Critical State parameter discrepancy encountered.');
       return new Response('Invalid state parameter mapping', { status: 403 });
     }
@@ -53,7 +47,7 @@ export const GET: APIRoute = async (context) => {
     }
 
     // 2. Extract Tenant Context Dynamically from Secure KV Storage Vault
-    const runtimeEnv = locals.runtime?.env;
+    const runtimeEnv = locals.runtime?.env || (globalThis as any).process?.env;
     const tenantDirectory = runtimeEnv?.VM_TENANT_DIRECTORY; 
     
     if (!tenantDirectory) {
@@ -83,50 +77,62 @@ export const GET: APIRoute = async (context) => {
     const origin = `${protocol}://${host}`;
     const redirectUri = `${origin}/api/auth/callback`;
 
-    // 5. INTUITIVE STEPPED BACKCHANNEL TOKEN EXCHANGE LIFE-CYCLE
-    // Strategy A: Execute standard client_secret_basic formatting according to strict RFC profiles
-    const rawCredentialsString = `${clientId}:${clientSecret}`;
-    const base64BasicToken = btoa(rawCredentialsString);
-    
-    let tokenResponse = await fetch(config.tokenEndpoint, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${base64BasicToken}`,
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        code: code,
-        redirect_uri: redirectUri
-      })
-    });
+    // 5. STEPPED AUTOMATED RECOVERY HANDSHAKE PIPELINE
+    let tokenResponse;
+    const preference = config.authMethod || 'client_secret_basic';
 
-    // Strategy B: Automated Fallback Dynamic Recovery Pipeline
-    // If Strategy A catches an explicit invalid_client or client rejection response payload, 
-    // it automatically retries the request using form-body parameters to ensure compatibility [1].
-    if (!tokenResponse.ok) {
-      const initialErrorLogs = await tokenResponse.clone().text();
+    if (preference === 'client_secret_basic') {
+      const rawCredentialsString = `${clientId}:${clientSecret}`;
+      const base64BasicToken = btoa(rawCredentialsString);
       
-      if (initialErrorLogs.includes('invalid_client') || config.authMethod === 'client_secret_post') {
-        console.warn('[VoidMetric Auth] Strategy A Basic Auth rejected. Executing fallback Strategy B Post-Body Injection...');
-        
-        tokenResponse = await fetch(config.tokenEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            grant_type: 'authorization_code',
-            code: code,
-            redirect_uri: redirectUri,
-            client_id: clientId,
-            client_secret: clientSecret // Moves secret completely into form parameters block [1]
-          })
-        });
+      tokenResponse = await fetch(config.tokenEndpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${base64BasicToken}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: code,
+          redirect_uri: redirectUri
+        })
+      });
+
+      if (!tokenResponse.ok) {
+        const errorCheckText = await tokenResponse.clone().text();
+        if (errorCheckText.includes('invalid_client')) {
+          console.warn('[VoidMetric Auth] Basic Auth rejected with invalid_client. Executing Strategy B Form Parameters inject...');
+          
+          tokenResponse = await fetch(config.tokenEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              grant_type: 'authorization_code',
+              code: code,
+              redirect_uri: redirectUri,
+              client_id: clientId,
+              client_secret: clientSecret
+            })
+          });
+        }
       }
+    } else {
+      tokenResponse = await fetch(config.tokenEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: code,
+          redirect_uri: redirectUri,
+          client_id: clientId,
+          client_secret: clientSecret
+        })
+      });
     }
 
     if (!tokenResponse.ok) {
       const ultimateFailureLogText = await tokenResponse.text();
-      console.error('[VoidMetric Auth Fatal] Backchannel protocol token exchange rejected completely:', ultimateFailureLogText);
+      console.error('[VoidMetric Auth Fatal] Token exchange rejected completely across all pipelines:', ultimateFailureLogText);
       return new Response(`Token exchange failed: ${ultimateFailureLogText}`, { status: 401 });
     }
 
@@ -144,7 +150,7 @@ export const GET: APIRoute = async (context) => {
         issuer: config.issuer,
         audience: clientId,
         algorithms: ['RS256', 'RS384', 'RS512'],
-        clockTolerance: '60s' // Expands drift safety windows to 1 full minute
+        clockTolerance: '60s'
       });
     } catch (err) {
       console.error('[VoidMetric Auth Fatal] Asymmetric token profile signature check mismatch:', err);
@@ -152,11 +158,17 @@ export const GET: APIRoute = async (context) => {
     }
 
     // 7. Clear transient parameters state cookies and dispatch authorized session token
+    cookies.delete('oidc_state', { path: '/' });
+    cookies.set('aim_session_token', idToken, {
+      path: '/',
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      maxAge: 3600
+    });
+
     const responseHeaders = new Headers();
-    responseHeaders.append('Set-Cookie', 'oidc_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
-    responseHeaders.append('Set-Cookie', `aim_session_token=${idToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`);
     responseHeaders.append('Location', '/integrity-portal');
-    
     return new Response(null, { status: 302, headers: responseHeaders });
 
   } catch (error) {
