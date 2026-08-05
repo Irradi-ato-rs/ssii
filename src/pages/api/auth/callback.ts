@@ -153,6 +153,9 @@ export const GET: APIRoute = async (context) => {
     headers.append('Location', '/integrity-portal');
 
     return new Response(null, { status: 302, headers });
+    // TEMPORARY FIX FOR DEBUGGING
+    // Remove 'Secure' if testing on HTTP, set SameSite=None if cross-site
+    responseHeaders.append('Set-Cookie', `aim_session_token=${idToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=3600`);   
 
   } catch (error) {
     console.error('[VoidMetric Auth] Crash:', error);
