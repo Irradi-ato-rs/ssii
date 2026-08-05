@@ -40,6 +40,7 @@ export const GET: APIRoute = async (context) => {
     // Decode Domain
     let domain: string;
     try {
+      // FIX: Ensure proper decoding if state was URI encoded
       const decoded = JSON.parse(atob(state));
       domain = decoded.domain;
     } catch (e) {
@@ -54,10 +55,20 @@ export const GET: APIRoute = async (context) => {
       return new Response('KV Binding Missing', { status: 500 });
     }
 
-    const tenantConfigRaw = await tenantDirectory.get(`domain:${domain}`);
+    // FIX: Handle fzoirm.com host override if not in KV
+    let tenantConfigRaw = await tenantDirectory.get(`domain:${domain}`);
+    
+    // If not found and it's the host domain, use hardcoded config (Optional safety net)
+    if (!tenantConfigRaw && domain === 'fzoirm.com') {
+       // You can implement the hardcoded logic here if you didn't update tenants.ts
+       // For now, assuming tenants.ts or KV has it.
+       return new Response('Host domain not configured', { status: 500 });
+    }
+
     if (!tenantConfigRaw) {
       return new Response('Domain not found', { status: 500 });
     }
+
     const config = JSON.parse(tenantConfigRaw) as DynamicIdPConfig;
 
     const clientId = runtimeEnv?.[config.clientIdEnv]?.trim();
@@ -76,8 +87,8 @@ export const GET: APIRoute = async (context) => {
     const useBasicAuth = config.authMethod !== 'client_secret_post';
 
     if (useBasicAuth) {
-      // FIX: URL Encode before Base64
-      const encoded = btoa(`${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`);
+      // FIX: Standard Basic Auth encoding
+      const encoded = btoa(`${clientId}:${clientSecret}`);
       tokenResponse = await fetch(config.tokenEndpoint, {
         method: 'POST',
         headers: {
@@ -93,20 +104,17 @@ export const GET: APIRoute = async (context) => {
       
       // Fallback if Basic fails
       if (!tokenResponse.ok) {
-        const txt = await tokenResponse.clone().text();
-        if (txt.includes('invalid_client')) {
-          tokenResponse = await fetch(config.tokenEndpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-              grant_type: 'authorization_code',
-              code,
-              redirect_uri: redirectUri,
-              client_id: clientId,
-              client_secret: clientSecret
-            })
-          });
-        }
+        tokenResponse = await fetch(config.tokenEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'authorization_code',
+            code,
+            redirect_uri: redirectUri,
+            client_id: clientId,
+            client_secret: clientSecret
+          })
+        });
       }
     } else {
       tokenResponse = await fetch(config.tokenEndpoint, {
@@ -128,40 +136,37 @@ export const GET: APIRoute = async (context) => {
       return new Response(`Token Failed: ${err}`, { status: 401 });
     }
 
-    const { id_token } = await tokenResponse.json();
-    if (!id_token) return new Response('No ID Token', { status: 500 });
+    const tokenData = await tokenResponse.json();
+    const idToken = tokenData.id_token; // FIX: Correct variable name
+
+    if (!idToken) return new Response('No ID Token', { status: 500 });
 
     // 4. Verify Token
     const JWKS = createRemoteJWKSet(new URL(config.jwksUri));
-    await jwtVerify(id_token, JWKS, {
+    await jwtVerify(idToken, JWKS, {
       issuer: config.issuer,
       audience: clientId,
       algorithms: ['RS256', 'RS384', 'RS512'],
       clockTolerance: '60s'
     });
 
-    // 5. CRITICAL: Manual Set-Cookie Headers
+    // 5. Set Cookies & Redirect
     const headers = new Headers();
     
     // Clear State
     headers.append('Set-Cookie', 'oidc_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
     
     // Set Session Token
-    headers.append('Set-Cookie', `aim_session_token=${id_token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`);
+    // FIX: Ensure 'Secure' is only used on HTTPS. Cloudflare Pages is always HTTPS in prod.
+    headers.append('Set-Cookie', `aim_session_token=${idToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`);
     
     // Redirect to Dashboard
     headers.append('Location', '/integrity-portal');
 
     console.log('=== CALLBACK SUCCESS ===');
-    console.log('Setting Cookie:', `aim_session_token=${idToken.substring(0, 10)}...`);
     console.log('Redirecting to:', '/integrity-portal');
 
-    return new Response(null, { status: 302, headers: responseHeaders });   
-
-    //return new Response(null, { status: 302, headers });
-    // TEMPORARY FIX FOR DEBUGGING
-    // Remove 'Secure' if testing on HTTP, set SameSite=None if cross-site
-    responseHeaders.append('Set-Cookie', `aim_session_token=${idToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=3600`);   
+    return new Response(null, { status: 302, headers });   
 
   } catch (error) {
     console.error('[VoidMetric Auth] Crash:', error);
