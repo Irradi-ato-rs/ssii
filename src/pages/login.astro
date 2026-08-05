@@ -1,56 +1,82 @@
 ---
 // src/pages/login.astro
 export const prerender = false;
+import Footer from '../components/Footer.astro';
 
-// Clear any existing session remnants before initializing a fresh handshake
-Astro.cookies.delete('aim_session_token', { path: '/' });
-Astro.cookies.delete('oidc_state', { path: '/' });
+// NOTE: Do NOT use Astro.cookies.delete() in frontmatter.
+// Cookie clearing is handled by the API route or Middleware.
 ---
 
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>VoidMetric Gateway // Initializing SSO Identity Handshake</title>
-    <script src="https://tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      @import url('https://googleapis.com');
+      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
       body { font-family: 'JetBrains Mono', monospace; }
     </style>
   </head>
-  <body class="bg-[#020203] text-slate-400 min-h-screen flex items-center justify-center p-4 selection:bg-slate-800">
-    <div class="w-full max-w-sm p-6 bg-slate-900/30 border border-slate-900 rounded-xl space-y-6 shadow-2xl">
-      
-      <div class="space-y-1">
-        <div class="flex items-center gap-2">
-          <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-          <h1 class="text-xs font-bold uppercase text-white tracking-widest">VoidMetric Auth Gateway</h1>
-        </div>
-        <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Enterprise Tenant Federation Routing Node</p>
-      </div>
-
-      <!-- Federated Routing Action Request Entry -->
-      <form action="/api/auth/federate" method="POST" class="space-y-4">
-        <div class="space-y-1.5">
-          <label for="email" class="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">Enterprise Operator E-mail</label>
-          <input 
-            type="email" 
-            id="email" 
-            name="email" 
-            placeholder="operator@voidmetric.io" 
-            required 
-            class="w-full bg-[#020203] border border-slate-800 focus:border-blue-500/50 rounded px-3 py-2 text-xs text-white placeholder-slate-600 font-mono transition duration-150 outline-none"
-          />
+  <body class="bg-[#020203] text-slate-400 min-h-screen flex flex-col justify-between selection:bg-slate-800">
+    
+    <!-- Main Content Area -->
+    <div class="flex items-center justify-center p-4 flex-grow">
+      <div class="w-full max-w-sm p-6 bg-slate-900/30 border border-slate-900 rounded-xl space-y-6 shadow-2xl">
+        
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+            <h1 class="text-xs font-bold uppercase text-white tracking-widest">VoidMetric Auth Gateway</h1>
+          </div>
+          <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Enterprise Tenant Federation Routing Node</p>
         </div>
 
-        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded text-[11px] uppercase tracking-wider transition duration-150 cursor-pointer shadow-lg shadow-blue-600/10">
-          [AUTHENTICATE]
-        </button>
-      </form>
+        <!-- Error Banner (Injected via Client-Side Script) -->
+        <div id="error-banner" class="hidden p-2 bg-red-900/20 border border-red-900 text-red-400 text-[10px] uppercase tracking-wider font-bold rounded"></div>
 
-      <div class="text-[10px] text-slate-600 border-t border-slate-900 pt-4 leading-relaxed">
-        * VoidMetric uses dynamic zero-persistence routing. Entering your corporate domain triggers an encrypted handshake directly with your pre-provisioned OIDC provider (Okta/Entra ID).
+        <!-- Federated Routing Action Request Entry -->
+        <form action="/api/register" method="POST" class="space-y-4">
+          <div class="space-y-1.5">
+            <label for="email" class="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">Enterprise Operator E-mail</label>
+            <input 
+              type="email" 
+              id="email" 
+              name="email" 
+              placeholder="id@iclassed.com" 
+              required 
+              class="w-full bg-[#020203] border border-slate-800 focus:border-blue-500/50 rounded px-3 py-2 text-xs text-white placeholder-slate-600 font-mono transition duration-150 outline-none"
+            />
+          </div>
+
+          <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded text-[11px] uppercase tracking-wider transition duration-150 cursor-pointer shadow-lg shadow-blue-600/10">
+            [AUTHENTICATE]
+          </button>
+        </form>
+
+        <div class="text-[10px] text-slate-600 border-t border-slate-900 pt-4 leading-relaxed">
+          * VoidMetric uses dynamic zero-persistence routing. Entering your corporate domain triggers an encrypted handshake directly with your pre-provisioned OIDC provider.
+        </div>
       </div>
     </div>
+
+    <!-- Footer Component -->
+    <div class="w-full">
+      <Footer />
+    </div>
+
+    <script>
+      // Display Error from URL if present (e.g. ?error=unauthenticated_session_gateway)
+      const urlParams = new URLSearchParams(window.location.search);
+      const errorMsg = urlParams.get('error');
+      if (errorMsg) {
+        const banner = document.getElementById('error-banner');
+        if (banner) {
+          banner.innerText = `AUTH FAILURE: ${errorMsg.replace(/_/g, ' ').toUpperCase()}`;
+          banner.classList.remove('hidden');
+        }
+      }
+    </script>
   </body>
-</html>
+</html>   
