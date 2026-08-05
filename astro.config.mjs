@@ -4,6 +4,7 @@ import cloudflare from '@astrojs/cloudflare';
 // https://astro.build/config
 export default defineConfig({
   site: 'https://ssii.fzoirm.com', // ADD THIS LINE
+  output: 'server',
   adapter: cloudflare({
     platformProxy: { enabled: true },
   }),
