@@ -2,175 +2,289 @@
 // src/pages/integrity-portal.astro
 export const prerender = false;
 
-// 1. SECURITY: Redirect if not logged in
+// 1. HARD SECURITY ISOLATION BOUNDARY: Instant redirection if session context is null
 if (!Astro.locals.user) {
-  return Astro.redirect('/');
+  return Astro.redirect('/?error=unauthenticated_session_gateway');
 }
 
 const user = Astro.locals.user;
 
-// FIX #1: Use the standard Astro .has() method to evaluate cookie presence
+// Evaluate structural cookie presence natively using the stable Astro context API
 const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
 ---
 
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VoidMetric | Integrity Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>VoidMetric OS // Systemic Posture Control Center</title>
+    <script src="https://tailwindcss.com"></script>
+    <style>
+      @import url('https://googleapis.com');
+      body { font-family: 'JetBrains Mono', monospace; }
+    </style>
   </head>
-  <body class="bg-slate-950 text-slate-100 min-h-screen p-8">
-    <div class="max-w-5xl mx-auto">
-      
-      <!-- Header -->
-      <div class="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
+  <body class="bg-[#020203] text-slate-300 min-h-screen p-4 md:p-8 selection:bg-slate-800 selection:text-white">
+    <div class="max-w-5xl mx-auto space-y-6">
+
+      <!-- Top Operational Status Header Panel -->
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center p-6 bg-slate-900/40 border border-slate-900 rounded-xl gap-4">
         <div>
-          <h1 class="text-3xl font-black text-blue-500">VOIDMETRIC</h1>
-          <p class="text-slate-400 text-sm">Sovereign Systemic Integrity Intelligence</p>
+          <div class="flex items-center gap-3">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            <h1 class="text-lg font-black tracking-wider text-white">VOIDMETRIC // SSII</h1>
+          </div>
+          <p class="text-slate-500 text-[10px] uppercase tracking-widest mt-1">Sovereign Systemic Integrity Intelligence Engine</p>
         </div>
-        <div class="text-right">
-          <p class="text-sm text-slate-300">Welcome, <span class="font-bold text-white">{user.email}</span></p>
-          <p class="text-xs text-slate-500 uppercase tracking-wider">Role: {user.role}</p>
-          <a href="/api/auth/logout" class="text-xs text-red-400 hover:text-red-300 mt-1 inline-block">Sign Out</a>
+        <div class="text-left md:text-right text-xs space-y-0.5">
+          <p class="text-slate-400">OPERATOR: <span class="font-bold text-white">{user.email}</span></p>
+          <p class="text-slate-500 uppercase">ACCESS_SCOPE: <span class="text-blue-400 font-bold">{user.role}</span></p>
+          <a href="/api/auth/logout" class="text-rose-400/80 hover:text-rose-400 underline underline-offset-4 inline-block mt-2 font-bold transition">/terminate-session</a>
         </div>
       </div>
 
-      <!-- ONBOARDING MODAL -->
+      <!-- INTERACTIVE ONBOARDING MODAL -->
       {isFirstVisit && (
-        <div id="onboarding-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
-          <div class="bg-slate-900 border border-blue-500/30 p-8 rounded-2xl max-w-lg w-full shadow-2xl">
-            <h2 class="text-xl font-black text-white mb-4">👋 Welcome to VoidMetric</h2>
-            <p class="text-slate-400 text-sm mb-6">Let's calculate your Systemic Integrity in under 2 minutes.</p>
-            
-            <ul class="space-y-3 text-sm text-slate-300">
-              <li class="flex items-center gap-3">
-                <span class="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-900 text-emerald-400 font-bold text-xs">✓</span>
-                <span>Authenticated via Corporate SSO</span>
-              </li>
-              <li class="flex items-center gap-3">
-                <span class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-900 text-blue-400 font-bold text-xs">2</span>
-                <span>Run Demo Calculation (Pre-filled)</span>
-              </li>
-              <li class="flex items-center gap-3">
-                <span class="flex items-center justify-center w-6 h-6 rounded-full bg-slate-800 text-slate-500 font-bold text-xs">3</span>
-                <span>View Integrity Score</span>
-              </li>
-            </ul>
+        <div id="onboarding-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md px-4">
+          <div class="bg-[#09090b] border border-blue-500/20 p-8 rounded-xl max-w-md w-full shadow-2xl space-y-6">
+            <div class="space-y-1">
+              <h2 class="text-base font-bold text-white uppercase tracking-wider">// INITIALIZING NODE ENTRY</h2>
+              <p class="text-slate-500 text-[11px]">Systemic Integrity matrix calibration will execute inside volatile memory maps.</p>
+            </div>
 
-            <!-- FIX #2: Removed the broken inline onclick attribute -->
-            <button id="startTourBtn" class="w-full mt-6 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition cursor-pointer">
-              Start Interactive Tour
+            <div class="space-y-3 text-[11px] border-y border-slate-900 py-4">
+              <div class="flex items-center gap-3">
+                <span class="flex items-center justify-center w-5 h-5 rounded bg-emerald-950 text-emerald-400 font-bold">✓</span>
+                <span class="text-slate-400">Federated Identity Claims Confirmed via SSO</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="flex items-center justify-center w-5 h-5 rounded bg-blue-950 text-blue-400 font-bold">2</span>
+                <span class="text-slate-400">Packs Homomorphic Noise Blinding Vectors</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="flex items-center justify-center w-5 h-5 rounded bg-slate-900 text-slate-500 font-bold">3</span>
+                <span class="text-slate-400">Isolates Structural Compliance Theater Gaps</span>
+              </div>
+            </div>
+
+            <button id="startTourBtn" type="button" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded text-xs transition duration-200 cursor-pointer shadow-lg shadow-blue-600/10">
+              [EXECUTE_SYSTEM_CALIBRATION_TOUR]
             </button>
           </div>
         </div>
       )}
+      <!-- Primary Telemetry Panel Workspace -->
+      <div class="bg-[#07070a] border border-slate-900 rounded-xl p-6 space-y-6 shadow-xl">
+        <div class="space-y-1.5">
+          <h2 class="text-sm font-bold text-white uppercase tracking-wider">🧪 Live Stream Computation Matrix Terminal</h2>
+          <p class="text-slate-500 text-[11px] leading-relaxed">
+            Submits a sample 32-element stream (comprising 12 authentic control indicators and 20 randomized dummy vectors). The computation pipeline isolates localized alignment risks via real-time matrix decomposition.
+          </p>
+        </div>
 
-      <!-- Demo Section -->
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 mb-8 shadow-lg">
-        <h2 class="text-xl font-bold text-white mb-4">🧪 Live Math Verification</h2>
-        <p class="text-slate-400 text-sm mb-6">
-          Click below to submit a test matrix with a <strong>critical failure</strong> (Score 0.0).
-          Observe how <strong>Metric A</strong> remains high while <strong>Metric B</strong> collapses.
-        </p>
-        
-        <button id="testMath" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-lg transition shadow-lg shadow-blue-900/20 cursor-pointer">
-          Run Demo Calculation
-        </button>
+        <div class="flex flex-wrap gap-3">
+          <button id="testMath" type="button" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-5 rounded text-xs transition duration-150 tracking-wide shadow-md shadow-blue-600/10 cursor-pointer">
+            [RUN_BLIND_TELEMETRY_CALCULATION]
+          </button>
+          <button id="injectZeroBtn" type="button" class="bg-slate-900 border border-rose-900/60 hover:bg-rose-950/30 text-rose-400 font-bold py-2.5 px-5 rounded text-xs transition duration-150 tracking-wide cursor-pointer">
+            [INJECT_STRUCTURAL_ZERO_VECTOR]
+          </button>
+        </div>
 
-        <div id="results" class="mt-6 hidden">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-slate-950 p-4 rounded border border-slate-800">
-              <p class="text-xs text-slate-500 uppercase">Metric A (Compliance)</p>
-              <p id="resA" class="text-2xl font-mono text-emerald-400">-</p>
+        <!-- Dynamic Feedback Indicators -->
+        <div id="results" class="hidden space-y-6 pt-4 border-t border-slate-900">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+            <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-1">
+              <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Metric A // Compliance Posture Sum</p>
+              <p id="resA" class="text-xl font-bold text-slate-100 font-mono">-</p>
             </div>
-            <div class="bg-slate-950 p-4 rounded border border-slate-800">
-              <p class="text-xs text-slate-500 uppercase">Metric B (Integrity)</p>
-              <p id="resB" class="text-2xl font-mono text-red-400">-</p>
+            <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-1">
+              <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Metric B // Real Operational Integrity</p>
+              <p id="resB" class="text-xl font-bold font-mono transition-colors duration-200">-</p>
             </div>
-            <div class="bg-slate-950 p-4 rounded border border-slate-800">
-              <p class="text-xs text-slate-500 uppercase">Status</p>
-              <p id="resStatus" class="text-sm font-bold text-white uppercase">-</p>
+            <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-1">
+              <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Operational Security Status</p>
+              <p id="resStatus" class="text-[11px] font-bold font-mono uppercase tracking-wider transition-colors duration-200">-</p>
             </div>
           </div>
-          
+
+          <!-- Advanced Side-Channel Threat Warnings Display Indicator -->
+          <div id="theaterAlarm" class="hidden p-4 bg-rose-950/20 border border-rose-900/50 rounded text-rose-400 text-[11px] space-y-1">
+            <p class="font-bold">// CRITICAL COMPLIANCE THEATER DELTA DETECTED</p>
+            <p class="text-rose-500/90">Formal corporate checkmarks remain exceptionally high, but the live integrity index indicates acute single-point failure exposure.</p>
+          </div>
+
           { (user.role === 'engineer' || user.role === 'admin') && (
-            <div class="mt-4 bg-slate-950 p-4 rounded border border-slate-800">
-              <p class="text-xs text-slate-500 uppercase mb-2">Row Validations (Engineer View)</p>
-              <pre id="resRows" class="text-xs font-mono text-slate-300 overflow-x-auto">-</pre>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <!-- Structural Decomposition Outputs View -->
+              <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-2">
+                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Spectral Topology Analytics (Engineer View)</p>
+                <div class="text-[11px] space-y-1 text-slate-400 font-mono">
+                  <div>Chaos Index Penalty : <span id="specChaos" class="text-white font-bold">-</span></div>
+                  <div>Max Eigenvalue Peak : <span id="specEigen" class="text-white">-</span></div>
+                  <div>Exploit Alignment   : <span id="specResonance" class="font-bold">-</span></div>
+                </div>
+              </div>
+
+              <!-- Raw Stream Asset Array Map Payload Inspector -->
+              <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-2">
+                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Blinded Homomorphic Stream Payload</p>
+                <pre id="resRows" class="text-[10px] font-mono text-slate-400 max-h-[140px] overflow-y-auto bg-black/40 p-2 border border-slate-900 rounded select-all">-</pre>
+              </div>
             </div>
           )}
         </div>
       </div>
-
     </div>
 
+    <!-- Hidden audio alerts block element layer used to execute dynamic network alarms -->
+    <audio id="klaxonAudio" src="https://mixkit.co" preload="auto"></audio>
     <script>
-      // Fix #3: Reconstructed routing to target dynamic canonical endpoints natively 
       const apiEndpoint = `${window.location.origin}/api/v1/compute`;
 
-      // FIX #4: Setup clean programmatic Event Listener for the Onboarding Tour Button
+      // Helper function to dynamically generate a randomized 32-node test payload stream
+      function generateMockHomomorphicStream(hasFailure = false) {
+        const stream = [];
+        const weights = [0.4, 0.3, 0.3];
+        const priorities = [0.4, 0.3, 0.2, 0.1];
+
+        // 1. Inject the baseline 12 real capability matrix array nodes
+        for (let i = 0; i < 4; i++) {
+          for (let j = 0; j < 3; j++) {
+            // If hasFailure is activated, inject a catastrophic 0.0 value
+            const baseValue = (hasFailure && i === 2 && j === 1) ? 0.00 : 0.95;
+            stream.push({
+              maskedValue: baseValue,
+              evaluationWeight: weights[j],
+              capabilityPriority: priorities[i],
+              lastTelemetryHeartbeat: Math.floor(Date.now() / 1000)
+            });
+          }
+        }
+
+        // 2. Pad stream out to 32 items with pure mathematical dummy noise data
+        while (stream.length < 32) {
+          stream.push({
+            maskedValue: Math.random(),
+            evaluationWeight: 0.0,
+            capabilityPriority: 0.0,
+            lastTelemetryHeartbeat: Math.floor(Date.now() / 1000)
+          });
+        }
+
+        // 3. Shuffle elements cleanly before transmission over open wire channels
+        return stream.sort(() => Math.random() - 0.5);
+      }
+
+      // Dynamic onboarding modal driver hooks configuration
       const tourBtn = document.getElementById('startTourBtn');
       if (tourBtn) {
         tourBtn.addEventListener('click', () => {
-          // Trigger the compute button automatically
           document.getElementById('testMath')?.click();
-          
-          // Set cookie to hide modal next time
-          document.cookie = "ssii_onboard_complete=true; path=/; max-age=31536000; SameSite=Strict";
-          
-          // Close modal
+          document.cookie = "ssii_onboard_complete=true; path=/; max-age=31536000; SameSite=Strict; Secure";
           document.getElementById('onboarding-modal')?.classList.add('hidden');
         });
       }
 
-      // Demo Calculation Logic
-      document.getElementById('testMath')?.addEventListener('click', async () => {
-        const btn = document.getElementById('testMath') as HTMLButtonElement;
+      // Shared pipeline submission execution loop
+      async function submitTelemetryStream(hasFailure: boolean) {
+        const testBtn = document.getElementById('testMath') as HTMLButtonElement;
+        const zeroBtn = document.getElementById('injectZeroBtn') as HTMLButtonElement;
         const results = document.getElementById('results');
-        
-        if (!btn || !results) return;
+        const theaterAlarm = document.getElementById('theaterAlarm');
+        const klaxon = document.getElementById('klaxonAudio') as HTMLAudioElement;
 
-        btn.disabled = true;
-        btn.innerText = "Computing...";
+        if (!testBtn || !results) return;
+
+        testBtn.disabled = true;
+        zeroBtn.disabled = true;
+        const originalText = testBtn.innerText;
+        testBtn.innerText = "[TRANSMITTING_BLINDED_STREAM...]";
         results.classList.add('hidden');
+        if (theaterAlarm) theaterAlarm.classList.add('hidden');
 
         try {
+          // Pass the randomized noise payload list directly into your system loop processing parameters
+          const mockStreamData = generateMockHomomorphicStream(hasFailure);
+
           const response = await fetch(apiEndpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              matrix: [
-                [0.95, 0.90, 0.95],
-                [0.90, 0.95, 0.90],
-                [0.95, 0.90, 0.00], // Critical Failure
-                [0.90, 0.90, 0.95]
-              ]
+              paddedStream: mockStreamData,
+              threatIntelVector: [0.0, hasFailure ? 0.90 : 0.0, 0.0]
             })
           });
 
-          if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+          if (!response.ok) throw new Error(`NETWORK_HTTP_ERROR: ${response.status}`);
           const data = await response.json();
 
-          document.getElementById('resA')!.innerText = (data.metric_a_compliance * 100).toFixed(1) + '%';
-          document.getElementById('resB')!.innerText = (data.metric_b_integrity * 100).toFixed(1) + '%';
-          document.getElementById('resStatus')!.innerText = data.status;
-          
-          // FIX #5: Added an existential null-check constraint to prevent JS crashes 
-          // when non-engineer users hide the target container block element
+          const scoreA = data.metric_a_compliance ?? 0;
+          const scoreB = data.metric_b_integrity ?? 0;
+
+          const resA = document.getElementById('resA');
+          const resB = document.getElementById('resB');
+          const statusText = document.getElementById('resStatus');
+
+          if (resA) resA.innerText = (scoreA * 100).toFixed(2) + '%';
+          if (resB) {
+            resB.innerText = (scoreB * 100).toFixed(2) + '%';
+            resB.className = scoreB < 0.20 ? "text-xl font-bold font-mono text-rose-500" : "text-xl font-bold font-mono text-emerald-400";
+          }
+
+          if (statusText) {
+            statusText.innerText = data.status;
+            statusText.className = scoreB < 0.20 ? "text-[11px] font-bold font-mono uppercase tracking-wider text-rose-500" : "text-[11px] font-bold font-mono uppercase tracking-wider text-emerald-400";
+          }
+
+          // Trigger theater warning alarms if the compliance metrics mask high risks
+          const gapDelta = scoreA - scoreB;
+          if (gapDelta > 0.35 && theaterAlarm) {
+            theaterAlarm.classList.remove('hidden');
+            if (klaxon) {
+              klaxon.volume = 0.20;
+              klaxon.play().catch(() => {/* Handle browser media block overrides */});
+            }
+          }
+
+          // Populate engineering diagnostics panel arrays if requested by authorized roles
+          const specChaos = document.getElementById('specChaos');
+          const specEigen = document.getElementById('specEigen');
+          const specResonance = document.getElementById('specResonance');
           const rowsDisplay = document.getElementById('resRows');
-          if (rowsDisplay && data.row_validations) {
-            rowsDisplay.innerText = JSON.stringify(data.row_validations, null, 2);
+
+          if (data.spectral_analysis) {
+            if (specChaos) specChaos.innerText = Number(data.spectral_analysis.chaos_index_penalty).toFixed(5);
+            if (specEigen) specEigen.innerText = Number(data.spectral_analysis.principal_eigenvalue).toFixed(5);
+            if (specResonance) {
+              specResonance.innerText = data.spectral_analysis.resonance_exploit_chain_detected ? "POSITIVE // EXPLOIT PATH ALIGNED" : "NEGATIVE // STABLE";
+              specResonance.className = data.spectral_analysis.resonance_exploit_chain_detected ? "text-rose-500 font-bold" : "text-emerald-400 font-bold";
+            }
+          }
+
+          if (rowsDisplay) {
+            rowsDisplay.innerText = JSON.stringify(mockStreamData.map(node => ({
+              maskedValue: Number(node.maskedValue.toFixed(4)),
+              evaluationWeight: node.evaluationWeight,
+              capabilityPriority: node.capabilityPriority
+            })), null, 2);
           }
 
           results.classList.remove('hidden');
         } catch (err) {
-          alert('Error running calculation: ' + err);
+          alert('System evaluation transmission breakdown: ' + err);
         } finally {
-          btn.disabled = false;
-          btn.innerText = "Run Demo Calculation";
+          testBtn.disabled = false;
+          zeroBtn.disabled = false;
+          testBtn.innerText = originalText;
         }
-      });
-    </script>
+      }
+
+      // Event Configuration Triggers
+      document.getElementById('testMath')?.addEventListener('click', () => submitTelemetryStream(false));
+      document.getElementById('injectZeroBtn')?.addEventListener('click', () => submitTelemetryStream(true));
+    });
+  </script>
   </body>
 </html>
