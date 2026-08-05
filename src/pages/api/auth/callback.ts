@@ -163,24 +163,19 @@ export const GET: APIRoute = async (context) => {
     }
 
     // 7. FIX: Manual Set-Cookie Headers (Critical for Cloudflare Redirects)
+        // 7. FIX: Manual Set-Cookie Headers (Atomic Redirect)
     const responseHeaders = new Headers();
 
-    // Clear state cookie
+    // A. Clear the state cookie
     responseHeaders.append('Set-Cookie', 'oidc_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
 
-    // Set session token cookie
+    // B. Set the session token cookie (CRITICAL: Must be same response as Location)
     responseHeaders.append('Set-Cookie', `aim_session_token=${idToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`);
 
-    // Redirect to dashboard
+    // C. Redirect to your dashboard
     responseHeaders.append('Location', '/integrity-portal');
 
     return new Response(null, { 
       status: 302, 
       headers: responseHeaders 
-    });
-
-  } catch (error) {
-    console.error('[VoidMetric Auth Exception] Crash caught inside callback execution channel:', error);
-    return new Response(`Internal Server Error`, { status: 500 });
-  }
-};   
+    });   
