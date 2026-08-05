@@ -1,4 +1,5 @@
 // src/pages/api/register.ts
+console.log('=== REGISTER API HIT ===');   
 export const prerender = false;
 import type { APIRoute, APIContext } from 'astro';
 import { getIdPConfig } from '../../config/tenants';
