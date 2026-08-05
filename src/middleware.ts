@@ -1,14 +1,16 @@
 // src/middleware.ts
 import { defineMiddleware } from 'astro:middleware';
-// Importing 'jose' is fine, it's universal.
-import { jwtVerify, createRemoteJWKSet } from 'jose'; 
+import { jwtVerify, createRemoteJWKSet } from 'jose';
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  // DYNAMIC IMPORT: Move cloudflare:workers import inside the function
-  // This prevents the build process from trying to resolve it during static generation
+  // FIX: Dynamic import prevents Node.js build process from failing 
+  // when prerendering static pages like about.astro
   const { env } = await import('cloudflare:workers');
-  
+
   const { request, locals } = context;
+  const url = new URL(request.url);
+
+  // 1. Extract the ID Token from the 'aim_session_token' cookie
   const cookies = request.headers.get('Cookie') || '';
   const sessionCookie = cookies
     .split(';')
@@ -27,10 +29,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const audience = env.ENTRA_CLIENT_ID;
 
     if (!issuer || !jwksUri || !audience) {
+      console.error('Middleware: Missing Entra ID environment variables');
       locals.user = null;
       return next();
     }
 
+    // 2. Verify the JWT Signature using JWKS
     const JWKS = createRemoteJWKSet(new URL(jwksUri));
     
     const { payload } = await jwtVerify(sessionCookie, JWKS, {
@@ -39,11 +43,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
       algorithms: ['RS256', 'RS384', 'RS512'],
     });
 
+    // 3. Attach user data to locals
     locals.user = {
       email: payload.email,
       name: payload.name,
       oid: payload.oid,
       role: payload.role || (payload.roles ? (Array.isArray(payload.roles) ? payload.roles[0] : payload.roles) : 'user'),
+      ...payload 
     };
 
   } catch (error) {
