@@ -20,10 +20,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
     cleanPath = cleanPath.slice(0, -1);
   }
 
-  // 2. Public Routes
+  // 2. Public Routes & CRITICAL Auth Callback Exclusion
   const publicRoutes = ['/', '/login', '/architecture', '/onboarding'];
+  
+  // EXPLICITLY EXCLUDE THE CALLBACK ROUTE
+  // This MUST match your Entra ID Redirect URI path exactly to prevent loop
+  const isAuthCallback = 
+    url.pathname === '/api/auth/callback' || 
+    url.pathname.startsWith('/api/auth/');
 
-  if (url.pathname.startsWith('/api/auth') || publicRoutes.includes(cleanPath)) {
+  if (isAuthCallback || publicRoutes.includes(cleanPath)) {
     return next();
   }
 
@@ -32,7 +38,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   if (!sessionToken || !sessionToken.value) {
     locals.user = null;
-    // FIX: Manual Response to prevent cookie drop
+    // FIX: Manual Response to prevent cookie drop issues in Workers
     const headers = new Headers();
     headers.append('Location', '/?error=unauthenticated_session_gateway');
     return new Response(null, { status: 302, headers });
