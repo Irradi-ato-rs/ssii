@@ -1,6 +1,12 @@
 ---
 // src/pages/login.astro
 export const prerender = false;
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Footer from '../components/Footer.astro'; 
+---
+
+<BaseLayout title="VoidMetric | Sovereign Systemic Integrity Intelligence">
+  <main class="w-full max-w-2xl mx-auto px-4 py-16 text-left text-slate-300 font-mono text-xs leading-relaxed selection:bg-slate-800">
 
 // Clear any existing session remnants before initializing a fresh handshake
 Astro.cookies.delete('aim_session_token', { path: '/' });
@@ -54,3 +60,5 @@ Astro.cookies.delete('oidc_state', { path: '/' });
     </div>
   </body>
 </html>
+<Footer />
+</BaseLayout>
