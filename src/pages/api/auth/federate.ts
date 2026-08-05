@@ -7,8 +7,8 @@ interface DynamicIdPConfig {
   clientSecretEnv: string;
   tokenEndpoint: string;
   jwksUri: string;
-  authorizationEndpoint?: string; // Optional: Explicitly declared endpoint overriding
-  idpProviderType?: 'entra' | 'okta'; // Explicit provider flag
+  authorizationEndpoint?: string;
+  idpProviderType?: 'entra' | 'okta';
 }
 
 export const POST: APIRoute = async (context) => {
@@ -24,8 +24,9 @@ export const POST: APIRoute = async (context) => {
     const emailParts = email.split('@');
     const domain = emailParts[emailParts.length - 1].toLowerCase();
 
-    // 1. Resolve Dynamic Vault Directory Bindings
-    const runtimeEnv = locals.runtime?.env || (globalThis as any).process?.env;
+    // 1. EXTRACT ENVIRONMENT CONTEXT WITH EXTENSIVE FALLBACK CORES
+    // Combines Astro request locals, process frames, and global context lookups
+    const runtimeEnv = locals.runtime?.env || (globalThis as any).process?.env || globalThis;
     const tenantDirectory = runtimeEnv?.VM_TENANT_DIRECTORY;
 
     if (!tenantDirectory) {
@@ -41,14 +42,23 @@ export const POST: APIRoute = async (context) => {
     }
     const tenantConfig = JSON.parse(tenantConfigRaw) as DynamicIdPConfig;
 
-    // Extract the Client ID key name mapping from your hidden environment container variables
-    const resolvedClientId = runtimeEnv?.[tenantConfig.clientIdEnv]?.trim();
+    // 3. ULTRA-SAFE SECRET RESOLUTION ROUTINE
+    // Loops across all potential variable containers to safely parse hidden secret strings
+    const targetKeyName = tenantConfig.clientIdEnv;
+    let rawClientId = runtimeEnv?.[targetKeyName];
+
+    if (!rawClientId && (context as any).locals?.runtime?.platform?.env) {
+      rawClientId = (context as any).locals.runtime.platform.env[targetKeyName];
+    }
+    
+    const resolvedClientId = rawClientId?.trim();
+
     if (!resolvedClientId) {
-      console.error(`[VoidMetric Federation Gateway] Audience key unpopulated in environment: ${tenantConfig.clientIdEnv}`);
-      return new Response(null, { status: 302, headers: { Location: '/login?error=configuration_fault' } });
+      console.error(`[VoidMetric Federation Gateway Fatal] Secret target unreached inside cloud containers: ${targetKeyName}`);
+      return new Response(null, { status: 302, headers: { Location: `/login?error=configuration_fault_target_${targetKeyName}` } });
     }
 
-    // 3. Cryptographically Obscure State Tokens & Set CSRF Defenses
+    // 4. Cryptographically Obscure State Tokens & Set CSRF Defenses
     const transactionStateToken = btoa(JSON.stringify({ domain, ts: Date.now() }));
 
     // Enforce Cross-Site Request Forgery validation parameters tracking cookie constraints
@@ -60,26 +70,20 @@ export const POST: APIRoute = async (context) => {
       maxAge: 300 // Valid for a 5-minute transaction window
     });
 
-    // 4. CONSTRUCT canonical OID ENDPOINTS WITHOUT PATH COMPOUNDING
+    // 5. CONSTRUCT CANONICAL OID ENDPOINTS
     let targetAuthorizeUrlStr = '';
 
     if (tenantConfig.authorizationEndpoint) {
-      // If a full custom endpoint path is explicitly saved inside KV metadata, prioritize it
       targetAuthorizeUrlStr = tenantConfig.authorizationEndpoint;
     } else if (tenantConfig.idpProviderType === 'entra' || tenantConfig.issuer.includes('microsoftonline.com')) {
-      // Standard Microsoft Entra ID V2.0 formatting path construction
-      // Strips trailing slashes from issuer strings if present
       const cleanIssuer = tenantConfig.issuer.endsWith('/') ? tenantConfig.issuer.slice(0, -1) : tenantConfig.issuer;
-      
       if (cleanIssuer.endsWith('/v2.0')) {
-        // Transforms base profile paths safely into authorization targets
         const issuerBase = cleanIssuer.slice(0, -5); 
         targetAuthorizeUrlStr = `${issuerBase}/oauth2/v2.0/authorize`;
       } else {
         targetAuthorizeUrlStr = `${cleanIssuer}/oauth2/v2.0/authorize`;
       }
     } else {
-      // Standard Okta Core API OIDC template endpoint structure mapping fallback
       const cleanIssuer = tenantConfig.issuer.endsWith('/') ? tenantConfig.issuer.slice(0, -1) : tenantConfig.issuer;
       targetAuthorizeUrlStr = `${cleanIssuer}/v1/authorize`;
     }
