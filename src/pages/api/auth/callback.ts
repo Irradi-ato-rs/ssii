@@ -1,8 +1,8 @@
 // src/pages/api/auth/callback.ts
 export const prerender = false;
 import type { APIRoute } from 'astro';
-import { jwtVerify, createRemoteJWKSet } from 'jose'; // Edge-native cryptographic verification
-import { env } from 'cloudflare:workers'; // Astro 6 Fix: Direct import
+import { jwtVerify, createRemoteJWKSet } from 'jose';
+import { env } from 'cloudflare:workers';
 
 interface DynamicIdPConfig {
   issuer: string;
@@ -15,7 +15,6 @@ interface DynamicIdPConfig {
 
 export const GET: APIRoute = async (context) => {
   const { request } = context;
-  // Astro 6 Fix: Access KV/Secrets via imported 'env', not locals.runtime
   const tenantDirectory = env.VM_TENANT_DIRECTORY; 
 
   try {
@@ -95,7 +94,11 @@ export const GET: APIRoute = async (context) => {
     const preference = config.authMethod || 'client_secret_basic';
 
     if (preference === 'client_secret_basic') {
-      const secureHeaderCredentials = btoa(`${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`);
+      // FIX: URL-encode credentials before Base64 encoding per RFC 6749
+      const encodedId = encodeURIComponent(clientId);
+      const encodedSecret = encodeURIComponent(clientSecret);
+      const secureHeaderCredentials = btoa(`${encodedId}:${encodedSecret}`);
+      
       headers.set('Authorization', `Basic ${secureHeaderCredentials}`);
       headers.set('Content-Type', 'application/x-www-form-urlencoded');
     } else {
@@ -123,15 +126,14 @@ export const GET: APIRoute = async (context) => {
       return new Response('No ID Token received', { status: 500 });
     }
 
-    // 6. Verify ID Token Signature using JWKS (Asymmetric)
-    // FIX: Use jose + JWKS instead of symmetric iclassed verifyJwt
+    // 6. Verify ID Token Signature using JWKS
     const JWKS = createRemoteJWKSet(new URL(config.jwksUri));
     
     try {
       await jwtVerify(idToken, JWKS, {
         issuer: config.issuer,
         audience: clientId,
-        algorithms: ['RS256', 'RS384', 'RS512'], // Entra ID standard
+        algorithms: ['RS256', 'RS384', 'RS512'],
       });
     } catch (err) {
       console.error('JWT Verification Failed:', err);
