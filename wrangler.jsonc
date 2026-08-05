@@ -1,16 +1,10 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "ssii",
-  "main": "dist/_worker.js/index.js",
   "compatibility_date": "2026-08-03",
   "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "binding": "ASSETS",
-    "directory": "./dist",
-    "not_found_handling": "404-page"
-  },
+  "pages_build_output_dir": "./dist",
   "observability": { "enabled": true },
-  
   "kv_namespaces": [
     {
       "binding": "VM_TENANT_DIRECTORY",

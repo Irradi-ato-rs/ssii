@@ -2,11 +2,11 @@
 
 VoidMetric is a novel dual-math risk orchestration paradigm designed to deconstruct "Compliance Theater" (the watermelon metric effect, where an infrastructure posture appears green and compliant on paper while harboring fatal operational exploits). 
 
-This repository houses the public open-core architecture, built natively using **Astro**, **Tailwind CSS**, and optimized for zero-cold-start execution inside serverless **Cloudflare Pages** and **Cloudflare Workers** environments.
+This repository houses the public open-core architecture, built natively using **Astro**, **Tailwind CSS**, and optimized for zero-cold-start execution inside serverless **Cloudflare Workers & Pages** environments.
 
 ## 1. Architectural Matrix Fabric
 
-VoidMetric operationalizes [Systemic Integrity Axiomatic 4 and Enablers 3](https://irradi.ato.rs/p/systemic-integrity-axiomatic-enablers.html). It maps corporate risk as a static 4 × 3 continuous matrix crossing four **Axiomatic Domains (I)** against three **Systemic Enablers (J)**:
+VoidMetric operationalizes [Systemic Integrity Axiomatic 4 and Enablers 3](https://irradi.ato.rs/p/systemic-integrity-axiomatic-enablers.html). It maps corporate risk as a static 4 × 3 continuous matrix crossing four **Axiomatic Domains (I)** against three **Technical Enablers (J)**:
 
 | Axiomatic Domain (i) | Structures (j=0) | Contents (j=1) | Facilities (j=2) |
 | :--- | :--- | :--- | :--- |
