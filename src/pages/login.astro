@@ -1,82 +1,117 @@
 ---
 // src/pages/login.astro
 export const prerender = false;
+import BaseLayout from '../layouts/BaseLayout.astro';
 import Footer from '../components/Footer.astro';
-
-// NOTE: Do NOT use Astro.cookies.delete() in frontmatter.
-// Cookie clearing is handled by the API route or Middleware.
 ---
 
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VoidMetric Gateway // Initializing SSO Identity Handshake</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
-      body { font-family: 'JetBrains Mono', monospace; }
-    </style>
-  </head>
-  <body class="bg-[#020203] text-slate-400 min-h-screen flex flex-col justify-between selection:bg-slate-800">
+<BaseLayout title="VoidMetric Gateway // SSO Identity Handshake">
+  <main class="w-full max-w-2xl mx-auto px-4 py-16 text-left text-slate-300 font-mono text-xs leading-relaxed selection:bg-slate-800">
     
-    <!-- Main Content Area -->
-    <div class="flex items-center justify-center p-4 flex-grow">
-      <div class="w-full max-w-sm p-6 bg-slate-900/30 border border-slate-900 rounded-xl space-y-6 shadow-2xl">
-        
-        <div class="space-y-1">
-          <div class="flex items-center gap-2">
-            <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-            <h1 class="text-xs font-bold uppercase text-white tracking-widest"><a href="https://ssii.fzoirm.com">VOIDMETRIC</a> Auth Gateway</h1>
-          </div>
-          <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Enterprise Tenant Federation Routing Node</p>
-        </div>
-
-        <!-- Error Banner (Injected via Client-Side Script) -->
-        <div id="error-banner" class="hidden p-2 bg-red-900/20 border border-red-900 text-red-400 text-[10px] uppercase tracking-wider font-bold rounded"></div>
-
-        <!-- Federated Routing Action Request Entry -->
-        <form action="/api/register" method="POST" class="space-y-4">
-          <div class="space-y-1.5">
-            <label for="email" class="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">Enterprise Operator E-mail</label>
-            <input 
-              type="email" 
-              id="email" 
-              name="email" 
-              placeholder="access@fzoirm.com" 
-              required 
-              class="w-full bg-[#020203] border border-slate-800 focus:border-blue-500/50 rounded px-3 py-2 text-xs text-white placeholder-slate-600 font-mono transition duration-150 outline-none"
-            />
-          </div>
-
-          <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded text-[11px] uppercase tracking-wider transition duration-150 cursor-pointer shadow-lg shadow-blue-600/10">
-            [AUTHENTICATE]
-          </button>
-        </form>
-
-        <div class="text-[10px] text-slate-600 border-t border-slate-900 pt-4 leading-relaxed">
-          * VoidMetric uses dynamic zero-persistence routing. Entering your corporate domain triggers an encrypted handshake directly with your pre-provisioned OIDC provider.
-        </div>
+    <header class="mb-12 space-y-2">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+        <h1 class="text-xl font-bold tracking-tight text-white">VOIDMETRIC AUTH GATEWAY</h1>
       </div>
-    </div>
+      <p class="text-slate-400">Sovereign Systemic Integrity Intelligence</p>
+      <p class="text-slate-500">Zero-Persistence. Edge-Native. Dynamic Tenant Federation.</p>
+    </header>
 
-    <!-- Footer Component -->
-    <div class="w-full">
-      <Footer />
-    </div>
+    <!-- Authentication Interface -->
+    <section class="mb-16 space-y-6 pt-8 border-t border-slate-900">
+      <div class="space-y-1">
+        <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— ENTERPRISE OPERATOR IDENTIFICATION</h2>
+        <p class="text-slate-400">
+          Enter your corporate email to initiate the encrypted OIDC handshake. 
+          Your domain determines the identity provider (Entra ID / Okta).
+        </p>
+      </div>
 
-    <script>
-      // Display Error from URL if present (e.g. ?error=unauthenticated_session_gateway)
-      const urlParams = new URLSearchParams(window.location.search);
-      const errorMsg = urlParams.get('error');
-      if (errorMsg) {
-        const banner = document.getElementById('error-banner');
-        if (banner) {
-          banner.innerText = `AUTH FAILURE: ${errorMsg.replace(/_/g, ' ').toUpperCase()}`;
-          banner.classList.remove('hidden');
+      <!-- Error Banner -->
+      <div id="error-banner" class="hidden p-3 bg-red-900/20 border border-red-900 text-red-400 text-[10px] uppercase tracking-wider font-bold rounded"></div>
+
+      <!-- Login Form -->
+      <form id="loginForm" class="space-y-4 max-w-md">
+        <div class="space-y-1.5">
+          <label for="email" class="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">
+            Corporate Email Address
+          </label>
+          <input 
+            type="email" 
+            id="email" 
+            name="email" 
+            placeholder="operator@enterprise.com" 
+            required 
+            class="w-full bg-[#020203] border border-slate-800 focus:border-blue-500/50 rounded px-3 py-2 text-xs text-white placeholder-slate-600 font-mono transition duration-150 outline-none"
+          />
+        </div>
+
+        <button type="submit" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded text-[11px] uppercase tracking-wider transition duration-150 cursor-pointer shadow-lg shadow-blue-600/10">
+          [INITIATE HANDSHAKE]
+        </button>
+      </form>
+
+      <div class="text-[10px] text-slate-600 border-t border-slate-900 pt-4 leading-relaxed">
+        * VoidMetric uses dynamic zero-persistence routing. Entering your corporate domain triggers an encrypted handshake directly with your pre-provisioned OIDC provider. No credentials are stored on this gateway.
+      </div>
+    </section>
+
+    <Footer />
+
+  </main>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const errorBanner = document.getElementById('error-banner');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Handle Form Submission
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      // Reset UI
+      errorBanner.classList.add('hidden');
+      if(submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = '[ESTABLISHING SECURE LINK...]';
+      }
+
+      const formData = new FormData(form);
+      const email = formData.get('email');
+
+      try {
+        const response = await fetch('/api/register', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.redirectUrl) {
+          // SUCCESS: Redirect browser to Identity Provider
+          window.location.href = data.redirectUrl;
+        } else {
+          // ERROR: Show server message
+          throw new Error(data.error || 'Handshake failed');
+        }
+      } catch (err) {
+        if(errorBanner) {
+          errorBanner.innerText = `AUTH FAILURE: ${err.message.toUpperCase()}`;
+          errorBanner.classList.remove('hidden');
+        }
+        if(submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = '[INITIATE HANDSHAKE]';
         }
       }
-    </script>
-  </body>
-</html>   
+    });
+
+    // Handle URL Error Parameters (e.g. ?error=unauthenticated_session_gateway)
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorMsg = urlParams.get('error');
+    if (errorMsg && errorBanner) {
+      errorBanner.innerText = `SESSION FAILURE: ${errorMsg.replace(/_/g, ' ').toUpperCase()}`;
+      errorBanner.classList.remove('hidden');
+    }
+  </script>
+</BaseLayout>   
