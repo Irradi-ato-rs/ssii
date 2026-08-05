@@ -27,7 +27,7 @@ const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
   </head>
   <body class="bg-[#020203] text-slate-300 min-h-screen p-4 md:p-8 selection:bg-slate-800 selection:text-white">
     <div class="max-w-5xl mx-auto space-y-6">
-
+      
       <!-- Top Operational Status Header Panel -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center p-6 bg-slate-900/40 border border-slate-900 rounded-xl gap-4">
         <div>
@@ -52,7 +52,7 @@ const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
               <h2 class="text-base font-bold text-white uppercase tracking-wider">// INITIALIZING NODE ENTRY</h2>
               <p class="text-slate-500 text-[11px]">Systemic Integrity matrix calibration will execute inside volatile memory maps.</p>
             </div>
-
+            
             <div class="space-y-3 text-[11px] border-y border-slate-900 py-4">
               <div class="flex items-center gap-3">
                 <span class="flex items-center justify-center w-5 h-5 rounded bg-emerald-950 text-emerald-400 font-bold">✓</span>
@@ -82,7 +82,7 @@ const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
             Submits a sample 32-element stream (comprising 12 authentic control indicators and 20 randomized dummy vectors). The computation pipeline isolates localized alignment risks via real-time matrix decomposition.
           </p>
         </div>
-
+        
         <div class="flex flex-wrap gap-3">
           <button id="testMath" type="button" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-5 rounded text-xs transition duration-150 tracking-wide shadow-md shadow-blue-600/10 cursor-pointer">
             [RUN_BLIND_TELEMETRY_CALCULATION]
@@ -114,7 +114,7 @@ const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
             <p class="font-bold">// CRITICAL COMPLIANCE THEATER DELTA DETECTED</p>
             <p class="text-rose-500/90">Formal corporate checkmarks remain exceptionally high, but the live integrity index indicates acute single-point failure exposure.</p>
           </div>
-
+          
           { (user.role === 'engineer' || user.role === 'admin') && (
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <!-- Structural Decomposition Outputs View -->
@@ -143,16 +143,13 @@ const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
     <script>
       const apiEndpoint = `${window.location.origin}/api/v1/compute`;
 
-      // Helper function to dynamically generate a randomized 32-node test payload stream
       function generateMockHomomorphicStream(hasFailure = false) {
         const stream = [];
         const weights = [0.4, 0.3, 0.3];
         const priorities = [0.4, 0.3, 0.2, 0.1];
-
-        // 1. Inject the baseline 12 real capability matrix array nodes
+        
         for (let i = 0; i < 4; i++) {
           for (let j = 0; j < 3; j++) {
-            // If hasFailure is activated, inject a catastrophic 0.0 value
             const baseValue = (hasFailure && i === 2 && j === 1) ? 0.00 : 0.95;
             stream.push({
               maskedValue: baseValue,
@@ -162,8 +159,7 @@ const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
             });
           }
         }
-
-        // 2. Pad stream out to 32 items with pure mathematical dummy noise data
+        
         while (stream.length < 32) {
           stream.push({
             maskedValue: Math.random(),
@@ -172,12 +168,10 @@ const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
             lastTelemetryHeartbeat: Math.floor(Date.now() / 1000)
           });
         }
-
-        // 3. Shuffle elements cleanly before transmission over open wire channels
+        
         return stream.sort(() => Math.random() - 0.5);
       }
 
-      // Dynamic onboarding modal driver hooks configuration
       const tourBtn = document.getElementById('startTourBtn');
       if (tourBtn) {
         tourBtn.addEventListener('click', () => {
@@ -187,7 +181,6 @@ const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
         });
       }
 
-      // Shared pipeline submission execution loop
       async function submitTelemetryStream(hasFailure: boolean) {
         const testBtn = document.getElementById('testMath') as HTMLButtonElement;
         const zeroBtn = document.getElementById('injectZeroBtn') as HTMLButtonElement;
@@ -205,13 +198,12 @@ const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
         if (theaterAlarm) theaterAlarm.classList.add('hidden');
 
         try {
-          // Pass the randomized noise payload list directly into your system loop processing parameters
           const mockStreamData = generateMockHomomorphicStream(hasFailure);
 
           const response = await fetch(apiEndpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: JSON.stringify({ 
               paddedStream: mockStreamData,
               threatIntelVector: [0.0, hasFailure ? 0.90 : 0.0, 0.0]
             })
@@ -220,8 +212,8 @@ const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
           if (!response.ok) throw new Error(`NETWORK_HTTP_ERROR: ${response.status}`);
           const data = await response.json();
 
-          const scoreA = data.metric_a_compliance ?? 0;
-          const scoreB = data.metric_b_integrity ?? 0;
+          const scoreA = data.metric_a_compliance ?? data.metricAMaturityIndex ?? 0;
+          const scoreB = data.metric_b_integrity ?? data.metricBLiveIntegrity ?? 0;
 
           const resA = document.getElementById('resA');
           const resB = document.getElementById('resB');
@@ -238,17 +230,15 @@ const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
             statusText.className = scoreB < 0.20 ? "text-[11px] font-bold font-mono uppercase tracking-wider text-rose-500" : "text-[11px] font-bold font-mono uppercase tracking-wider text-emerald-400";
           }
 
-          // Trigger theater warning alarms if the compliance metrics mask high risks
           const gapDelta = scoreA - scoreB;
           if (gapDelta > 0.35 && theaterAlarm) {
             theaterAlarm.classList.remove('hidden');
             if (klaxon) {
               klaxon.volume = 0.20;
-              klaxon.play().catch(() => {/* Handle browser media block overrides */});
+              klaxon.play().catch(() => {});
             }
           }
 
-          // Populate engineering diagnostics panel arrays if requested by authorized roles
           const specChaos = document.getElementById('specChaos');
           const specEigen = document.getElementById('specEigen');
           const specResonance = document.getElementById('specResonance');
@@ -281,10 +271,8 @@ const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
         }
       }
 
-      // Event Configuration Triggers
       document.getElementById('testMath')?.addEventListener('click', () => submitTelemetryStream(false));
       document.getElementById('injectZeroBtn')?.addEventListener('click', () => submitTelemetryStream(true));
-    });
-  </script>
+    </script>
   </body>
 </html>
