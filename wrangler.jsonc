@@ -13,6 +13,10 @@
     {
       "binding": "VM_PROPRIETARY_PARSERS",
       "id": "fa7275bedb434ee8b9f9b82555930827"
+    },
+    {
+      "binding": "SESSION", 
+      "id": "fbdbf19fdf494f388a8c8669c002ce10"
     }
   ]
 }   
