@@ -1,10 +1,19 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "ssii",
-  "compatibility_date": "2026-08-03",
-  "compatibility_flags": ["nodejs_compat"],
-  "pages_build_output_dir": "./dist",
-  "observability": { "enabled": true },
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "compatibility_date": "2026-08-05",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "disable_nodejs_process_v2"
+  ],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "observability": { 
+    "enabled": true 
+  },
   "kv_namespaces": [
     {
       "binding": "VM_TENANT_DIRECTORY",
