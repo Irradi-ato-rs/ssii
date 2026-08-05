@@ -1,56 +1,53 @@
-// src/pages/api/auth/federate.ts
 export const prerender = false;
 import type { APIRoute } from 'astro';
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, cookies, locals }) => {
   try {
     const formData = await request.formData();
     const email = formData.get('email')?.toString().trim();
 
     if (!email || !email.includes('@')) {
-      return new Response(null, { status: 302, headers: { Location: '/login?error=invalid_email' } });
+      return new Response('Invalid or missing email identity parameter', { status: 400 });
     }
 
-    const domain = email.split('@')[1].toLowerCase();
-
-    // 🛡️ GITOPS LOGIC: Only allow domains you have explicitly enabled in Env Vars
-    // Format: PRIVATE_TENANT_{DOMAIN_UPPERCASE}_CLIENT_ID
-    const envVarPrefix = `PRIVATE_TENANT_${domain.replace(/[^a-z0-9]/g, '_').toUpperCase()}`;
-    const clientId = import.meta.env[`${envVarPrefix}_CLIENT_ID`];
-    const provider = import.meta.env[`${envVarPrefix}_PROVIDER`] || 'entra_id';
+    const domain = email.split('@')[1];
     
-    // If no Env Var exists for this domain, reject the login (GitOps Gate)
-    if (!clientId) {
-      console.warn(`Blocked login attempt for unapproved domain: ${domain}`);
-      return new Response(null, { 
-        status: 302, 
-        headers: { Location: '/login?error=unauthorized_domain' } 
-      });
+    // Query dynamic tenants configuration registry inside your hidden Cloudflare storage vault
+    const runtimeEnv = locals.runtime?.env;
+    const tenantDirectory = runtimeEnv?.VM_TENANT_DIRECTORY;
+    
+    if (!tenantDirectory) {
+      return new Response('Infrastructure directory unreached', { status: 500 });
     }
 
-    // Construct URLs dynamically based on provider
-    let authUrl: string;
-    if (provider === 'entra_id') {
-      const tenantId = import.meta.env[`${envVarPrefix}_TENANT_ID`] || 'common';
-      authUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize`;
-    } else {
-      const oktaDomain = import.meta.env[`${envVarPrefix}_OKTA_DOMAIN`];
-      authUrl = `https://${oktaDomain}/oauth2/default/v1/authorize`;
+    const tenantConfigRaw = await tenantDirectory.get(`domain:${domain}`);
+    if (!tenantConfigRaw) {
+      return Response.redirect(`${new URL(request.url).origin}/?error=domain_unrecognized_by_vault`, 302);
     }
+    const tenant = JSON.parse(tenantConfigRaw);
 
-    const redirectUri = new URL(request.url).origin + '/api/auth/callback';
-    const params = new URLSearchParams({
-      client_id: clientId,
-      response_type: 'code',
-      scope: 'openid email profile',
-      redirect_uri: redirectUri,
-      state: domain
+    // Cryptographically obscure transaction metadata parameters 
+    const transactionStateToken = btoa(JSON.stringify({ domain, ts: Date.now() }));
+
+    // Set the tracking validation parameter cookie inside the browser container space
+    cookies.set('oidc_state', transactionStateToken, {
+      path: '/',
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      maxAge: 300 // Valid for a 5-minute authentication window
     });
 
-    return new Response(null, { status: 302, headers: { Location: `${authUrl}?${params.toString()}` } });
+    const redirectUri = `${new URL(request.url).origin}/api/auth/callback`;
+    const authUrl = new URL(tenant.authorizationEndpoint || `${tenant.issuer}/v1/authorize`);
+    authUrl.searchParams.append('client_id', runtimeEnv[tenant.clientIdEnv]?.trim() || '');
+    authUrl.searchParams.append('response_type', 'code');
+    authUrl.searchParams.append('scope', 'openid profile email');
+    authUrl.searchParams.append('redirect_uri', redirectUri);
+    authUrl.searchParams.append('state', transactionStateToken);
 
-  } catch (error) {
-    console.error('SSO Error:', error);
-    return new Response(null, { status: 302, headers: { Location: '/login?error=handshake_failed' } });
+    return Response.redirect(authUrl.toString(), 302);
+  } catch (e) {
+    return new Response('Federation workflow routing fault', { status: 500 });
   }
-};   
+};
