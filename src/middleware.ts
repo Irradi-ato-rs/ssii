@@ -19,7 +19,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (cleanPath.length > 1 && cleanPath.endsWith('/')) {
     cleanPath = cleanPath.slice(0, -1);
   }
-  // 2. HARD ASSET EXCLUSION MATRIX: Short-circuit tracking for files & assets
+
+  // 2. Hard Asset Exclusion Matrix
   const isStaticAsset = 
     url.pathname.startsWith('/_astro') || 
     url.pathname === '/favicon.ico' ||
@@ -31,9 +32,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return next();
   }
 
-  // Define Public Document Routes & API Handlers
+  // Public Document Routes & API Handlers
   const publicRoutes = ['/', '/login', '/architecture', '/onboarding'];
-  
   const isApiRoute = 
     url.pathname === '/api/register' || 
     url.pathname === '/api/auth/callback' || 
@@ -42,16 +42,17 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (isApiRoute || publicRoutes.includes(cleanPath)) {
     return next();
   }
-  // 3. Check Session Boundary
-  const sessionToken = cookies.get('aim_session_token');
 
+  // 3. Extract Session Token
+  const sessionToken = cookies.get('aim_session_token');
   if (!sessionToken || !sessionToken.value) {
     locals.user = null;
-    // FIX: Manual Response to prevent cookie drop issues in Workers
-    const headers = new Headers();
-    headers.append('Location', '/login?error=unauthenticated_session_gateway');
-    return new Response(null, { status: 302, headers });
+    return new Response(null, { 
+      status: 302, 
+      headers: { 'Location': '/login?error=unauthenticated_session_gateway' } 
+    });
   }
+
   try {
     const runtimeEnv = locals.runtime?.env;
     const tenantDirectory = runtimeEnv?.VM_TENANT_DIRECTORY;
@@ -59,43 +60,61 @@ export const onRequest = defineMiddleware(async (context, next) => {
     if (!tenantDirectory) {
       console.error('[VoidMetric Middleware] KV Binding Missing');
       locals.user = null;
-      const headers = new Headers();
-      headers.append('Set-Cookie', 'aim_session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
-      headers.append('Location', '/login?error=infrastructure_environment_fault');
-      return new Response(null, { status: 302, headers });
+      return new Response(null, { 
+        status: 302, 
+        headers: {
+          'Set-Cookie': 'aim_session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
+          'Location': '/login?error=infrastructure_environment_fault'
+        } 
+      });
     }
 
-    // 4. Decode Domain via JWT Payload Envelope
+    // 4. CRYPTOGRAPHIC ISOLATION BOUNDARY
+    // Read the unverified payload strictly to find the directory mapping domain
     const tokenChunks = sessionToken.value.split('.');
-    if (tokenChunks.length !== 3) throw new Error('Malformed token');
+    if (tokenChunks.length !== 3) throw new Error('Malformed token envelope structure');
     
-    const rawEnvelopePayload = JSON.parse(atob(tokenChunks[1]));
-    const userEmailClaim = rawEnvelopePayload.email || rawEnvelopePayload.sub || '';
-    const extractedDomain = userEmailClaim.split('@').pop()?.toLowerCase();
+    // Safely parse inside a try/catch container to block malicious payload crashes
+    let temporaryDomain = '';
+    try {
+      const rawEnvelopePayload = JSON.parse(atob(tokenChunks[1]));
+      const userEmailClaim = rawEnvelopePayload.email || rawEnvelopePayload.sub || '';
+      temporaryDomain = userEmailClaim.split('@').pop()?.toLowerCase() || '';
+    } catch {
+      throw new Error('Invalid token payload serialization');
+    }
 
-    if (!extractedDomain) throw new Error('Missing domain');
+    if (!temporaryDomain) throw new Error('Missing identity provider origin claim');
 
-    // 5. Fetch Dynamic Identity Configuration Key
-    const serializedConfig = await tenantDirectory.get(`domain:${extractedDomain}`);
+    // 5. Fetch Key Vault Signature Configuration
+    const serializedConfig = await tenantDirectory.get(`domain:${temporaryDomain}`);
     if (!serializedConfig) {
-      console.error(`[VoidMetric Middleware] Domain not found: ${extractedDomain}`);
+      console.error(`[VoidMetric Middleware] Unregistered Domain Attempt: ${temporaryDomain}`);
       locals.user = null;
-      const headers = new Headers();
-      headers.append('Set-Cookie', 'aim_session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
-      headers.append('Location', '/login?error=tenant_access_denied');
-      return new Response(null, { status: 302, headers });
+      return new Response(null, { 
+        status: 302, 
+        headers: {
+          'Set-Cookie': 'aim_session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
+          'Location': '/login?error=tenant_access_denied'
+        } 
+      });
     }
     const targetConfig = JSON.parse(serializedConfig) as DynamicIdPConfig;
+
     const resolvedAudienceId = runtimeEnv?.[targetConfig.clientIdEnv]?.trim();
     if (!resolvedAudienceId) {
       locals.user = null;
-      const headers = new Headers();
-      headers.append('Set-Cookie', 'aim_session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
-      headers.append('Location', '/login?error=configuration_runtime_fault');
-      return new Response(null, { status: 302, headers });
+      return new Response(null, { 
+        status: 302, 
+        headers: {
+          'Set-Cookie': 'aim_session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
+          'Location': '/login?error=configuration_runtime_fault'
+        } 
+      });
     }
 
-    // 6. Verify Remote Signature via JWKS Matrix
+    // 6. CRYPTOGRAPHIC ENFORCEMENT LAYER (Signature-First Authorization)
+    // The token is unvalidated until this step passes successfully
     const JWKS = createRemoteJWKSet(new URL(targetConfig.jwksUri));
     const { payload } = await jwtVerify(sessionToken.value, JWKS, {
       issuer: targetConfig.issuer,
@@ -104,7 +123,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
       clockTolerance: '30s'
     });
 
-    // 7. Map Directory Security Roles Natively
+    // 7. IN-FLIGHT EXPIRATION HARD ASSERTION
+    // Prevent stale, replayed, or expired token hijackings at the edge
+    const currentUnixTimestamp = Math.floor(Date.now() / 1000);
+    if (payload.exp && payload.exp < currentUnixTimestamp) {
+      throw new Error('Token payload lifetime validity period expired');
+    }
+
+    // 8. Secure Trusted Role Mapping
+    const validatedEmail = (payload.email || payload.sub || '') as string;
     const directoryGroups = (payload.groups || payload.roles || []) as string[];
     let evaluatedRole: 'admin' | 'executive' | 'engineer' = 'engineer'; 
 
@@ -114,26 +141,26 @@ export const onRequest = defineMiddleware(async (context, next) => {
       evaluatedRole = 'executive';
     }
 
+    // Populate secure runtime context data cleanly
     locals.user = {
-      email: userEmailClaim,
+      email: validatedEmail,
       role: evaluatedRole,
-      tenant: extractedDomain,
+      tenant: temporaryDomain,
       rawClaimsPayload: payload
     };
 
     return next();
 
   } catch (err) {
-    console.error('[VoidMetric Middleware Fault] JWT validation aborted:', (err as Error).message);
+    console.error('[VoidMetric Middleware Boundary Breach] Execution terminated:', (err as Error).message);
     locals.user = null;
-    
-    const responseHeaders = new Headers();
-    responseHeaders.append('Set-Cookie', 'aim_session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
-    responseHeaders.append('Location', '/login?error=session_invalidated_by_middleware');
     
     return new Response(null, { 
       status: 302, 
-      headers: responseHeaders 
+      headers: {
+        'Set-Cookie': 'aim_session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
+        'Location': '/login?error=session_invalidated_by_middleware'
+      } 
     });
   }
 });
