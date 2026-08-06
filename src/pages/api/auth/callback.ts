@@ -56,6 +56,7 @@ export const GET: APIRoute = async (context) => {
     if (!serializedConfig) throw new Error('tenant_access_denied');
     
     const targetConfig = JSON.parse(serializedConfig) as DynamicIdPConfig;
+
     // Whitelist and safely retrieve secure environment variables from the edge runtime execution space
     const targetClientKey = String(targetConfig.clientIdEnv).trim();
     const targetSecretKey = String(targetConfig.clientSecretEnv).trim();
@@ -67,7 +68,14 @@ export const GET: APIRoute = async (context) => {
       throw new Error('configuration_runtime_fault');
     }
 
-    // 4. SERVER-TO-SERVER PROTOCOL EXCHANGE HANDSHAKE (Fetch API)
+    // 4. MULTITENANT ENDPOINT RESOLUTION
+    // Enforce the universal Microsoft Graph organization token exchange matrix to handle multitenant routing paths
+    let cleanTokenEndpoint = String(targetConfig.tokenEndpoint).trim();
+    if (cleanTokenEndpoint.includes('login.microsoftonline.com')) {
+      cleanTokenEndpoint = 'https://microsoftonline.com';
+    }
+
+    // 5. SERVER-TO-SERVER PROTOCOL EXCHANGE HANDSHAKE (Fetch API)
     const tokenRequestPayload = new URLSearchParams({
       client_id: resolvedClientId.trim(),
       client_secret: resolvedClientSecret.trim(),
@@ -77,7 +85,7 @@ export const GET: APIRoute = async (context) => {
       scope: 'openid profile email'
     });
 
-    const tokenResponse = await fetch(targetConfig.tokenEndpoint, {
+    const tokenResponse = await fetch(cleanTokenEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: tokenRequestPayload.toString()

@@ -12,7 +12,7 @@ const urlError = url.searchParams.get('error');
 let translatedError = '';
 if (urlError) {
   if (urlError === 'tenant_access_denied') {
-    translatedError = 'TENANT ACCESS DENIED. IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE TECHNOLOGY ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
+    translatedError = 'TENANT ACCESS DENIED. IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE TECHNOLOGY ADMINISTRATOR TO GET YOUR WORK ACCOUNT ASSIGNED.';
   } else {
     translatedError = `SESSION FAILURE: ${urlError.replace(/[^a-zA-Z0-9_]/g, '').toUpperCase()}`;
   }
@@ -25,7 +25,7 @@ if (urlError) {
     <header class="mb-12 space-y-2">
       <div class="flex items-center gap-2 mb-4">
         <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" aria-hidden="true"></span>
-        <h1 class="text-xl font-bold tracking-tight text-white"><a href="https://fzoirm.com">VOIDMETRIC</a> AUTH GATEWAY</h1>
+        <h1 class="text-xl font-bold tracking-tight text-white"><a href="https://ssii.fzoirm.com">VOIDMETRIC</a> AUTH GATEWAY</h1>
       </div>
       <p class="text-slate-400">Sovereign Systemic Integrity Intelligence</p>
       <p class="text-slate-500">Zero-Persistence. Edge-Native. Dynamic Tenant Federation.</p>
