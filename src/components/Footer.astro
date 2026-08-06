@@ -1,10 +1,10 @@
 ---
 // src/components/Footer.astro
-// Automates the year at compile-time on the server side
 const currentYear = new Date().getFullYear();
 ---
 
 <footer class="border-t border-slate-900 pt-8 text-[10px] text-slate-600 space-y-1 mt-12 w-full text-left font-mono">
-  <p>&#169; {currentYear} VoidMetric. Secure. No data stored. Ever.</p>
-  <p>Sovereign Systemic Integrity Intelligence &#x27C2;</p>
-</footer>
+  <p>&#169;{currentYear} VoidMetric. Secure. No data stored. Ever.</p>
+  <!-- Replaced Up Tack with Diamond Operator for 100% browser compatibility -->
+  <p>Sovereign Systemic Integrity Intelligence ⟢;</p>
+</footer>   
