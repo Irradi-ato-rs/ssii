@@ -19,13 +19,13 @@ export const GET: APIRoute = async (context) => {
   const incomingState = url.searchParams.get('state');
   const oidcError = url.searchParams.get('error');
 
-  // 1. Upstream Error Interception
+  // 1. Upstream Provider Failure Interception
   if (oidcError) {
     console.error(`[VoidMetric Callback] Upstream Provider Aborted: ${oidcError}`);
     return context.redirect(`/login?error=${oidcError}`);
   }
 
-  // 2. HARD CSRF VERIFICATION ENGINE
+  // 2. HARD CSRF VERIFICATION BOUNDARY ASSERTION
   const anchorStateCookie = cookies.get('__Host-oauth_state');
   
   if (!anchorStateCookie || !anchorStateCookie.value || !incomingState || incomingState !== anchorStateCookie.value) {
@@ -33,12 +33,12 @@ export const GET: APIRoute = async (context) => {
     return context.redirect('/login?error=invalid_state');
   }
 
+  // Force instant state cookie eviction to completely destroy reuse vectors
   cookies.delete('__Host-oauth_state', { path: '/' });
 
   if (!incomingCode) {
     return context.redirect('/login?error=malformed_auth_handshake');
   }
-
   try {
     const runtimeEnv = locals.runtime?.env;
     const tenantDirectory = runtimeEnv?.VM_TENANT_DIRECTORY;
@@ -47,10 +47,10 @@ export const GET: APIRoute = async (context) => {
       throw new Error('infrastructure_environment_fault');
     }
 
-    // 3. ABSOLUTE IDENTITY REALM RESOLUTION
+    // 3. TARGET REALM DETERMINATION
+    // Force direct configuration resolution matching your active directory domain key
     const targetedDomainKey = "fzoirm.com";
 
-    // Load Isolated Key-Vault Config Credentials
     const serializedConfig = await tenantDirectory.get(`domain:${targetedDomainKey}`);
     if (!serializedConfig) throw new Error('tenant_access_denied');
     
@@ -65,17 +65,17 @@ export const GET: APIRoute = async (context) => {
     if (!resolvedClientId || !resolvedClientSecret) {
       throw new Error('configuration_runtime_fault');
     }
-
-    // 4. Try the original tenant-specific endpoint path first to evaluate multitenant cross-trust
+    // 4. SECURE PROTOCOL TRANSACTION ENFORCEMENT
+    // Establish literal parameter strings to bypass variable environmental data drifts
     const cleanTokenEndpoint = String(targetConfig.tokenEndpoint).trim();
+    const rigidCallbackString = "https://fzoirm.com";
 
-    // 5. SERVER-TO-SERVER PROTOCOL EXCHANGE HANDSHAKE
     const tokenRequestPayload = new URLSearchParams({
       client_id: resolvedClientId.trim(),
       client_secret: resolvedClientSecret.trim(),
       grant_type: 'authorization_code',
       code: incomingCode,
-      redirect_uri: 'https://fzoirm.com',
+      redirect_uri: rigidCallbackString,
       scope: 'openid profile email'
     });
 
@@ -89,7 +89,6 @@ export const GET: APIRoute = async (context) => {
       const rawFaultLog = await tokenResponse.text();
       console.error(`[VoidMetric Token Exchange Fault] Payload: ${rawFaultLog}`);
       
-      // DIAGNOSTIC EXTRACTION LAYER: Parse out Microsoft's exact error token
       let rawErrorToken = 'session_negotiation_failed';
       try {
         const parsedFault = JSON.parse(rawFaultLog);
@@ -109,8 +108,7 @@ export const GET: APIRoute = async (context) => {
     if (!validatedIdentityToken) {
       throw new Error('missing_cryptographic_claims');
     }
-
-    // 6. ANCHOR PRODUCTION SESSION COOKIE
+    // 5. ANCHOR PRODUCTION SESSION COOKIE Context Entry
     cookies.set('aim_session_token', validatedIdentityToken, {
       path: '/',
       httpOnly: true,
@@ -124,7 +122,6 @@ export const GET: APIRoute = async (context) => {
   } catch (err: any) {
     console.error('[VoidMetric Callback Core Failure] Pipeline halted:', err.message);
     
-    // Safely map and transmit the real error string down to the user login banner layout interface
     const cleanMappedError = err.message
       .replace(/[^a-zA-Z0-9_ ]/g, '')
       .replace(/\s+/g, '_')
