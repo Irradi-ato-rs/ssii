@@ -70,10 +70,31 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
 
     // 4. CONSTRUCT THE OUTBOUND FEDERATION PATH
     // Build the clean target redirection address matching Microsoft Entra ID specifications
-    const authorizationTarget = new URL(`${targetConfig.issuer}/oauth2/v2.0/authorize`);
+    //const authorizationTarget = new URL(`${targetConfig.issuer}/oauth2/v2.0/authorize`);
+    //authorizationTarget.searchParams.set('client_id', resolvedClientId);
+    //authorizationTarget.searchParams.set('response_type', 'code');
+    //authorizationTarget.searchParams.set('redirect_uri', 'https://fzoirm.com');
+    //authorizationTarget.searchParams.set('response_mode', 'query');
+    //authorizationTarget.searchParams.set('scope', 'openid profile email');
+    //authorizationTarget.searchParams.set('state', secureStateValue);
+    
+    // 4. CONSTRUCT THE OUTBOUND FEDERATION PATH (Hardened against KV format drifts)
+    // Extract only the domain and Tenant ID from the issuer to eliminate stacked "/v2.0" path segments
+    let cleanBaseIssuer = String(targetConfig.issuer).trim();
+    if (cleanBaseIssuer.endsWith('/v2.0')) {
+      cleanBaseIssuer = cleanBaseIssuer.replace('/v2.0', '');
+    }
+    if (cleanBaseIssuer.endsWith('/')) {
+      cleanBaseIssuer = cleanBaseIssuer.slice(0, -1);
+    }
+
+    // Enforce the standard OIDC endpoint path cleanly
+    const authorizationTarget = new URL(`${cleanBaseIssuer}/oauth2/v2.0/authorize`);
     authorizationTarget.searchParams.set('client_id', resolvedClientId);
     authorizationTarget.searchParams.set('response_type', 'code');
-    authorizationTarget.searchParams.set('redirect_uri', 'https://fzoirm.com');
+    
+    // EXPLICIT SUBDOMAIN ENFORCEMENT — Matches Azure App Registration Whitelist / NO APEX POLICY
+    authorizationTarget.searchParams.set('redirect_uri', 'https://ssii.fzoirm.com');
     authorizationTarget.searchParams.set('response_mode', 'query');
     authorizationTarget.searchParams.set('scope', 'openid profile email');
     authorizationTarget.searchParams.set('state', secureStateValue);
