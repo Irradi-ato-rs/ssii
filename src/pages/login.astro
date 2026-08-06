@@ -5,13 +5,26 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Footer from '../components/Footer.astro';
 
 // 1. Catch the error passed back from Microsoft on the server side
+//const url = new URL(Astro.request.url);
+//const urlError = url.searchParams.get('error');
+
+//let translatedError = '';
+//if (urlError) {
+//  if (urlError === 'tenant_access_denied') {
+//    translatedError = 'TENANT ACCESS DENIED — IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE IT ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
+//  } else {
+//    translatedError = `SESSION FAILURE: ${urlError.replace(/_/g, ' ').toUpperCase()}`;
+//  }
+//}
+// Check for server-side error parameter passed from the redirect flow
 const url = new URL(Astro.request.url);
 const urlError = url.searchParams.get('error');
 
+// Map raw technical errors to cleaner enterprise operational messaging
 let translatedError = '';
 if (urlError) {
   if (urlError === 'tenant_access_denied') {
-    translatedError = 'TENANT ACCESS DENIED — IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE IT ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
+    translatedError = 'TENANT ACCESS DENIED -- IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE IT ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
   } else {
     translatedError = `SESSION FAILURE: ${urlError.replace(/_/g, ' ').toUpperCase()}`;
   }
