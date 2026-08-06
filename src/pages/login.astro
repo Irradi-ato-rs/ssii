@@ -4,11 +4,9 @@ export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Footer from '../components/Footer.astro';
 
-// Check for server-side error parameter passed from the redirect flow
 const url = new URL(Astro.request.url);
 const urlError = url.searchParams.get('error');
 
-// Map raw technical errors using standard keyboard characters to avoid edge mojibake shifts
 let translatedError = '';
 if (urlError) {
   if (urlError === 'tenant_access_denied') {
@@ -19,38 +17,33 @@ if (urlError) {
 }
 ---
 
+
   <main class="w-full max-w-2xl mx-auto px-4 py-16 text-left text-slate-300 font-mono text-xs leading-relaxed selection:bg-slate-800">
     
     <header class="mb-12 space-y-2">
       <div class="flex items-center gap-2 mb-4">
         <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" aria-hidden="true"></span>
-        <h1 class="text-xl font-bold tracking-tight text-white"><a href="https://ssii.fzoirm.com">VOIDMETRIC</a> AUTH GATEWAY</h1>
+        <h1 class="text-xl font-bold tracking-tight text-white"><a href="https://fzoirm.com">VOIDMETRIC</a> AUTH GATEWAY</h1>
       </div>
       <p class="text-slate-400">Sovereign Systemic Integrity Intelligence</p>
       <p class="text-slate-500">Zero-Persistence. Edge-Native. Dynamic Tenant Federation.</p>
     </header>
 
-    <!-- Authentication Interface Container Matrix -->
     <section class="mb-16 space-y-6 pt-8 border-t border-slate-900">
       <div class="space-y-1">
         <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">-- ENTERPRISE OPERATOR IDENTIFICATION</h2>
-        <p class="text-slate-400">
-          Enter your corporate email to initiate the encrypted OIDC handshake. 
-          Your domain determines the identity provider (Entra ID / Okta).
-        </p>
+        <p class="text-slate-400">Enter your corporate email to initiate the encrypted OIDC handshake.</p>
       </div>
 
       <!-- Hardened Error Banner Container -->
-      <div 
-        id="error-banner" 
-        role="alert"
-        class={`p-3 bg-red-900/20 border border-red-900 text-red-400 text-[10px] uppercase tracking-wider font-bold rounded ${translatedError ? '' : 'hidden'}`}
-      >
-        {translatedError}
-      </div>
+      {translatedError && (
+        <div id="error-banner" role="alert" class="p-3 bg-red-900/20 border border-red-900 text-red-400 text-[10px] uppercase tracking-wider font-bold rounded">
+          {translatedError}
+        </div>
+      )}
 
-      <!-- HARDENED HTML SHELL: Notice type="button" and onsubmit to completely block default browser POST steps -->
-      <form id="loginForm" class="space-y-4 max-w-md" onsubmit="return false;">
+      <!-- Standard HTML Form Architecture -->
+      <form id="loginForm" class="space-y-4 max-w-md">
         <div class="space-y-1.5">
           <label for="email" class="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">
             Corporate Email Address
@@ -66,114 +59,52 @@ if (urlError) {
           />
         </div>
 
-        <button type="button" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold py-2.5 rounded text-[11px] uppercase tracking-wider transition duration-150 cursor-pointer disabled:cursor-not-allowed shadow-lg shadow-blue-600/10">
+        <button type="submit" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded text-[11px] uppercase tracking-wider transition duration-150 cursor-pointer shadow-lg shadow-blue-600/10">
           [INITIATE HANDSHAKE]
         </button>
       </form>
-
-      <div class="text-[10px] text-slate-600 border-t border-slate-900 pt-4 leading-relaxed">
-        * VoidMetric uses dynamic zero-persistence routing. Entering your corporate domain triggers an encrypted handshake directly with your pre-provisioned OIDC provider. No credentials are stored on this gateway.
-      </div>
     </section>
 
     <Footer />
   </main>
+
   <script>
-    const loginForm = document.getElementById('loginForm') as HTMLFormElement;
-    const errorBanner = document.getElementById('error-banner') as HTMLDivElement;
+    const form = document.getElementById('loginForm') as HTMLFormElement;
     const submitBtn = document.getElementById('submitBtn') as HTMLButtonElement;
-    const emailInput = document.getElementById('email') as HTMLInputElement;
-    const REQUEST_TIMEOUT_MS = 8000;
 
-    // DIRECT INTERCEPTION PROCESSOR: Binds exclusively to the button instance to stop browser bubbles
-    submitBtn?.addEventListener('click', async (e) => {
+    form?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      e.stopPropagation();
-
-      const targetEmailValue = emailInput?.value?.trim();
-      if (!targetEmailValue || !targetEmailValue.includes('@')) {
-        if (errorBanner) {
-          errorBanner.innerText = "VALIDATION FAILURE: ENTER A VALID CORPORATE EMAIL VECTOR String";
-          errorBanner.classList.remove('hidden');
-        }
-        return;
-      }
       
-      if (errorBanner) errorBanner.classList.add('hidden');
       if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.innerText = '[ESTABLISHING SECURE LINK...]';
       }
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
       try {
-        const customPayloadData = new FormData();
-        customPayloadData.append('email', targetEmailValue);
-        
-        // Execute dynamic background dispatch securely to the edge worker route relative path
         const response = await fetch('/api/register', {
           method: 'POST',
-          body: customPayloadData,
-          signal: controller.signal,
-          headers: {
-            'Accept': 'application/json'
-          }
+          body: new FormData(form)
         });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Handshake negotiation rejected by edge');
-        }
 
         const data = await response.json();
 
-        // Enforce hard relocation matrix using clean parameter replacements
-        if (data.success && data.redirectUrl) {
-          window.location.replace(data.redirectUrl);
+        if (response.ok && data.redirectUrl) {
+          // Absolute redirect handoff
+          window.location.href = data.redirectUrl;
         } else {
-          throw new Error('missing_federation_target_url');
-        }
-
-      } catch (err: any) {
-        clearTimeout(timeoutId);
-        let errorText = 'AUTH FAILURE: HANDSHAKE REJECTED';
-        
-        if (err.name === 'AbortError') {
-          errorText = 'EDGE TIMEOUT: CONNECTION TO SECURE GATEWAY TIMED OUT. RETRY IMPERATIVE.';
-        } else if (err.message) {
-          const exactMsg = err.message.toUpperCase().replace(/[^a-zA-Z0-9_ ]/g, '');
-          if (exactMsg === 'TENANT_ACCESS_DENIED') {
-            errorText = 'TENANT ACCESS DENIED -- IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE IT ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
-          } else {
-            errorText = `AUTH FAILURE: ${exactMsg}`;
+          alert(`AUTH FAILURE: ${data.error || 'Handshake rejected by gateway'}`);
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerText = '[INITIATE HANDSHAKE]';
           }
         }
-
-        if (errorBanner) {
-          errorBanner.innerText = errorText;
-          errorBanner.classList.remove('hidden');
-        }
+      } catch (err) {
+        alert('NETWORK ERROR: Secure gateway unreachable. Retry imperative.');
         if (submitBtn) {
           submitBtn.disabled = false;
           submitBtn.innerText = '[INITIATE HANDSHAKE]';
         }
       }
     });
-
-    // Handle URL Parameter Catch Layer
-    const urlParams = new URLSearchParams(window.location.search);
-    const errorMsg = urlParams.get('error');
-    if (errorMsg && errorBanner) {
-      if (errorMsg === 'tenant_access_denied') {
-        errorBanner.innerText = 'TENANT ACCESS DENIED -- IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE IT ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
-      } else {
-        errorBanner.innerText = `SESSION FAILURE: ${errorMsg.replace(/[^a-zA-Z0-9_ ]/g, '').toUpperCase()}`;
-      }
-      errorBanner.classList.remove('hidden');
-    }
   </script>
 </BaseLayout>
