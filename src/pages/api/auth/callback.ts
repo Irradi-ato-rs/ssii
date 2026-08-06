@@ -1,7 +1,8 @@
 // src/pages/api/auth/callback.ts
-import type { APIRoute } from 'astro';
-
 export const prerender = false;
+import type { APIRoute } from 'astro';
+import { jwtVerify, createRemoteJWKSet } from 'jose';
+import { getIdPConfig } from '../../../config/tenants';   
 
 interface DynamicIdPConfig {
   issuer: string;
@@ -9,134 +10,144 @@ interface DynamicIdPConfig {
   clientSecretEnv: string;
   tokenEndpoint: string;
   jwksUri: string;
+  authMethod?: 'client_secret_basic' | 'client_secret_post';
 }
 
 export const GET: APIRoute = async (context) => {
   const { request, cookies, locals } = context;
-  const url = new URL(request.url);
   
-  const incomingCode = url.searchParams.get('code');
-  const incomingState = url.searchParams.get('state');
-  const oidcError = url.searchParams.get('error');
-
-  // 1. Upstream Identity Provider Failure Interception
-  if (oidcError) {
-    console.error(`[VoidMetric Callback] Upstream Provider Aborted: ${oidcError}`);
-    return context.redirect(`/login?error=${oidcError}`);
-  }
-
-  // 2. HARD CSRF VERIFICATION ENGINE
-  const anchorStateCookie = cookies.get('__Host-oauth_state');
-  const cookieStateValue = anchorStateCookie?.value?.trim();
-  const incomingStateValue = incomingState?.trim();
-  
-  if (!cookieStateValue || !incomingStateValue || cookieStateValue.length < 32) {
-    console.error('[VoidMetric State Fault] Cryptographic tracking context missing or dropped');
-    cookies.delete('__Host-oauth_state', { path: '/' });
-    return context.redirect('/login?error=invalid_state');
-  }
-
-  if (incomingStateValue !== cookieStateValue) {
-    console.error('[VoidMetric State Fault] Cryptographic handshake token mismatch');
-    cookies.delete('__Host-oauth_state', { path: '/' });
-    return context.redirect('/login?error=invalid_state');
-  }
-
-  // Evict validation token instantly upon successful validation match to prevent replay exploits
-  cookies.delete('__Host-oauth_state', { path: '/' });
-
-  if (!incomingCode) {
-    return context.redirect('/login?error=malformed_auth_handshake');
-  }
   try {
-    const runtimeEnv = locals.runtime?.env;
-    const tenantDirectory = runtimeEnv?.VM_TENANT_DIRECTORY;
+    const requestUrl = new URL(request.url);
+    const code = requestUrl.searchParams.get('code');
+    const state = requestUrl.searchParams.get('state');
+    const error = requestUrl.searchParams.get('error');
 
-    if (!tenantDirectory) {
-      throw new Error('infrastructure_environment_fault');
+    if (error) {
+      console.error('[VoidMetric Auth] IdP Error:', error);
+      return new Response(`Authentication failed: ${error}`, { status: 403 });
     }
 
-    // 3. TARGET REALM DETERMINATION
-    const targetedDomainKey = "fzoirm.com";
-
-    // Load Isolated Key-Vault Config Credentials
-    const serializedConfig = await tenantDirectory.get(`domain:${targetedDomainKey}`);
-    if (!serializedConfig) throw new Error('tenant_access_denied');
-    
-    const targetConfig = JSON.parse(serializedConfig) as DynamicIdPConfig;
-
-    const targetClientKey = String(targetConfig.clientIdEnv).trim();
-    const targetSecretKey = String(targetConfig.clientSecretEnv).trim();
-
-    const resolvedClientId = /^[a-zA-Z0-9_]+$/.test(targetClientKey) ? runtimeEnv[targetClientKey] : null;
-    const resolvedClientSecret = /^[a-zA-Z0-9_]+$/.test(targetSecretKey) ? runtimeEnv[targetSecretKey] : null;
-
-    if (!resolvedClientId || !resolvedClientSecret) {
-      throw new Error('configuration_runtime_fault');
+    if (!code || !state) {
+      return new Response('Missing code or state', { status: 400 });
     }
-    // 4. SECURE SERVER-TO-SERVER PROTOCOL TRANSACTION EXCHANGE
-    const cleanTokenEndpoint = String(targetConfig.tokenEndpoint).trim();
-    const rigidCallbackString = "https://fzoirm.com";
 
-    const tokenRequestPayload = new URLSearchParams({
-      client_id: resolvedClientId.trim(),
-      client_secret: resolvedClientSecret.trim(),
-      grant_type: 'authorization_code',
-      code: incomingCode,
-      redirect_uri: rigidCallbackString,
-      scope: 'openid profile email'
-    });
+    // 1. Validate State Matrix Natively
+    const stateCookie = cookies.get('oidc_state');
+    if (!stateCookie || stateCookie.value !== state) {
+      console.error('[VoidMetric Auth] State mismatch');
+      return new Response('Invalid state', { status: 403 });
+    }
 
-    const tokenResponse = await fetch(cleanTokenEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: tokenRequestPayload.toString()
-    });
+    // BASE64URL NORMALIZATION BUFFER: Prevents atob padding truncation crashes
+    let domain: string;
+    try {
+      let base64Payload = state.replace(/-/g, '+').replace(/_/g, '/');
+      while (base64Payload.length % 4) {
+        base64Payload += '=';
+      }
+      const decoded = JSON.parse(atob(base64Payload));
+      domain = decoded.domain;
+    } catch (e) {
+      return new Response('Invalid state format', { status: 400 });
+    }
+
+    // 2. Get Tenant Configuration Properties
+    const config = getIdPConfig(`user@${domain}`) as DynamicIdPConfig;
+
+    if (!config) {
+      return new Response('Domain not found', { status: 500 });
+    }
+
+    // 3. SECURE BINDING DECOUPLING
+    // Extracts runtime environment maps directly from Astro context layers to prevent empty V8 lookups
+    const runtimeEnv = locals.runtime?.env || (globalThis as any).process?.env || {};
+    const clientId = runtimeEnv[config.clientIdEnv];
+    const clientSecret = runtimeEnv[config.clientSecretEnv];
+
+    if (!clientId || !clientSecret) {
+      console.error(`MISSING SECRETS: ${config.clientIdEnv} or ${config.clientSecretEnv}`);
+      return new Response('Missing Credentials', { status: 500 });
+    }
+
+    // 4. Token Exchange Matrix Alignment
+    const SITE_URL = runtimeEnv.SITE_URL || "https://fzoirm.com";
+    const redirectUri = `${SITE_URL}/api/auth/callback`;
+
+    let tokenResponse;
+    const useBasicAuth = config.authMethod !== 'client_secret_post';
+
+    if (useBasicAuth) {
+      const encoded = btoa(`${clientId}:${clientSecret}`);
+      tokenResponse = await fetch(config.tokenEndpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${encoded}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: redirectUri
+        })
+      });
+      
+      if (!tokenResponse.ok) {
+        tokenResponse = await fetch(config.tokenEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'authorization_code',
+            code,
+            redirect_uri: redirectUri,
+            client_id: clientId,
+            client_secret: clientSecret
+          })
+        });
+      }
+    } else {
+      tokenResponse = await fetch(config.tokenEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: redirectUri,
+          client_id: clientId,
+          client_secret: clientSecret
+        })
+      });
+    }
 
     if (!tokenResponse.ok) {
-      const rawFaultLog = await tokenResponse.text();
-      console.error(`[VoidMetric Token Exchange Fault] Payload: ${rawFaultLog}`);
-      
-      let rawErrorToken = 'session_negotiation_failed';
-      try {
-        const parsedFault = JSON.parse(rawFaultLog);
-        if (parsedFault.error) {
-          rawErrorToken = String(parsedFault.error_description || parsedFault.error);
-        }
-      } catch {
-        rawErrorToken = rawFaultLog.substring(0, 50);
-      }
-      
-      throw new Error(rawErrorToken);
+      const err = await tokenResponse.text();
+      console.error('Token Exchange Failed:', err);
+      return new Response(`Token Failed: ${err}`, { status: 401 });
     }
 
-    const tokenData = await tokenResponse.json() as { id_token?: string; access_token?: string };
-    const validatedIdentityToken = tokenData.id_token || tokenData.access_token;
+    const tokenData = await tokenResponse.json();
+    const idToken = tokenData.id_token;
 
-    if (!validatedIdentityToken) {
-      throw new Error('missing_cryptographic_claims');
-    }
-    // 5. ANCHOR PRODUCTION SESSION COOKIE CONTEXT ENTRY
-    cookies.set('aim_session_token', validatedIdentityToken, {
-      path: '/',
-      httpOnly: true,
-      secure: true,
-      sameSite: 'lax',
-      maxAge: 86400
+    if (!idToken) return new Response('No ID Token', { status: 500 });
+
+    // 5. Verify Token Cryptographic Signatures
+    const JWKS = createRemoteJWKSet(new URL(config.jwksUri));
+    await jwtVerify(idToken, JWKS, {
+      issuer: config.issuer,
+      audience: clientId,
+      algorithms: ['RS256', 'RS384', 'RS512'],
+      clockTolerance: '60s'
     });
 
-    return context.redirect('/integrity-portal');
+    // 6. Set Cookies & Redirect Out cleanly
+    const headers = new Headers();
+    headers.append('Set-Cookie', 'oidc_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+    headers.append('Set-Cookie', `aim_session_token=${idToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`);
+    headers.append('Location', '/integrity-portal');
 
-  } catch (err: any) {
-    console.error('[VoidMetric Callback Core Failure] Pipeline halted:', err.message);
-    
-    // Safely map and transmit the real error string down to the user login banner layout interface
-    const cleanMappedError = err.message
-      .replace(/[^a-zA-Z0-9_ ]/g, '')
-      .replace(/\s+/g, '_')
-      .toLowerCase();
-    
-    const uniqueCacheBusterStamp = Date.now();
-    return context.redirect(`/login?error=${cleanMappedError}&v=${uniqueCacheBusterStamp}`);
+    return new Response(null, { status: 302, headers });   
+
+  } catch (error) {
+    console.error('[VoidMetric Auth] Crash:', error);
+    return new Response('Internal Server Error', { status: 500 });
   }
 };
