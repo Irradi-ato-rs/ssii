@@ -3,8 +3,9 @@ export const prerender = false;
 import type { APIRoute } from 'astro';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { env } from 'cloudflare:workers';
-// ✅ FIX: Static import at the top
-import { getIdPConfig } from '../../config/tenants';
+// FIX: Static import at the top
+//import { getIdPConfig } from '../../config/tenants';
+import { getIdPConfig } from '../../../config/tenants';   
 
 interface DynamicIdPConfig {
   issuer: string;
