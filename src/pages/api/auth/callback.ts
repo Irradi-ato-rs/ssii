@@ -2,7 +2,9 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
-import { env } from 'cloudflare:workers'; // ✅ ADD THIS
+import { env } from 'cloudflare:workers';
+// ✅ FIX: Static import at the top
+import { getIdPConfig } from '../../config/tenants';
 
 interface DynamicIdPConfig {
   issuer: string;
@@ -13,7 +15,7 @@ interface DynamicIdPConfig {
   authMethod?: 'client_secret_basic' | 'client_secret_post';
 }
 
-export const GET: APIRoute = async ({ request, cookies }) => { // ✅ Remove locals if not needed
+export const GET: APIRoute = async ({ request, cookies }) => {
   try {
     const requestUrl = new URL(request.url);
     const code = requestUrl.searchParams.get('code');
@@ -46,27 +48,23 @@ export const GET: APIRoute = async ({ request, cookies }) => { // ✅ Remove loc
     }
 
     // 2. Get Tenant Config
-    const { getIdPConfig } = await import('../../config/tenants');
-    const config = getIdPConfig(`${domain.split('@')[0]}@${domain}`); // Mock email for lookup
+    // Mock an email to pass to getIdPConfig (it only uses the domain part)
+    const config = getIdPConfig(`user@${domain}`);
 
     if (!config) {
       return new Response('Domain not found', { status: 500 });
     }
 
-    // ✅ FIX: Access secrets via imported env, not locals.runtime.env
+    // 3. Access Secrets
     const clientId = env[config.clientIdEnv];
     const clientSecret = env[config.clientSecretEnv];
-
-    console.log('=== CALLBACK TOKEN EXCHANGE ===');
-    console.log('Client ID found:', !!clientId);
-    console.log('Client Secret found:', !!clientSecret);
 
     if (!clientId || !clientSecret) {
       console.error(`MISSING SECRETS: ${config.clientIdEnv} or ${config.clientSecretEnv}`);
       return new Response('Missing Credentials', { status: 500 });
     }
 
-    // 3. Token Exchange
+    // 4. Token Exchange
     const SITE_URL = env.SITE_URL || "https://ssii.fzoirm.com";
     const redirectUri = `${SITE_URL}/api/auth/callback`;
 
@@ -89,7 +87,6 @@ export const GET: APIRoute = async ({ request, cookies }) => { // ✅ Remove loc
       });
       
       if (!tokenResponse.ok) {
-        // Fallback
         tokenResponse = await fetch(config.tokenEndpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -127,7 +124,7 @@ export const GET: APIRoute = async ({ request, cookies }) => { // ✅ Remove loc
 
     if (!idToken) return new Response('No ID Token', { status: 500 });
 
-    // 4. Verify Token
+    // 5. Verify Token
     const JWKS = createRemoteJWKSet(new URL(config.jwksUri));
     await jwtVerify(idToken, JWKS, {
       issuer: config.issuer,
@@ -136,7 +133,7 @@ export const GET: APIRoute = async ({ request, cookies }) => { // ✅ Remove loc
       clockTolerance: '60s'
     });
 
-    // 5. Set Cookies & Redirect
+    // 6. Set Cookies & Redirect
     const headers = new Headers();
     headers.append('Set-Cookie', 'oidc_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
     headers.append('Set-Cookie', `aim_session_token=${idToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`);
