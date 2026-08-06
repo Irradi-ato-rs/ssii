@@ -3,9 +3,22 @@
 export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Footer from '../components/Footer.astro';
+
+// 1. Catch the error passed back from Microsoft on the server side
+const url = new URL(Astro.request.url);
+const urlError = url.searchParams.get('error');
+
+let translatedError = '';
+if (urlError) {
+  if (urlError === 'tenant_access_denied') {
+    translatedError = 'TENANT ACCESS DENIED — IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE IT ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
+  } else {
+    translatedError = `SESSION FAILURE: ${urlError.replace(/_/g, ' ').toUpperCase()}`;
+  }
+}
 ---
 
-<BaseLayout title="VoidMetric Auth Gateway // SSO Identity Handshake / iclassed">
+
   <main class="w-full max-w-2xl mx-auto px-4 py-16 text-left text-slate-300 font-mono text-xs leading-relaxed selection:bg-slate-800">
     
     <header class="mb-12 space-y-2">
@@ -23,12 +36,17 @@ import Footer from '../components/Footer.astro';
         <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— ENTERPRISE OPERATOR IDENTIFICATION</h2>
         <p class="text-slate-400">
           Enter your corporate email to initiate the encrypted OIDC handshake. 
-          Your domain determines the identity provider (Entra ID / Okta).
+          Your domain determines the identity provider (Entra ID / Okta et al).
         </p>
       </div>
 
-      <!-- Error Banner -->
-      <div id="error-banner" class="hidden p-3 bg-red-900/20 border border-red-900 text-red-400 text-[10px] uppercase tracking-wider font-bold rounded"></div>
+      <!-- 2. Display the error here dynamically if it exists, otherwise keep it hidden -->
+      <div 
+        id="error-banner" 
+        class={`p-3 bg-red-900/20 border border-red-900 text-red-400 text-[10px] uppercase tracking-wider font-bold rounded ${translatedError ? '' : 'hidden'}`}
+      >
+        {translatedError}
+      </div>
 
       <!-- Login Form -->
       <form id="loginForm" class="space-y-4 max-w-md">
@@ -40,7 +58,7 @@ import Footer from '../components/Footer.astro';
             type="email" 
             id="email" 
             name="email" 
-            placeholder="operator@enterprise.com" 
+            placeholder="www@irradi.ato.rs" 
             required 
             class="w-full bg-[#020203] border border-slate-800 focus:border-blue-500/50 rounded px-3 py-2 text-xs text-white placeholder-slate-600 font-mono transition duration-150 outline-none"
           />
@@ -61,23 +79,21 @@ import Footer from '../components/Footer.astro';
   </main>
 
   <script>
-    const form = document.getElementById('loginForm');
+    // 3. Keep your existing client-side script running exactly as it was
+    const form = document.getElementById('loginForm') as HTMLFormElement;
     const errorBanner = document.getElementById('error-banner');
-    const submitBtn = document.getElementById('submitBtn');
+    const submitBtn = document.getElementById('submitBtn') as HTMLButtonElement;
 
-    // Handle Form Submission
-    form.addEventListener('submit', async (e) => {
+    form?.addEventListener('submit', async (e) => {
       e.preventDefault();
       
-      // Reset UI
-      errorBanner.classList.add('hidden');
+      errorBanner?.classList.add('hidden');
       if(submitBtn) {
         submitBtn.disabled = true;
         submitBtn.innerText = '[ESTABLISHING SECURE LINK...]';
       }
 
       const formData = new FormData(form);
-      const email = formData.get('email');
 
       try {
         const response = await fetch('/api/register', {
@@ -88,13 +104,11 @@ import Footer from '../components/Footer.astro';
         const data = await response.json();
 
         if (response.ok && data.redirectUrl) {
-          // SUCCESS: Redirect browser to Identity Provider
           window.location.href = data.redirectUrl;
         } else {
-          // ERROR: Show server message
           throw new Error(data.error || 'Handshake failed');
         }
-      } catch (err) {
+      } catch (err: any) {
         if(errorBanner) {
           errorBanner.innerText = `AUTH FAILURE: ${err.message.toUpperCase()}`;
           errorBanner.classList.remove('hidden');
@@ -106,12 +120,15 @@ import Footer from '../components/Footer.astro';
       }
     });
 
-    // Handle URL Error Parameters (e.g. ?error=unauthenticated_session_gateway)
     const urlParams = new URLSearchParams(window.location.search);
     const errorMsg = urlParams.get('error');
     if (errorMsg && errorBanner) {
-      errorBanner.innerText = `SESSION FAILURE: ${errorMsg.replace(/_/g, ' ').toUpperCase()}`;
+      if (errorMsg === 'tenant_access_denied') {
+        errorBanner.innerText = 'TENANT ACCESS DENIED — IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE IT ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
+      } else {
+        errorBanner.innerText = `SESSION FAILURE: ${errorMsg.replace(/_/g, ' ').toUpperCase()}`;
+      }
       errorBanner.classList.remove('hidden');
     }
   </script>
-</BaseLayout>   
+</BaseLayout>
