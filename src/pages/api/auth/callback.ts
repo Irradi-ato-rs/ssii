@@ -2,6 +2,7 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
+import { env } from 'cloudflare:workers'; // ✅ ADD THIS
 
 interface DynamicIdPConfig {
   issuer: string;
@@ -12,9 +13,7 @@ interface DynamicIdPConfig {
   authMethod?: 'client_secret_basic' | 'client_secret_post';
 }
 
-export const GET: APIRoute = async (context) => {
-  const { request, locals, cookies } = context;
-  
+export const GET: APIRoute = async ({ request, cookies }) => { // ✅ Remove locals if not needed
   try {
     const requestUrl = new URL(request.url);
     const code = requestUrl.searchParams.get('code');
@@ -40,7 +39,6 @@ export const GET: APIRoute = async (context) => {
     // Decode Domain
     let domain: string;
     try {
-      // FIX: Ensure proper decoding if state was URI encoded
       const decoded = JSON.parse(atob(state));
       domain = decoded.domain;
     } catch (e) {
@@ -48,50 +46,34 @@ export const GET: APIRoute = async (context) => {
     }
 
     // 2. Get Tenant Config
-    const runtimeEnv = locals.runtime?.env;
-    const tenantDirectory = runtimeEnv?.VM_TENANT_DIRECTORY; 
-    
-    if (!tenantDirectory) {
-      return new Response('KV Binding Missing', { status: 500 });
-    }
+    const { getIdPConfig } = await import('../../config/tenants');
+    const config = getIdPConfig(`${domain.split('@')[0]}@${domain}`); // Mock email for lookup
 
-    // FIX: Handle fzoirm.com host override if not in KV
-    let tenantConfigRaw = await tenantDirectory.get(`domain:${domain}`);
-    
-    // If not found and it's the host domain, use hardcoded config (Optional safety net)
-    if (!tenantConfigRaw && domain === 'fzoirm.com') {
-       // You can implement the hardcoded logic here if you didn't update tenants.ts
-       // For now, assuming tenants.ts or KV has it.
-       return new Response('Host domain not configured', { status: 500 });
-    }
-
-    if (!tenantConfigRaw) {
+    if (!config) {
       return new Response('Domain not found', { status: 500 });
     }
 
-    const config = JSON.parse(tenantConfigRaw) as DynamicIdPConfig;
+    // ✅ FIX: Access secrets via imported env, not locals.runtime.env
+    const clientId = env[config.clientIdEnv];
+    const clientSecret = env[config.clientSecretEnv];
 
-    const clientId = runtimeEnv?.[config.clientIdEnv]?.trim();
-    const clientSecret = runtimeEnv?.[config.clientSecretEnv]?.trim();
+    console.log('=== CALLBACK TOKEN EXCHANGE ===');
+    console.log('Client ID found:', !!clientId);
+    console.log('Client Secret found:', !!clientSecret);
 
     if (!clientId || !clientSecret) {
+      console.error(`MISSING SECRETS: ${config.clientIdEnv} or ${config.clientSecretEnv}`);
       return new Response('Missing Credentials', { status: 500 });
     }
 
-    // 3. Token Exchange / Hardcode and force production domain / check iclassed BIC
-    //const host = request.headers.get('host') || requestUrl.host;
-    //const protocol = request.headers.get('x-forwarded-proto') || 'https';
-    //const redirectUri = `${protocol}://${host}/api/auth/callback`;
-    //const SITE_URL = locals.runtime?.env?.SITE_URL || "https://ssii.fzoirm.com";
-    //const redirectUri = `${SITE_URL}/api/auth/callback`;
-    const SITE_URL = "https://ssii.fzoirm.com"; // Or from env: locals.runtime.env.SITE_URL
-    const redirectUri = `${SITE_URL}/api/auth/callback`;   
+    // 3. Token Exchange
+    const SITE_URL = env.SITE_URL || "https://ssii.fzoirm.com";
+    const redirectUri = `${SITE_URL}/api/auth/callback`;
 
     let tokenResponse;
     const useBasicAuth = config.authMethod !== 'client_secret_post';
 
     if (useBasicAuth) {
-      // FIX: Standard Basic Auth encoding
       const encoded = btoa(`${clientId}:${clientSecret}`);
       tokenResponse = await fetch(config.tokenEndpoint, {
         method: 'POST',
@@ -106,8 +88,8 @@ export const GET: APIRoute = async (context) => {
         })
       });
       
-      // Fallback if Basic fails
       if (!tokenResponse.ok) {
+        // Fallback
         tokenResponse = await fetch(config.tokenEndpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -141,7 +123,7 @@ export const GET: APIRoute = async (context) => {
     }
 
     const tokenData = await tokenResponse.json();
-    const idToken = tokenData.id_token; // FIX: Correct variable name
+    const idToken = tokenData.id_token;
 
     if (!idToken) return new Response('No ID Token', { status: 500 });
 
@@ -156,19 +138,9 @@ export const GET: APIRoute = async (context) => {
 
     // 5. Set Cookies & Redirect
     const headers = new Headers();
-    
-    // Clear State
     headers.append('Set-Cookie', 'oidc_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
-    
-    // Set Session Token
-    // FIX: Ensure 'Secure' is only used on HTTPS. Cloudflare Pages is always HTTPS in prod.
     headers.append('Set-Cookie', `aim_session_token=${idToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`);
-    
-    // Redirect to Dashboard
     headers.append('Location', '/integrity-portal');
-
-    console.log('=== CALLBACK SUCCESS ===');
-    console.log('Redirecting to:', '/integrity-portal');
 
     return new Response(null, { status: 302, headers });   
 
