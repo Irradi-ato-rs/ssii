@@ -2,8 +2,6 @@
 export const prerender = false;
 import type { APIRoute, APIContext } from 'astro';
 import { getIdPConfig } from '../../config/tenants';
-
-// Astro 6: Import env directly from cloudflare:workers
 import { env } from 'cloudflare:workers';
 
 export const POST: APIRoute = async ({ request }: APIContext) => {
@@ -13,10 +11,7 @@ export const POST: APIRoute = async ({ request }: APIContext) => {
     const formData = await request.formData();
     const email = formData.get('email')?.toString();
 
-    console.log('Email received:', email);
-
     if (!email || !email.includes('@')) {
-      console.error('Invalid email:', email);
       return new Response(JSON.stringify({ error: 'Invalid email address' }), { 
         status: 400, 
         headers: { 'Content-Type': 'application/json' } 
@@ -24,10 +19,7 @@ export const POST: APIRoute = async ({ request }: APIContext) => {
     }
 
     const domain = email.split('@')[1].toLowerCase();
-    console.log('Extracted domain:', domain);
-
     const config = getIdPConfig(email);
-    console.log('IdP Config found:', !!config);
 
     if (!config) {
       return new Response(JSON.stringify({ 
@@ -39,12 +31,8 @@ export const POST: APIRoute = async ({ request }: APIContext) => {
       });
     }
 
-    // Astro 6: Access secrets via imported env
     const clientId = env[config.clientIdEnv];
     const clientSecret = env[config.clientSecretEnv];
-
-    console.log('Client ID found:', !!clientId);
-    console.log('Client Secret found:', !!clientSecret);
 
     if (!clientId || !clientSecret) {
       console.error(`MISSING SECRETS: ${config.clientIdEnv} or ${config.clientSecretEnv}`);
@@ -58,26 +46,29 @@ export const POST: APIRoute = async ({ request }: APIContext) => {
     const statePayload = { domain, nonce: crypto.randomUUID() };
     const state = btoa(JSON.stringify(statePayload));
 
-    // FIX: Use hardcoded SITE_URL from env (not request headers) / not iclassed.com
+    // 4. Resolve Canonical Origin
     const SITE_URL = env.SITE_URL || "https://ssii.fzoirm.com";
     const redirectUri = `${SITE_URL}/api/auth/callback`;
-    
-    console.log('Using Redirect URI:', redirectUri);
 
     // 5. Construct IdP Authorization URL
     const authUrl = new URL(config.authorizationEndpoint);
     authUrl.searchParams.set('client_id', clientId);
-    authUrl.searchParams.set('redirect_uri', redirectUri);
+    // FIX: Removed 'groups', added 'User.Read Group.Read.All'
+    authUrl.searchParams.set('scope', 'openid profile email User.Read Group.Read.All');
     authUrl.searchParams.set('response_type', 'code');
-    // Valid scopes only: openid, profile, email, User.Read, Group.Read.All
-    authUrl.searchParams.set('scope', 'openid profile email User.Read Group.Read.All');   
     authUrl.searchParams.set('state', state);
     authUrl.searchParams.set('login_hint', email);
+    authUrl.searchParams.set('redirect_uri', redirectUri);
 
     // 6. Return JSON + Set-Cookie Header
     const headers = new Headers();
     headers.append('Content-Type', 'application/json');
-    headers.append('Set-Cookie', `oidc_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=300`);
+    
+    // FIX: Explicit Path=/ to ensure cookie is sent back on callback
+    headers.append(
+      'Set-Cookie', 
+      `oidc_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=300`
+    );
 
     console.log('=== REGISTER SUCCESS ===');
     console.log('Redirect URL:', authUrl.toString());
@@ -93,7 +84,6 @@ export const POST: APIRoute = async ({ request }: APIContext) => {
   } catch (error) {
     console.error('=== REGISTER CRASH ===');
     console.error('Error:', error);
-    console.error('Stack:', (error as Error).stack);
     
     return new Response(JSON.stringify({ 
       error: 'Handshake failed', 
