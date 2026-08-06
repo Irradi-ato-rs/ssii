@@ -4,29 +4,17 @@ export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Footer from '../components/Footer.astro';
 
-// 1. Catch the error passed back from Microsoft on the server side
-//const url = new URL(Astro.request.url);
-//const urlError = url.searchParams.get('error');
-
-//let translatedError = '';
-//if (urlError) {
-//  if (urlError === 'tenant_access_denied') {
-//    translatedError = 'TENANT ACCESS DENIED — IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE IT ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
-//  } else {
-//    translatedError = `SESSION FAILURE: ${urlError.replace(/_/g, ' ').toUpperCase()}`;
-//  }
-//}
 // Check for server-side error parameter passed from the redirect flow
 const url = new URL(Astro.request.url);
 const urlError = url.searchParams.get('error');
 
-// Map raw technical errors to cleaner enterprise operational messaging
+// Map raw technical errors using standard keyboard characters to avoid edge mojibake shifts
 let translatedError = '';
 if (urlError) {
   if (urlError === 'tenant_access_denied') {
-    translatedError = 'TENANT ACCESS DENIED. IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE TECHNOLOGY ADMINISTRATOR TO GET YOUR WORK ACCOUNT ASSIGNED.';
+    translatedError = 'TENANT ACCESS DENIED. IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE TECHNOLOGY ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
   } else {
-    translatedError = `SESSION FAILURE: ${urlError.replace(/_/g, ' ').toUpperCase()}`;
+    translatedError = `SESSION FAILURE: ${urlError.replace(/[^a-zA-Z0-9_]/g, '').toUpperCase()}`;
   }
 }
 ---
@@ -36,8 +24,8 @@ if (urlError) {
     
     <header class="mb-12 space-y-2">
       <div class="flex items-center gap-2 mb-4">
-        <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-        <h1 class="text-xl font-bold tracking-tight text-white"><a href="https://ssii.fzoirm.com">VOIDMETRIC</a> AUTH GATEWAY</h1>
+        <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" aria-hidden="true"></span>
+        <h1 class="text-xl font-bold tracking-tight text-white"><a href="https://fzoirm.com">VOIDMETRIC</a> AUTH GATEWAY</h1>
       </div>
       <p class="text-slate-400">Sovereign Systemic Integrity Intelligence</p>
       <p class="text-slate-500">Zero-Persistence. Edge-Native. Dynamic Tenant Federation.</p>
@@ -46,17 +34,17 @@ if (urlError) {
     <!-- Authentication Interface -->
     <section class="mb-16 space-y-6 pt-8 border-t border-slate-900">
       <div class="space-y-1">
-        <!-- <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— ENTERPRISE OPERATOR IDENTITY</h2> -->
-        <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">&mdash; ENTERPRISE OPERATOR IDENTIFICATION</h2>
-		<p class="text-slate-400">
+        <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">-- ENTERPRISE OPERATOR IDENTIFICATION</h2>
+        <p class="text-slate-400">
           Enter your corporate email to initiate the encrypted OIDC handshake. 
-          Your domain determines the identity provider (Entra ID / Okta et al).
+          Your domain determines the identity provider (Entra ID / Okta).
         </p>
       </div>
 
-      <!-- 2. Display the error here dynamically if it exists, otherwise keep it hidden -->
+      <!-- Hardened Error Banner Container -->
       <div 
         id="error-banner" 
+        role="alert"
         class={`p-3 bg-red-900/20 border border-red-900 text-red-400 text-[10px] uppercase tracking-wider font-bold rounded ${translatedError ? '' : 'hidden'}`}
       >
         {translatedError}
@@ -72,13 +60,14 @@ if (urlError) {
             type="email" 
             id="email" 
             name="email" 
-            placeholder="www@irradi.ato.rs" 
+            placeholder="operator@enterprise.com" 
             required 
+            autocomplete="email"
             class="w-full bg-[#020203] border border-slate-800 focus:border-blue-500/50 rounded px-3 py-2 text-xs text-white placeholder-slate-600 font-mono transition duration-150 outline-none"
           />
         </div>
 
-        <button type="submit" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded text-[11px] uppercase tracking-wider transition duration-150 cursor-pointer shadow-lg shadow-blue-600/10">
+        <button type="submit" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold py-2.5 rounded text-[11px] uppercase tracking-wider transition duration-150 cursor-pointer disabled:cursor-not-allowed shadow-lg shadow-blue-600/10">
           [INITIATE HANDSHAKE]
         </button>
       </form>
@@ -93,54 +82,73 @@ if (urlError) {
   </main>
 
   <script>
-    // 3. Keep your existing client-side script running exactly as it was
     const form = document.getElementById('loginForm') as HTMLFormElement;
-    const errorBanner = document.getElementById('error-banner');
+    const errorBanner = document.getElementById('error-banner') as HTMLDivElement;
     const submitBtn = document.getElementById('submitBtn') as HTMLButtonElement;
+    const REQUEST_TIMEOUT_MS = 8000;
 
     form?.addEventListener('submit', async (e) => {
       e.preventDefault();
       
       errorBanner?.classList.add('hidden');
-      if(submitBtn) {
+      if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.innerText = '[ESTABLISHING SECURE LINK...]';
       }
 
-      const formData = new FormData(form);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
       try {
+        const formData = new FormData(form);
         const response = await fetch('/api/register', {
           method: 'POST',
-          body: formData
+          body: formData,
+          signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
         const data = await response.json();
 
         if (response.ok && data.redirectUrl) {
           window.location.href = data.redirectUrl;
         } else {
-          throw new Error(data.error || 'Handshake failed');
+          throw new Error(data.error || 'Handshake negotiation failed');
         }
       } catch (err: any) {
-        if(errorBanner) {
-          errorBanner.innerText = `AUTH FAILURE: ${err.message.toUpperCase()}`;
+        clearTimeout(timeoutId);
+        let errorText = 'AUTH FAILURE: HANDSHAKE REJECTED';
+        
+        if (err.name === 'AbortError') {
+          errorText = 'EDGE TIMEOUT: CONNECTION TO SECURE GATEWAY TIMED OUT. RETRY IMPERATIVE.';
+        } else if (err.message) {
+          const exactMsg = err.message.toUpperCase().replace(/[^a-zA-Z0-9_: ]/g, '');
+          if (exactMsg === 'TENANT_ACCESS_DENIED') {
+            errorText = 'TENANT ACCESS DENIED -- IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE IT ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
+          } else {
+            errorText = `AUTH FAILURE: ${exactMsg}`;
+          }
+        }
+
+        if (errorBanner) {
+          errorBanner.innerText = errorText;
           errorBanner.classList.remove('hidden');
         }
-        if(submitBtn) {
+        if (submitBtn) {
           submitBtn.disabled = false;
           submitBtn.innerText = '[INITIATE HANDSHAKE]';
         }
       }
     });
 
+    // Client-side parameter monitoring framework
     const urlParams = new URLSearchParams(window.location.search);
     const errorMsg = urlParams.get('error');
     if (errorMsg && errorBanner) {
       if (errorMsg === 'tenant_access_denied') {
-        errorBanner.innerText = 'TENANT ACCESS DENIED — IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE IT ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
+        errorBanner.innerText = 'TENANT ACCESS DENIED -- IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE IT ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
       } else {
-        errorBanner.innerText = `SESSION FAILURE: ${errorMsg.replace(/_/g, ' ').toUpperCase()}`;
+        errorBanner.innerText = `SESSION FAILURE: ${errorMsg.replace(/[^a-zA-Z0-9_]/g, '').toUpperCase()}`;
       }
       errorBanner.classList.remove('hidden');
     }

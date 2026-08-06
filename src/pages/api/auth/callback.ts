@@ -127,6 +127,8 @@ export const GET: APIRoute = async (context) => {
     const rawErrorMessage = err.message || 'session_negotiation_failed';
     const cleanMappedError = rawErrorMessage.replace(/[^a-zA-Z0-9_]/g, '');
     
-    return context.redirect(`/login?error=${cleanMappedError}`);
+    // CACHE BUSTER FORCE: Append a unique unix timestamp parameter to break local browser memory loops
+    const uniqueCacheBusterStamp = Date.now();
+    return context.redirect(`/login?error=${cleanMappedError}&v=${uniqueCacheBusterStamp}`);
   }
 };
