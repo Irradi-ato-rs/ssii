@@ -25,12 +25,19 @@ export const onRequest = defineMiddleware(async (context, next) => {
   
   // EXPLICITLY EXCLUDE THE CALLBACK ROUTE
   // This MUST match your Entra ID Redirect URI path exactly to prevent loop
-  const isAuthCallback = 
-    url.pathname === '/api/auth/callback' || 
-    url.pathname.startsWith('/api/auth/')
-    url.pathname.startsWith('/api');
-
-  if (isAuthCallback || publicRoutes.includes(cleanPath)) {
+  //const isAuthCallback = 
+    //url.pathname === '/api/auth/callback' || 
+    //url.pathname.startsWith('/api/auth/')
+    //url.pathname.startsWith('/api');
+// REPLACE isAuthCallback:
+const isApiRoute = 
+  url.pathname === '/api/register' || 
+  url.pathname === '/api/auth/callback' || 
+  url.pathname.startsWith('/api/auth/');   
+  
+  //if (isAuthCallback || publicRoutes.includes(cleanPath)) {
+    //return next();
+  if (isApiRoute || publicRoutes.includes(cleanPath)) {
     return next();
   }
 
