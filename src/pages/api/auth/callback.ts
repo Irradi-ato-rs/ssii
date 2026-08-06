@@ -27,25 +27,25 @@ export const GET: APIRoute = async (context) => {
 
   // 2. HARD CSRF VERIFICATION BOUNDARY ASSERTION
   const anchorStateCookie = cookies.get('__Host-oauth_state');
+  const cookieStateValue = anchorStateCookie?.value?.trim();
+  const incomingStateValue = incomingState?.trim();
   
-  if (!anchorStateCookie || !anchorStateCookie.value || !incomingState || incomingState !== anchorStateCookie.value) {
+  // Enforce a strict length baseline check to instantly isolate empty or dropped token handshakes
+  if (!cookieStateValue || !incomingStateValue || cookieStateValue.length < 32) {
+    console.error('[VoidMetric State Fault] Cryptographic cookie envelope or tracking state parameter was dropped');
     cookies.delete('__Host-oauth_state', { path: '/' });
     return context.redirect('/login?error=invalid_state');
   }
 
-  // Force instant state cookie eviction to completely destroy reuse vectors
-  cookies.delete('__Host-oauth_state', { path: '/' });
-
-  if (!incomingCode) {
-    return context.redirect('/login?error=malformed_auth_handshake');
+  // Cryptographic assertion loop matching criteria
+  if (incomingStateValue !== cookieStateValue) {
+    console.error('[VoidMetric State Fault] Token verification mismatch detected');
+    cookies.delete('__Host-oauth_state', { path: '/' });
+    return context.redirect('/login?error=invalid_state');
   }
-  try {
-    const runtimeEnv = locals.runtime?.env;
-    const tenantDirectory = runtimeEnv?.VM_TENANT_DIRECTORY;
 
-    if (!tenantDirectory) {
-      throw new Error('infrastructure_environment_fault');
-    }
+  // Invalidate validation token instantly upon successful validation match to prevent replay exploits
+  cookies.delete('__Host-oauth_state', { path: '/' });
 
     // 3. TARGET REALM DETERMINATION
     // Force direct configuration resolution matching your active directory domain key
