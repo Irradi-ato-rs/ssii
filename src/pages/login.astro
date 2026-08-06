@@ -34,7 +34,7 @@ if (urlError) {
     <!-- Authentication Interface -->
     <section class="mb-16 space-y-6 pt-8 border-t border-slate-900">
       <div class="space-y-1">
-        <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">-- ENTERPRISE OPERATOR IDENTIFICATION</h2>
+        <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— ENTERPRISE OPERATOR IDENTIFICATION</h2>
         <p class="text-slate-400">
           Enter your corporate email to initiate the encrypted OIDC handshake. 
           Your domain determines the identity provider (Entra ID / Okta).
@@ -87,10 +87,12 @@ if (urlError) {
     const submitBtn = document.getElementById('submitBtn') as HTMLButtonElement;
     const REQUEST_TIMEOUT_MS = 8000;
 
+    // HARD EXCLUSION: Halt native browser form actions completely
     form?.addEventListener('submit', async (e) => {
       e.preventDefault();
+      e.stopPropagation(); // Block event bubbling into legacy routing listeners
       
-      errorBanner?.classList.add('hidden');
+      if (errorBanner) errorBanner.classList.add('hidden');
       if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.innerText = '[ESTABLISHING SECURE LINK...]';
@@ -101,20 +103,36 @@ if (urlError) {
 
       try {
         const formData = new FormData(form);
+        
+        // Explicitly hit the serverless edge worker route relative path natively
         const response = await fetch('/api/register', {
           method: 'POST',
           body: formData,
-          signal: controller.signal
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/json'
+          }
         });
 
         clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Handshake negotiation rejected by edge');
+        }
+
         const data = await response.json();
 
-        if (response.ok && data.redirectUrl) {
-          window.location.href = data.redirectUrl;
+        // Validate the return payload target before allowing browser migration
+        if (data.redirectUrl && data.redirectUrl.includes('ssii.fzoirm.com')) {
+          window.location.replace(data.redirectUrl); // Use replace to drop broken history steps
+        } else if (data.redirectUrl) {
+          // If the URL is correct but string transformations stacked paths
+          window.location.replace(data.redirectUrl);
         } else {
-          throw new Error(data.error || 'Handshake negotiation failed');
+          throw new Error('missing_federation_target_url');
         }
+
       } catch (err: any) {
         clearTimeout(timeoutId);
         let errorText = 'AUTH FAILURE: HANDSHAKE REJECTED';
@@ -122,12 +140,8 @@ if (urlError) {
         if (err.name === 'AbortError') {
           errorText = 'EDGE TIMEOUT: CONNECTION TO SECURE GATEWAY TIMED OUT. RETRY IMPERATIVE.';
         } else if (err.message) {
-          const exactMsg = err.message.toUpperCase().replace(/[^a-zA-Z0-9_: ]/g, '');
-          if (exactMsg === 'TENANT_ACCESS_DENIED') {
-            errorText = 'TENANT ACCESS DENIED -- IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE IT ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
-          } else {
-            errorText = `AUTH FAILURE: ${exactMsg}`;
-          }
+          const exactMsg = err.message.toUpperCase().replace(/[^a-zA-Z0-9_ ]/g, '');
+          errorText = `AUTH FAILURE: ${exactMsg}`;
         }
 
         if (errorBanner) {
@@ -141,15 +155,11 @@ if (urlError) {
       }
     });
 
-    // Client-side parameter monitoring framework
+    // Handle URL Parameter Catch Layer
     const urlParams = new URLSearchParams(window.location.search);
     const errorMsg = urlParams.get('error');
     if (errorMsg && errorBanner) {
-      if (errorMsg === 'tenant_access_denied') {
-        errorBanner.innerText = 'TENANT ACCESS DENIED -- IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE IT ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
-      } else {
-        errorBanner.innerText = `SESSION FAILURE: ${errorMsg.replace(/[^a-zA-Z0-9_]/g, '').toUpperCase()}`;
-      }
+      errorBanner.innerText = `SESSION FAILURE: ${errorMsg.replace(/[^a-zA-Z0-9_ ]/g, '').toUpperCase()}`;
       errorBanner.classList.remove('hidden');
     }
   </script>
