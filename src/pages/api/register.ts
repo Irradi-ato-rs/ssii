@@ -1,9 +1,3 @@
-// src/pages/api/register.ts
-console.log('=== REGISTER API HIT ===');   
-export const prerender = false;
-import type { APIRoute, APIContext } from 'astro';
-import { getIdPConfig } from '../../config/tenants';
-
 export const POST: APIRoute = async ({ request, locals }: APIContext) => {
   try {
     const formData = await request.formData();
@@ -19,7 +13,6 @@ export const POST: APIRoute = async ({ request, locals }: APIContext) => {
     const domain = email.split('@')[1].toLowerCase();
     const config = getIdPConfig(email);
 
-    // 1. Check if domain is pre-approved
     if (!config) {
       return new Response(JSON.stringify({ 
         error: 'Domain not authorized', 
@@ -30,7 +23,6 @@ export const POST: APIRoute = async ({ request, locals }: APIContext) => {
       });
     }
 
-    // 2. Access secrets via Cloudflare Runtime
     const env = locals.runtime.env;
     const clientId = env[config.clientIdEnv];
 
@@ -42,26 +34,26 @@ export const POST: APIRoute = async ({ request, locals }: APIContext) => {
       });
     }
 
-    // 3. Generate State Payload
     const statePayload = { domain, nonce: crypto.randomUUID() };
     const state = btoa(JSON.stringify(statePayload));
 
-    // 4. Resolve Canonical Origin
-    const host = request.headers.get('host') || new URL(request.url).host;
-    const protocol = request.headers.get('x-forwarded-proto') || 'https';
-    const origin = `${protocol}://${host}`;
+    // ❌ REMOVE THIS BLOCK:
+    // const host = request.headers.get('host') || new URL(request.url).host;
+    // const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    // const origin = `${protocol}://${host}`;
 
-    // 5. Construct IdP Authorization URL
+    // ✅ USE THIS INSTEAD:
+    const SITE_URL = env.SITE_URL || "https://ssii.fzoirm.com";
+    const redirectUri = `${SITE_URL}/api/auth/callback`;
+
     const authUrl = new URL(config.authorizationEndpoint);
     authUrl.searchParams.set('client_id', clientId);
-    authUrl.searchParams.set('redirect_uri', `${origin}/api/auth/callback`);
+    authUrl.searchParams.set('redirect_uri', redirectUri); // ✅ Fixed URI
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('scope', 'openid profile email groups');
     authUrl.searchParams.set('state', state);
     authUrl.searchParams.set('login_hint', email);
 
-    // 6. CRITICAL FIX: Return JSON + Set-Cookie Header
-    // Do NOT return a 302 redirect to an external URL from Cloudflare Functions
     const headers = new Headers();
     headers.append('Content-Type', 'application/json');
     headers.append('Set-Cookie', `oidc_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=300`);
@@ -76,8 +68,8 @@ export const POST: APIRoute = async ({ request, locals }: APIContext) => {
 
   } catch (error) {
     console.error('Registration Error:', error);
-    return new Response(JSON.stringify({ success: true, redirectUrl: authUrl.toString() }), { 
-      status: 200, // MUST be 200
+    return new Response(JSON.stringify({ error: 'Handshake failed' }), { 
+      status: 500,
       headers: { 'Content-Type': 'application/json' } 
     });
   }

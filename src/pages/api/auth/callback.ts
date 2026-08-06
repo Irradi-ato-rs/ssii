@@ -78,10 +78,14 @@ export const GET: APIRoute = async (context) => {
       return new Response('Missing Credentials', { status: 500 });
     }
 
-    // 3. Token Exchange
-    const host = request.headers.get('host') || requestUrl.host;
-    const protocol = request.headers.get('x-forwarded-proto') || 'https';
-    const redirectUri = `${protocol}://${host}/api/auth/callback`;
+    // 3. Token Exchange / Hardcode and force production domain / check iclassed BIC
+    //const host = request.headers.get('host') || requestUrl.host;
+    //const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    //const redirectUri = `${protocol}://${host}/api/auth/callback`;
+    //const SITE_URL = locals.runtime?.env?.SITE_URL || "https://ssii.fzoirm.com";
+    //const redirectUri = `${SITE_URL}/api/auth/callback`;
+    const SITE_URL = "https://ssii.fzoirm.com"; // Or from env: locals.runtime.env.SITE_URL
+    const redirectUri = `${SITE_URL}/api/auth/callback`;   
 
     let tokenResponse;
     const useBasicAuth = config.authMethod !== 'client_secret_post';
