@@ -50,7 +50,7 @@ export const POST: APIRoute = async (context: APIContext) => {
     const state = btoa(JSON.stringify(statePayload));
 
     // 4. Resolve Canonical Origin -- FIXED: Immutable string constant blocks V8 path stripping
-    const rigidRedirectUri = "https://fzoirm.com";
+    const rigidRedirectUri = "https://ssii.fzoirm.com";
 
     // 5. Construct IdP Authorization URL via Stratified Parameter Block
     const cleanAuthBase = String(config.authorizationEndpoint).trim();

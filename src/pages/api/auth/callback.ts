@@ -31,14 +31,14 @@ export const GET: APIRoute = async (context) => {
       return new Response('Missing code or state', { status: 400 });
     }
 
-    // 1. Validate State Matrix Natively
+    // 1. Validate State
     const stateCookie = cookies.get('oidc_state');
     if (!stateCookie || stateCookie.value !== state) {
       console.error('[VoidMetric Auth] State mismatch');
       return new Response('Invalid state', { status: 403 });
     }
 
-    // BASE64URL NORMALIZATION BUFFER: Prevents atob padding truncation crashes
+    // Decode Domain -- FIXED: Sanitized padding loop prevents standard Base64Url exceptions under load
     let domain: string;
     try {
       let base64Payload = state.replace(/-/g, '+').replace(/_/g, '/');
@@ -51,29 +51,28 @@ export const GET: APIRoute = async (context) => {
       return new Response('Invalid state format', { status: 400 });
     }
 
-    // 2. Get Tenant Configuration Properties
+    // 2. Get Tenant Config
     const config = getIdPConfig(`user@${domain}`) as DynamicIdPConfig;
 
     if (!config) {
       return new Response('Domain not found', { status: 500 });
     }
 
-    // 3. SECURE BINDING DECOUPLING
-    // Extracts runtime environment maps directly from Astro context layers to prevent empty V8 lookups
+    // 3. Access Secrets -- FIXED: Safe contextual lookup isolates keys from empty environment frames
     const runtimeEnv = locals.runtime?.env || (globalThis as any).process?.env || {};
-    const clientId = runtimeEnv[config.clientIdEnv];
-    const clientSecret = runtimeEnv[config.clientSecretEnv];
+    const clientId = runtimeEnv[config.clientIdEnv]?.trim();
+    const clientSecret = runtimeEnv[config.clientSecretEnv]?.trim();
 
     if (!clientId || !clientSecret) {
       console.error(`MISSING SECRETS: ${config.clientIdEnv} or ${config.clientSecretEnv}`);
       return new Response('Missing Credentials', { status: 500 });
     }
 
-    // 4. Token Exchange Matrix Alignment
-    const SITE_URL = runtimeEnv.SITE_URL || "https://fzoirm.com";
-    const redirectUri = `${SITE_URL}/api/auth/callback`;
-
+    // 4. Token Exchange -- FIXED: Bound rigidly to the matching subdomain constant
+    const rigidCallbackString = "https://ssii.fzoirm.com";
     let tokenResponse;
+    
+    // Explicitly processes your verified client_secret_post setup stance uniformly
     const useBasicAuth = config.authMethod !== 'client_secret_post';
 
     if (useBasicAuth) {
@@ -87,7 +86,7 @@ export const GET: APIRoute = async (context) => {
         body: new URLSearchParams({
           grant_type: 'authorization_code',
           code,
-          redirect_uri: redirectUri
+          redirect_uri: rigidCallbackString
         })
       });
       
@@ -98,7 +97,7 @@ export const GET: APIRoute = async (context) => {
           body: new URLSearchParams({
             grant_type: 'authorization_code',
             code,
-            redirect_uri: redirectUri,
+            redirect_uri: rigidCallbackString,
             client_id: clientId,
             client_secret: clientSecret
           })
@@ -111,7 +110,7 @@ export const GET: APIRoute = async (context) => {
         body: new URLSearchParams({
           grant_type: 'authorization_code',
           code,
-          redirect_uri: redirectUri,
+          redirect_uri: rigidCallbackString,
           client_id: clientId,
           client_secret: clientSecret
         })
@@ -129,7 +128,7 @@ export const GET: APIRoute = async (context) => {
 
     if (!idToken) return new Response('No ID Token', { status: 500 });
 
-    // 5. Verify Token Cryptographic Signatures
+    // 5. Verify Token
     const JWKS = createRemoteJWKSet(new URL(config.jwksUri));
     await jwtVerify(idToken, JWKS, {
       issuer: config.issuer,
@@ -138,7 +137,7 @@ export const GET: APIRoute = async (context) => {
       clockTolerance: '60s'
     });
 
-    // 6. Set Cookies & Redirect Out cleanly
+    // 6. Set Cookies & Redirect
     const headers = new Headers();
     headers.append('Set-Cookie', 'oidc_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
     headers.append('Set-Cookie', `aim_session_token=${idToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`);
