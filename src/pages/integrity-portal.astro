@@ -1,6 +1,8 @@
 ---
 // src/pages/integrity-portal.astro
 export const prerender = false;
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Footer from '../components/Footer.astro';
 
 // 1. ERROR INTERCEPTION: Catch identity failure params before running isolation boundary
 const url = new URL(Astro.request.url);
@@ -20,191 +22,205 @@ const user = Astro.locals.user;
 
 // Evaluate structural cookie presence natively using the stable Astro context API
 const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
+
+// 3. HARD ANTI-CACHING HEADERS: Force the browser to evaluate the network layer on BACK button click
+Astro.response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+Astro.response.headers.set('Pragma', 'no-cache');
+Astro.response.headers.set('Expires', '0');
 ---
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VoidMetric Vision // Systemic Integrity Control Center / iclassed</title>
-    <script src="https://tailwindcss.com"></script>
-  </head>
-  <body class="bg-[#020203] text-slate-300 min-h-screen p-4 md:p-8 font-mono selection:bg-slate-800 selection:text-white">
-    <div class="max-w-5xl mx-auto space-y-6">
-      
-      <!-- Top Operational Status Header Panel -->
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-center p-6 bg-slate-900/40 border border-slate-900 rounded-xl gap-4">
-        <div>
-          <div class="flex items-center gap-3">
-            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-            <h1 class="text-lg font-black tracking-wider text-white">VOIDMETRIC // SSII</h1>
-          </div>
-          <p class="text-slate-500 text-[10px] uppercase tracking-widest mt-1">Sovereign Systemic Integrity Intelligence Engine</p>
+<BaseLayout title="VoidMetric OS // Systemic Posture Control Center">
+  <!-- Hardened Content Security Policy Matrix via Meta Tag -->
+  <meta 
+    http-equiv="Content-Security-Policy" 
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' https://tailwindcss.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';"
+    slot="head"
+  />
+
+  <main class="w-full max-w-5xl mx-auto px-4 py-8 text-left text-slate-300 font-mono text-xs leading-relaxed selection:bg-slate-800 selection:text-white space-y-6">
+    
+    <!-- Top Operational Status Header Panel -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center p-6 bg-slate-900/40 border border-slate-900 rounded-xl gap-4">
+      <div>
+        <div class="flex items-center gap-3">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+          <h1 class="text-lg font-black tracking-wider text-white">VOIDMETRIC // SSII</h1>
         </div>
-        <div class="text-left md:text-right text-xs space-y-0.5">
-          <p class="text-slate-400">OPERATOR: <span class="font-bold text-white">{user.email}</span></p>
-          <p class="text-slate-500 uppercase">ACCESS_SCOPE: <span class="text-blue-400 font-bold">{user.role}</span></p>
-          <!-- <a href="/api/auth/logout" class="text-rose-400/80 hover:text-rose-400 underline underline-offset-4 inline-block mt-2 font-bold transition">/terminate-session</a> -->
-        <!-- Replace old /api/auth/logout link with this fresh route name -->
-          <a href="/api/auth/signout" class="text-rose-400/80 hover:text-rose-400 underline underline-offset-4 inline-block mt-2 font-bold transition">/terminate-session</a>
-        </div>
+        <p class="text-slate-500 text-[10px] uppercase tracking-widest mt-1">Sovereign Systemic Integrity Intelligence Engine</p>
       </div>
-      <!-- INTERACTIVE ONBOARDING MODAL -->
-      {isFirstVisit && (
-        <div id="onboarding-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md px-4">
-          <div class="bg-[#09090b] border border-blue-500/20 p-8 rounded-xl max-w-md w-full shadow-2xl space-y-6">
-            <div class="space-y-1">
-              <h2 class="text-base font-bold text-white uppercase tracking-wider">// INITIALIZING NODE ENTRY</h2>
-              <p class="text-slate-500 text-[11px]">Systemic Integrity matrix calibration will execute inside volatile memory maps.</p>
-            </div>
-            
-            <div class="space-y-3 text-[11px] border-y border-slate-900 py-4">
-              <div class="flex items-center gap-3">
-                <span class="flex items-center justify-center w-5 h-5 rounded bg-emerald-950 text-emerald-400 font-bold">✓</span>
-                <span class="text-slate-400">Federated Identity Claims Confirmed via SSO</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <span class="flex items-center justify-center w-5 h-5 rounded bg-blue-950 text-blue-400 font-bold">2</span>
-                <span class="text-slate-400">Packs Homomorphic Noise Blinding Vectors</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <span class="flex items-center justify-center w-5 h-5 rounded bg-slate-900 text-slate-500 font-bold">3</span>
-                <span class="text-slate-400">Isolates Structural Compliance Theater Gaps</span>
-              </div>
-            </div>
-
-            <button id="startTourBtn" type="button" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded text-xs transition duration-200 cursor-pointer shadow-lg shadow-blue-600/10">
-              [EXECUTE_SYSTEM_CALIBRATION_TOUR]
-            </button>
-          </div>
-        </div>
-      )}
-
-      <!-- Primary Telemetry Panel Workspace -->
-      <div class="bg-[#07070a] border border-slate-900 rounded-xl p-6 space-y-6 shadow-xl">
-        <div class="space-y-1.5">
-          <h2 class="text-sm font-bold text-white uppercase tracking-wider">🧪 Live Stream Computation Matrix Terminal</h2>
-          <p class="text-slate-500 text-[11px] leading-relaxed">
-            Submits a sample 32-element stream (comprising 12 authentic control indicators and 20 randomized dummy vectors). The computation pipeline isolates localized alignment risks via real-time matrix decomposition.
-          </p>
-        </div>
-        
-        <div class="flex flex-wrap gap-3">
-          <button id="testMath" type="button" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-5 rounded text-xs transition duration-150 tracking-wide shadow-md shadow-blue-600/10 cursor-pointer">
-            [RUN_BLIND_TELEMETRY_CALCULATION]
-          </button>
-          <button id="injectZeroBtn" type="button" class="bg-slate-900 border border-rose-900/60 hover:bg-rose-950/30 text-rose-400 font-bold py-2.5 px-5 rounded text-xs transition duration-150 tracking-wide cursor-pointer">
-            [INJECT_STRUCTURAL_ZERO_VECTOR]
-          </button>
-        </div>
-        <!-- Dynamic Feedback Indicators -->
-        <div id="results" class="hidden space-y-6 pt-4 border-t border-slate-900">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
-            <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-1">
-              <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Metric A // Compliance Posture Sum</p>
-              <p id="resA" class="text-xl font-bold text-slate-100 font-mono">-</p>
-            </div>
-            <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-1">
-              <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Metric B // Real Operational Integrity</p>
-              <p id="resB" class="text-xl font-bold font-mono transition-colors duration-200">-</p>
-            </div>
-            <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-1">
-              <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Operational Security Status</p>
-              <p id="resStatus" class="text-[11px] font-bold font-mono uppercase tracking-wider transition-colors duration-200">-</p>
-            </div>
-          </div>
-
-          <!-- Advanced Side-Channel Threat Warnings Display Indicator -->
-          <div id="theaterAlarm" class="hidden p-4 bg-rose-950/20 border border-rose-900/50 rounded text-rose-400 text-[11px] space-y-1">
-            <p class="font-bold">// CRITICAL COMPLIANCE THEATER DELTA DETECTED</p>
-            <p class="text-rose-500/90">Formal corporate checkmarks remain exceptionally high, but the live integrity index indicates acute single-point failure exposure.</p>
-          </div>
-          { (user.role === 'engineer' || user.role === 'admin') && (
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <!-- Structural Decomposition Outputs View -->
-              <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-2">
-                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Spectral Topology Analytics (Engineer View)</p>
-                <div class="text-[11px] space-y-1 text-slate-400 font-mono">
-                  <div>Chaos Index Penalty : <span id="specChaos" class="text-white font-bold">-</span></div>
-                  <div>Max Eigenvalue Peak : <span id="specEigen" class="text-white">-</span></div>
-                  <div>Exploit Alignment   : <span id="specResonance" class="font-bold">-</span></div>
-                </div>
-              </div>
-
-              <!-- Raw Stream Asset Array Map Payload Inspector -->
-              <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-2">
-                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Blinded Homomorphic Stream Map</p>
-                <div id="rawStreamLog" class="text-[9px] text-slate-600 font-mono break-all max-h-[70px] overflow-y-auto leading-normal">
-                  Initializing buffer array...
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+      <div class="text-left md:text-right text-xs space-y-0.5">
+        <p class="text-slate-400">OPERATOR: <span class="font-bold text-white">{user.email}</span></p>
+        <p class="text-slate-500 uppercase">ACCESS_SCOPE: <span class="text-blue-400 font-bold">{user.role}</span></p>
+        <a href="/api/auth/signout" class="text-rose-400/80 hover:text-rose-400 underline underline-offset-4 inline-block mt-2 font-bold transition">/terminate-session</a>
       </div>
     </div>
-    <script>
-      // Handle the Onboarding Modal state setting natively
-      const startTourBtn = document.getElementById('startTourBtn');
-      const onboardingModal = document.getElementById('onboarding-modal');
+    <!-- INTERACTIVE ONBOARDING MODAL -->
+    {isFirstVisit && (
+      <div id="onboarding-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md px-4">
+        <div class="bg-[#09090b] border border-blue-500/20 p-8 rounded-xl max-w-md w-full shadow-2xl space-y-6">
+          <div class="space-y-1">
+            <h2 class="text-base font-bold text-white uppercase tracking-wider">// INITIALIZING NODE ENTRY</h2>
+            <p class="text-slate-500 text-[11px]">Systemic Integrity matrix calibration will execute inside volatile memory maps.</p>
+          </div>
+          
+          <div class="space-y-3 text-[11px] border-y border-slate-900 py-4">
+            <div class="flex items-center gap-3">
+              <span class="flex items-center justify-center w-5 h-5 rounded bg-emerald-950 text-emerald-400 font-bold">✓</span>
+              <span class="text-slate-400">Federated Identity Claims Confirmed via SSO</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="flex items-center justify-center w-5 h-5 rounded bg-blue-950 text-blue-400 font-bold">2</span>
+              <span class="text-slate-400">Packs Homomorphic Noise Blinding Vectors</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="flex items-center justify-center w-5 h-5 rounded bg-slate-900 text-slate-500 font-bold">3</span>
+              <span class="text-slate-400">Isolates Structural Compliance Theater Gaps</span>
+            </div>
+          </div>
 
-      startTourBtn?.addEventListener('click', () => {
-        // Drop cookie client-side to persist layout across dynamic updates
-        document.cookie = "ssii_onboard_complete=true; path=/; max-age=31536000; SameSite=Lax";
-        onboardingModal?.classList.add('hidden');
-      });
+          <button id="startTourBtn" type="button" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded text-xs transition duration-200 cursor-pointer shadow-lg shadow-blue-600/10">
+            [EXECUTE_SYSTEM_CALIBRATION_TOUR]
+          </button>
+        </div>
+      </div>
+    )}
 
-      // Simulation Framework Script Blocks
-      const testMathBtn = document.getElementById('testMath');
-      const injectZeroBtn = document.getElementById('injectZeroBtn');
-      const resultsSection = document.getElementById('results');
+    <!-- Primary Telemetry Panel Workspace -->
+    <div class="bg-[#07070a] border border-slate-900 rounded-xl p-6 space-y-6 shadow-xl">
+      <div class="space-y-1.5">
+        <h2 class="text-sm font-bold text-white uppercase tracking-wider">🧪 Live Stream Computation Matrix Terminal</h2>
+        <p class="text-slate-500 text-[11px] leading-relaxed">
+          Submits a sample 32-element stream (comprising 12 authentic control indicators and 20 randomized dummy vectors). The computation pipeline isolates localized alignment risks via real-time matrix decomposition.
+        </p>
+      </div>
+      
+      <div class="flex flex-wrap gap-3">
+        <button id="testMath" type="button" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-5 rounded text-xs transition duration-150 tracking-wide shadow-md shadow-blue-600/10 cursor-pointer">
+          [RUN_BLIND_TELEMETRY_CALCULATION]
+        </button>
+        <button id="injectZeroBtn" type="button" class="bg-slate-900 border border-rose-900/60 hover:bg-rose-950/30 text-rose-400 font-bold py-2.5 px-5 rounded text-xs transition duration-150 tracking-wide cursor-pointer">
+          [INJECT_STRUCTURAL_ZERO_VECTOR]
+        </button>
+      </div>
+      <!-- Dynamic Feedback Indicators -->
+      <div id="results" class="hidden space-y-6 pt-4 border-t border-slate-900">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+          <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-1">
+            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Metric A // Compliance Posture Sum</p>
+            <p id="resA" class="text-xl font-bold text-slate-100">-</p>
+          </div>
+          <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-1">
+            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Metric B // Real Operational Integrity</p>
+            <p id="resB" class="text-xl font-bold transition-colors duration-200">-</p>
+          </div>
+          <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-1">
+            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Operational Security Status</p>
+            <p id="resStatus" class="text-[11px] font-bold uppercase tracking-wider transition-colors duration-200">-</p>
+          </div>
+        </div>
 
-      function triggerCalculation(forceExploit = false) {
-        resultsSection?.classList.remove('hidden');
+        <!-- Advanced Side-Channel Threat Warnings Display Indicator -->
+        <div id="theaterAlarm" class="hidden p-4 bg-rose-950/20 border border-rose-900/50 rounded text-rose-400 text-[11px] space-y-1">
+          <p class="font-bold">// CRITICAL COMPLIANCE THEATER DELTA DETECTED</p>
+          <p class="text-rose-500/90">Formal corporate checkmarks remain exceptionally high, but the live integrity index indicates acute single-point failure exposure.</p>
+        </div>
         
-        const metricA = 100;
-        const metricB = forceExploit ? 0 : 94.2;
+        { (user.role === 'engineer' || user.role === 'admin') && (
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <!-- Structural Decomposition Outputs View -->
+            <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-2">
+              <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Spectral Topology Analytics (Engineer View)</p>
+              <div class="text-[11px] space-y-1 text-slate-400">
+                <div>Chaos Index Penalty : <span id="specChaos" class="text-white font-bold">-</span></div>
+                <div>Max Eigenvalue Peak : <span id="specEigen" class="text-white">-</span></div>
+                <div>Exploit Alignment   : <span id="specResonance" class="font-bold">-</span></div>
+              </div>
+            </div>
 
-        const resA = document.getElementById('resA');
-        const resB = document.getElementById('resB');
-        const resStatus = document.getElementById('resStatus');
-        const theaterAlarm = document.getElementById('theaterAlarm');
-        const rawStreamLog = document.getElementById('rawStreamLog');
+            <!-- Raw Stream Asset Array Map Payload Inspector -->
+            <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-2">
+              <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Blinded Homomorphic Stream Map</p>
+              <div id="rawStreamLog" class="text-[9px] text-slate-600 break-all max-h-[70px] overflow-y-auto leading-normal">
+                Initializing buffer array...
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
 
-        if (resA) resA.innerText = `${metricA}%`;
-        if (resB) {
-          resB.innerText = `${metricB}%`;
-          resB.className = forceExploit ? 'text-xl font-bold font-mono text-red-500' : 'text-xl font-bold font-mono text-emerald-400';
-        }
-        if (resStatus) {
-          resStatus.innerText = forceExploit ? 'CRITICAL SYSTEMIC BREACH' : 'NOMINAL CORE BALANCING';
-          resStatus.className = forceExploit ? 'text-[11px] font-bold font-mono uppercase tracking-wider text-red-500 bg-red-950/30 px-2 py-0.5 rounded border border-red-900/50' : 'text-[11px] font-bold font-mono uppercase tracking-wider text-emerald-400 bg-emerald-950/30 px-2 py-0.5 rounded border border-emerald-900/50';
-        }
+    <!-- Unified Footprint Core Indicator Component Loaded Natively Here -->
+    <Footer />
 
-        if (theaterAlarm) {
-          if (forceExploit) theaterAlarm.classList.remove('hidden');
-          else theaterAlarm.classList.add('hidden');
-        }
+  </main>
+  <script>
+    // Force immediate validation check if page is pulled out of back-forward cache memory
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted) {
+        // Local storage invalidation handler: kick off network evaluation sequence
+        window.location.reload();
+      }
+    });
 
-        if (rawStreamLog) {
-          const mockArray = Array.from({length: 32}, () => (forceExploit ? 0 : Math.random()).toFixed(4));
-          rawStreamLog.innerText = `[${mockArray.join(', ')}]`;
-        }
+    // Handle the Onboarding Modal state setting natively
+    const startTourBtn = document.getElementById('startTourBtn');
+    const onboardingModal = document.getElementById('onboarding-modal');
 
-        const specChaos = document.getElementById('specChaos');
-        const specEigen = document.getElementById('specEigen');
-        const specResonance = document.getElementById('specResonance');
+    startTourBtn?.addEventListener('click', () => {
+      document.cookie = "ssii_onboard_complete=true; path=/; max-age=31536000; SameSite=Lax";
+      onboardingModal?.classList.add('hidden');
+    });
 
-        if (specChaos) specChaos.innerText = forceExploit ? '1.0000 (MAX)' : '0.0421';
-        if (specEigen) specEigen.innerText = forceExploit ? '1.4920' : '1.4920';
-        if (specResonance) {
-          specResonance.innerText = forceExploit ? 'VECTOR LINK DETECTED' : 'NONE';
-          specResonance.className = forceExploit ? 'text-red-400 font-bold' : 'text-slate-400';
-        }
+    // Simulation Framework Script Blocks
+    const testMathBtn = document.getElementById('testMath');
+    const injectZeroBtn = document.getElementById('injectZeroBtn');
+    const resultsSection = document.getElementById('results');
+
+    function triggerCalculation(forceExploit = false) {
+      if (!resultsSection) return;
+      resultsSection.classList.remove('hidden');
+      
+      const metricA = 100;
+      const metricB = forceExploit ? 0 : 94.2;
+
+      const resA = document.getElementById('resA');
+      const resB = document.getElementById('resB');
+      const resStatus = document.getElementById('resStatus');
+      const theaterAlarm = document.getElementById('theaterAlarm');
+      const rawStreamLog = document.getElementById('rawStreamLog');
+
+      if (resA) resA.innerText = `${metricA}%`;
+      if (resB) {
+        resB.innerText = `${metricB}%`;
+        resB.className = forceExploit ? 'text-xl font-bold text-red-500' : 'text-xl font-bold text-emerald-400';
+      }
+      if (resStatus) {
+        resStatus.innerText = forceExploit ? 'CRITICAL SYSTEMIC BREACH' : 'NOMINAL CORE BALANCING';
+        resStatus.className = forceExploit ? 'text-[11px] font-bold uppercase tracking-wider text-red-500 bg-red-950/30 px-2 py-0.5 rounded border border-red-900/50' : 'text-[11px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/30 px-2 py-0.5 rounded border border-emerald-900/50';
       }
 
-      testMathBtn?.addEventListener('click', () => triggerCalculation(false));
-      injectZeroBtn?.addEventListener('click', () => triggerCalculation(true));
-    </script>
-  </body>
-</html>
+      if (theaterAlarm) {
+        if (forceExploit) theaterAlarm.classList.remove('hidden');
+        else theaterAlarm.classList.add('hidden');
+      }
+
+      if (rawStreamLog) {
+        const mockArray = Array.from({length: 32}, () => (forceExploit ? 0 : Math.random()).toFixed(4));
+        rawStreamLog.innerText = `[${mockArray.join(', ')}]`;
+      }
+
+      const specChaos = document.getElementById('specChaos');
+      const specEigen = document.getElementById('specEigen');
+      const specResonance = document.getElementById('specResonance');
+
+      if (specChaos) specChaos.innerText = forceExploit ? '1.0000 (MAX)' : '0.0421';
+      if (specEigen) specEigen.innerText = forceExploit ? '0.0000' : '1.4920';
+      if (specResonance) {
+        specResonance.innerText = forceExploit ? 'VECTOR LINK DETECTED' : 'NONE';
+        specResonance.className = forceExploit ? 'text-red-400 font-bold' : 'text-slate-400';
+      }
+    }
+
+    testMathBtn?.addEventListener('click', () => triggerCalculation(false));
+    injectZeroBtn?.addEventListener('click', () => triggerCalculation(true));
+  </script>
+</BaseLayout>
