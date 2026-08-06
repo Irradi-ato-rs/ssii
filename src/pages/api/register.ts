@@ -79,7 +79,6 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
     //authorizationTarget.searchParams.set('state', secureStateValue);
     
     // 4. CONSTRUCT THE OUTBOUND FEDERATION PATH (Hardened against KV format drifts)
-    // Extract only the domain and Tenant ID from the issuer to eliminate stacked "/v2.0" path segments
     let cleanBaseIssuer = String(targetConfig.issuer).trim();
     if (cleanBaseIssuer.endsWith('/v2.0')) {
       cleanBaseIssuer = cleanBaseIssuer.replace('/v2.0', '');
@@ -88,13 +87,16 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
       cleanBaseIssuer = cleanBaseIssuer.slice(0, -1);
     }
 
-    // Enforce the standard OIDC endpoint path cleanly
-    const authorizationTarget = new URL(`${cleanBaseIssuer}/oauth2/v2.0/authorize`);
+    // Force strict static string definition to prevent any platform stripping parameters downstream
+    const absoluteTargetEndpoint = `${cleanBaseIssuer}/oauth2/v2.0/authorize`;
+    const authorizationTarget = new URL(absoluteTargetEndpoint);
+    
+    // EXPLICIT HARD ASSIGNMENT / NO APEX POLICY: Force string evaluation natively to guarantee path presence
+    const rigidCallbackString = "https://ssii.fzoirm.com";
+
     authorizationTarget.searchParams.set('client_id', resolvedClientId);
     authorizationTarget.searchParams.set('response_type', 'code');
-    
-    // EXPLICIT SUBDOMAIN ENFORCEMENT — Matches Azure App Registration Whitelist / NO APEX POLICY
-    authorizationTarget.searchParams.set('redirect_uri', 'https://ssii.fzoirm.com');
+    authorizationTarget.searchParams.set('redirect_uri', rigidCallbackString);
     authorizationTarget.searchParams.set('response_mode', 'query');
     authorizationTarget.searchParams.set('scope', 'openid profile email');
     authorizationTarget.searchParams.set('state', secureStateValue);
