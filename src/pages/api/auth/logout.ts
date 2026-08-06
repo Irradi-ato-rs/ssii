@@ -4,7 +4,7 @@ import type { APIRoute } from 'astro';
 export const prerender = false;
 
 export const GET: APIRoute = async ({ cookies }) => {
-  // 1. Force clear the session token by setting Max-Age to 0
+  // 1. Force clear the session token locally by dropping its lifetime to 0
   cookies.set('aim_session_token', '', {
     path: '/',
     httpOnly: true,
@@ -13,11 +13,15 @@ export const GET: APIRoute = async ({ cookies }) => {
     maxAge: 0
   });
 
-  // 2. Redirect the browser back to the login gateway cleanly
+  // 2. Point to the open OIDC global endpoint to decouple Microsoft's persistent browser context
+  // This tells Microsoft to log out the user, then bounce them straight back to your clean login screen
+  const corporatePostLogoutRedirectUri = encodeURIComponent('https://fzoirm.com');
+  const externalFederatedLogoutTarget = `https://microsoftonline.com{corporatePostLogoutRedirectUri}`;
+
   return new Response(null, {
     status: 302,
     headers: {
-      'Location': '/login'
+      'Location': externalFederatedLogoutTarget
     }
   });
 };
