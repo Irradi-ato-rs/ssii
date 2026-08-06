@@ -13,8 +13,7 @@ export const GET: APIRoute = async ({ cookies }) => {
     maxAge: 0
   });
 
-  // 2. Point to the open OIDC global endpoint to decouple Microsoft's persistent browser context
-  // This tells Microsoft to log out the user, then bounce them straight back to your clean login screen
+  // 2. Point to the open OIDC global endpoint using exact template string interpolation syntax
   const corporatePostLogoutRedirectUri = encodeURIComponent('https://fzoirm.com');
   const externalFederatedLogoutTarget = `https://microsoftonline.com{corporatePostLogoutRedirectUri}`;
 
