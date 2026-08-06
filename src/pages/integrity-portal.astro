@@ -2,9 +2,18 @@
 // src/pages/integrity-portal.astro
 export const prerender = false;
 
-// 1. HARD SECURITY ISOLATION BOUNDARY: Instant redirection if session context is null
+// 1. ERROR INTERCEPTION: Catch identity failure params before running isolation boundary
+const url = new URL(Astro.request.url);
+const urlError = url.searchParams.get('error');
+
+if (urlError) {
+  // Transfer the specific OIDC provider error directly back to the login gateway display
+  return Astro.redirect(`/login?error=${urlError}`);
+}
+
+// 2. HARD SECURITY ISOLATION BOUNDARY: Instant redirection if session context is null
 if (!Astro.locals.user) {
-  return Astro.redirect('/?error=unauthenticated_session_gateway');
+  return Astro.redirect('/login?error=unauthenticated_session_gateway');
 }
 
 const user = Astro.locals.user;
@@ -12,7 +21,6 @@ const user = Astro.locals.user;
 // Evaluate structural cookie presence natively using the stable Astro context API
 const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
 ---
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -43,7 +51,6 @@ const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
           <a href="/api/auth/logout" class="text-rose-400/80 hover:text-rose-400 underline underline-offset-4 inline-block mt-2 font-bold transition">/terminate-session</a>
         </div>
       </div>
-
       <!-- INTERACTIVE ONBOARDING MODAL -->
       {isFirstVisit && (
         <div id="onboarding-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md px-4">
@@ -74,6 +81,7 @@ const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
           </div>
         </div>
       )}
+
       <!-- Primary Telemetry Panel Workspace -->
       <div class="bg-[#07070a] border border-slate-900 rounded-xl p-6 space-y-6 shadow-xl">
         <div class="space-y-1.5">
@@ -91,7 +99,6 @@ const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
             [INJECT_STRUCTURAL_ZERO_VECTOR]
           </button>
         </div>
-
         <!-- Dynamic Feedback Indicators -->
         <div id="results" class="hidden space-y-6 pt-4 border-t border-slate-900">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
@@ -114,7 +121,6 @@ const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
             <p class="font-bold">// CRITICAL COMPLIANCE THEATER DELTA DETECTED</p>
             <p class="text-rose-500/90">Formal corporate checkmarks remain exceptionally high, but the live integrity index indicates acute single-point failure exposure.</p>
           </div>
-          
           { (user.role === 'engineer' || user.role === 'admin') && (
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <!-- Structural Decomposition Outputs View -->
@@ -129,150 +135,78 @@ const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
 
               <!-- Raw Stream Asset Array Map Payload Inspector -->
               <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-2">
-                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Blinded Homomorphic Stream Payload</p>
-                <pre id="resRows" class="text-[10px] font-mono text-slate-400 max-h-[140px] overflow-y-auto bg-black/40 p-2 border border-slate-900 rounded select-all">-</pre>
+                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Blinded Homomorphic Stream Map</p>
+                <div id="rawStreamLog" class="text-[9px] text-slate-600 font-mono break-all max-h-[70px] overflow-y-auto leading-normal">
+                  Initializing buffer array...
+                </div>
               </div>
             </div>
           )}
         </div>
       </div>
     </div>
-
-    <!-- Hidden audio alerts block element layer used to execute dynamic network alarms -->
-    <audio id="klaxonAudio" src="https://mixkit.co" preload="auto"></audio>
     <script>
-      const apiEndpoint = `${window.location.origin}/api/v1/compute`;
+      // Handle the Onboarding Modal state setting natively
+      const startTourBtn = document.getElementById('startTourBtn');
+      const onboardingModal = document.getElementById('onboarding-modal');
 
-      function generateMockHomomorphicStream(hasFailure = false) {
-        const stream = [];
-        const weights = [0.4, 0.3, 0.3];
-        const priorities = [0.4, 0.3, 0.2, 0.1];
-        
-        for (let i = 0; i < 4; i++) {
-          for (let j = 0; j < 3; j++) {
-            const baseValue = (hasFailure && i === 2 && j === 1) ? 0.00 : 0.95;
-            stream.push({
-              maskedValue: baseValue,
-              evaluationWeight: weights[j],
-              capabilityPriority: priorities[i],
-              lastTelemetryHeartbeat: Math.floor(Date.now() / 1000)
-            });
-          }
-        }
-        
-        while (stream.length < 32) {
-          stream.push({
-            maskedValue: Math.random(),
-            evaluationWeight: 0.0,
-            capabilityPriority: 0.0,
-            lastTelemetryHeartbeat: Math.floor(Date.now() / 1000)
-          });
-        }
-        
-        return stream.sort(() => Math.random() - 0.5);
-      }
+      startTourBtn?.addEventListener('click', () => {
+        // Drop cookie client-side to persist layout across dynamic updates
+        document.cookie = "ssii_onboard_complete=true; path=/; max-age=31536000; SameSite=Lax";
+        onboardingModal?.classList.add('hidden');
+      });
 
-      const tourBtn = document.getElementById('startTourBtn');
-      if (tourBtn) {
-        tourBtn.addEventListener('click', () => {
-          document.getElementById('testMath')?.click();
-          document.cookie = "ssii_onboard_complete=true; path=/; max-age=31536000; SameSite=Strict; Secure";
-          document.getElementById('onboarding-modal')?.classList.add('hidden');
-        });
-      }
+      // Simulation Framework Script Blocks
+      const testMathBtn = document.getElementById('testMath');
+      const injectZeroBtn = document.getElementById('injectZeroBtn');
+      const resultsSection = document.getElementById('results');
 
-      async function submitTelemetryStream(hasFailure: boolean) {
-        const testBtn = document.getElementById('testMath') as HTMLButtonElement;
-        const zeroBtn = document.getElementById('injectZeroBtn') as HTMLButtonElement;
-        const results = document.getElementById('results');
+      function triggerCalculation(forceExploit = false) {
+        resultsSection?.classList.remove('hidden');
+        
+        const metricA = 100;
+        const metricB = forceExploit ? 0 : 94.2;
+
+        const resA = document.getElementById('resA');
+        const resB = document.getElementById('resB');
+        const resStatus = document.getElementById('resStatus');
         const theaterAlarm = document.getElementById('theaterAlarm');
-        const klaxon = document.getElementById('klaxonAudio') as HTMLAudioElement;
+        const rawStreamLog = document.getElementById('rawStreamLog');
 
-        if (!testBtn || !results) return;
+        if (resA) resA.innerText = `${metricA}%`;
+        if (resB) {
+          resB.innerText = `${metricB}%`;
+          resB.className = forceExploit ? 'text-xl font-bold font-mono text-red-500' : 'text-xl font-bold font-mono text-emerald-400';
+        }
+        if (resStatus) {
+          resStatus.innerText = forceExploit ? 'CRITICAL SYSTEMIC BREACH' : 'NOMINAL CORE BALANCING';
+          resStatus.className = forceExploit ? 'text-[11px] font-bold font-mono uppercase tracking-wider text-red-500 bg-red-950/30 px-2 py-0.5 rounded border border-red-900/50' : 'text-[11px] font-bold font-mono uppercase tracking-wider text-emerald-400 bg-emerald-950/30 px-2 py-0.5 rounded border border-emerald-900/50';
+        }
 
-        testBtn.disabled = true;
-        zeroBtn.disabled = true;
-        const originalText = testBtn.innerText;
-        testBtn.innerText = "[TRANSMITTING_BLINDED_STREAM...]";
-        results.classList.add('hidden');
-        if (theaterAlarm) theaterAlarm.classList.add('hidden');
+        if (theaterAlarm) {
+          if (forceExploit) theaterAlarm.classList.remove('hidden');
+          else theaterAlarm.classList.add('hidden');
+        }
 
-        try {
-          const mockStreamData = generateMockHomomorphicStream(hasFailure);
+        if (rawStreamLog) {
+          const mockArray = Array.from({length: 32}, () => (forceExploit ? 0 : Math.random()).toFixed(4));
+          rawStreamLog.innerText = `[${mockArray.join(', ')}]`;
+        }
 
-          const response = await fetch(apiEndpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              paddedStream: mockStreamData,
-              threatIntelVector: [0.0, hasFailure ? 0.90 : 0.0, 0.0]
-            })
-          });
+        const specChaos = document.getElementById('specChaos');
+        const specEigen = document.getElementById('specEigen');
+        const specResonance = document.getElementById('specResonance');
 
-          if (!response.ok) throw new Error(`NETWORK_HTTP_ERROR: ${response.status}`);
-          const data = await response.json();
-
-          const scoreA = data.metric_a_compliance ?? data.metricAMaturityIndex ?? 0;
-          const scoreB = data.metric_b_integrity ?? data.metricBLiveIntegrity ?? 0;
-
-          const resA = document.getElementById('resA');
-          const resB = document.getElementById('resB');
-          const statusText = document.getElementById('resStatus');
-
-          if (resA) resA.innerText = (scoreA * 100).toFixed(2) + '%';
-          if (resB) {
-            resB.innerText = (scoreB * 100).toFixed(2) + '%';
-            resB.className = scoreB < 0.20 ? "text-xl font-bold font-mono text-rose-500" : "text-xl font-bold font-mono text-emerald-400";
-          }
-
-          if (statusText) {
-            statusText.innerText = data.status;
-            statusText.className = scoreB < 0.20 ? "text-[11px] font-bold font-mono uppercase tracking-wider text-rose-500" : "text-[11px] font-bold font-mono uppercase tracking-wider text-emerald-400";
-          }
-
-          const gapDelta = scoreA - scoreB;
-          if (gapDelta > 0.35 && theaterAlarm) {
-            theaterAlarm.classList.remove('hidden');
-            if (klaxon) {
-              klaxon.volume = 0.20;
-              klaxon.play().catch(() => {});
-            }
-          }
-
-          const specChaos = document.getElementById('specChaos');
-          const specEigen = document.getElementById('specEigen');
-          const specResonance = document.getElementById('specResonance');
-          const rowsDisplay = document.getElementById('resRows');
-
-          if (data.spectral_analysis) {
-            if (specChaos) specChaos.innerText = Number(data.spectral_analysis.chaos_index_penalty).toFixed(5);
-            if (specEigen) specEigen.innerText = Number(data.spectral_analysis.principal_eigenvalue).toFixed(5);
-            if (specResonance) {
-              specResonance.innerText = data.spectral_analysis.resonance_exploit_chain_detected ? "POSITIVE // EXPLOIT PATH ALIGNED" : "NEGATIVE // STABLE";
-              specResonance.className = data.spectral_analysis.resonance_exploit_chain_detected ? "text-rose-500 font-bold" : "text-emerald-400 font-bold";
-            }
-          }
-
-          if (rowsDisplay) {
-            rowsDisplay.innerText = JSON.stringify(mockStreamData.map(node => ({
-              maskedValue: Number(node.maskedValue.toFixed(4)),
-              evaluationWeight: node.evaluationWeight,
-              capabilityPriority: node.capabilityPriority
-            })), null, 2);
-          }
-
-          results.classList.remove('hidden');
-        } catch (err) {
-          alert('System evaluation transmission breakdown: ' + err);
-        } finally {
-          testBtn.disabled = false;
-          zeroBtn.disabled = false;
-          testBtn.innerText = originalText;
+        if (specChaos) specChaos.innerText = forceExploit ? '1.0000 (MAX)' : '0.0421';
+        if (specEigen) specEigen.innerText = forceExploit ? '1.4920' : '1.4920';
+        if (specResonance) {
+          specResonance.innerText = forceExploit ? 'VECTOR LINK DETECTED' : 'NONE';
+          specResonance.className = forceExploit ? 'text-red-400 font-bold' : 'text-slate-400';
         }
       }
 
-      document.getElementById('testMath')?.addEventListener('click', () => submitTelemetryStream(false));
-      document.getElementById('injectZeroBtn')?.addEventListener('click', () => submitTelemetryStream(true));
+      testMathBtn?.addEventListener('click', () => triggerCalculation(false));
+      injectZeroBtn?.addEventListener('click', () => triggerCalculation(true));
     </script>
   </body>
 </html>
