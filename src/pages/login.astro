@@ -24,7 +24,7 @@ const urlError = url.searchParams.get('error');
 let translatedError = '';
 if (urlError) {
   if (urlError === 'tenant_access_denied') {
-    translatedError = 'TENANT ACCESS DENIED. IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE TECHNOLOGY ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
+    translatedError = 'TENANT ACCESS DENIED. IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE TECHNOLOGY ADMINISTRATOR TO GET YOUR WORK ACCOUNT ASSIGNED.';
   } else {
     translatedError = `SESSION FAILURE: ${urlError.replace(/_/g, ' ').toUpperCase()}`;
   }
