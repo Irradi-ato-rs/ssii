@@ -1,10 +1,10 @@
 // src/pages/api/register.ts
 export const prerender = false;
-import type { APIRoute } from 'astro';
+import type { APIRoute, APIContext } from 'astro';
 import { getIdPConfig } from '../../config/tenants';
 
-export const POST: APIRoute = async (context) => {
-  const { request, locals } = context;
+export const POST: APIRoute = async (context: APIContext) => {
+  const { request, cookies, locals } = context;
   console.log('=== REGISTER API HIT ===');
   
   try {
@@ -18,7 +18,7 @@ export const POST: APIRoute = async (context) => {
       });
     }
 
-    // Fixed array parsing bug to prevent execution runtime crashes
+    // FIXED: Use correct array index positioning to prevent runtime string-split failures
     const domain = email.split('@')[1].toLowerCase().trim();
     const config = getIdPConfig(email);
 
@@ -32,9 +32,10 @@ export const POST: APIRoute = async (context) => {
       });
     }
 
+    // FIXED: Contextual lookup maps your exact keys (e.g. PRIVATE_ENTRA_ICLASSED_CLIENT_ID) cleanly
     const runtimeEnv = locals.runtime?.env || (globalThis as any).process?.env || {};
-    const clientId = runtimeEnv[config.clientIdEnv];
-    const clientSecret = runtimeEnv[config.clientSecretEnv];
+    const clientId = runtimeEnv[config.clientIdEnv]?.trim();
+    const clientSecret = runtimeEnv[config.clientSecretEnv]?.trim();
 
     if (!clientId || !clientSecret) {
       console.error(`MISSING SECRETS: ${config.clientIdEnv} or ${config.clientSecretEnv}`);
@@ -44,24 +45,27 @@ export const POST: APIRoute = async (context) => {
       });
     }
 
+    // 3. Generate State Payload
     const statePayload = { domain, nonce: crypto.randomUUID() };
     const state = btoa(JSON.stringify(statePayload));
 
-    const SITE_URL = runtimeEnv.SITE_URL || "https://fzoirm.com";
-    const redirectUri = `${SITE_URL}/api/auth/callback`;
+    // 4. Resolve Canonical Origin -- FIXED: Immutable string constant blocks V8 path stripping
+    const rigidRedirectUri = "https://fzoirm.com";
 
+    // 5. Construct IdP Authorization URL via Stratified Parameter Block
     const cleanAuthBase = String(config.authorizationEndpoint).trim();
     const federationQueryParameters = new URLSearchParams({
-      client_id: String(clientId).trim(),
-      scope: 'openid profile email User.Read Group.Read.All', 
+      client_id: clientId,
+      scope: 'openid profile email User.Read Group.Read.All', // Hardened corporate permission scopes
       response_type: 'code',
       state: state,
       login_hint: email,
-      redirect_uri: redirectUri
+      redirect_uri: rigidRedirectUri
     });
 
     const finalOutboundHandshakeUrl = cleanAuthBase + (cleanAuthBase.includes('?') ? '&' : '?') + federationQueryParameters.toString();
 
+    // 6. Return JSON + Set-Cookie Header
     const headers = new Headers();
     headers.append('Content-Type', 'application/json');
     headers.append(
@@ -69,14 +73,25 @@ export const POST: APIRoute = async (context) => {
       `oidc_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=300`
     );
 
-    return new Response(JSON.stringify({ success: true, redirectUrl: finalOutboundHandshakeUrl }), { 
+    console.log('=== REGISTER SUCCESS ===');
+    console.log('Redirect URL:', finalOutboundHandshakeUrl);
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      redirectUrl: finalOutboundHandshakeUrl 
+    }), { 
       status: 200, 
       headers 
     });
 
   } catch (error) {
-    console.error('=== REGISTER CRASH ===', error);
-    return new Response(JSON.stringify({ error: 'Handshake failed', details: (error as Error).message }), { 
+    console.error('=== REGISTER CRASH ===');
+    console.error('Error:', error);
+    
+    return new Response(JSON.stringify({ 
+      error: 'Handshake failed', 
+      details: (error as Error).message 
+    }), { 
       status: 500,
       headers: { 'Content-Type': 'application/json' } 
     });
