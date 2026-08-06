@@ -27,7 +27,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // This MUST match your Entra ID Redirect URI path exactly to prevent loop
   const isAuthCallback = 
     url.pathname === '/api/auth/callback' || 
-    url.pathname.startsWith('/api/auth/');
+    url.pathname.startsWith('/api/auth/')
+    url.pathname.startsWith('/api');
 
   if (isAuthCallback || publicRoutes.includes(cleanPath)) {
     return next();
