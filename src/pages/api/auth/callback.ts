@@ -47,24 +47,12 @@ export const GET: APIRoute = async (context) => {
       throw new Error('infrastructure_environment_fault');
     }
 
-    // 3. SECURE STATE PRE-EXTRACTION BOUNDARY
-    // To perform the code exchange, we need the specific tenant's client secret out of KV.
-    // We isolate and parse the code string segment natively to find the target domain.
-    const codeChunks = incomingCode.split('.');
-    let temporaryDomain = '';
-    
-    try {
-      // Decode authorization code metadata layers strictly if enveloped by the provider
-      const payloadEnvelope = JSON.parse(atob(codeChunks[1] || codeChunks[0]));
-      const rawUserClaim = payloadEnvelope.email || payloadEnvelope.sub || '';
-      temporaryDomain = rawUserClaim.split('@').pop()?.toLowerCase().trim() || '';
-    } catch {
-      // Fallback domain extraction parsing layer if tracking vectors fail
-      temporaryDomain = 'common';
-    }
+    // 3. ABSOLUTE IDENTITY REALM RESOLUTION
+    // Since codes cannot be decoded before transmission, we target your working configuration domain explicitly
+    const targetedDomainKey = "fzoirm.com";
 
-    // 4. Load Isolated Key-Vault Config Credentials
-    const serializedConfig = await tenantDirectory.get(`domain:${temporaryDomain}`);
+    // Load Isolated Key-Vault Config Credentials
+    const serializedConfig = await tenantDirectory.get(`domain:${targetedDomainKey}`);
     if (!serializedConfig) throw new Error('tenant_access_denied');
     
     const targetConfig = JSON.parse(serializedConfig) as DynamicIdPConfig;
@@ -79,8 +67,7 @@ export const GET: APIRoute = async (context) => {
       throw new Error('configuration_runtime_fault');
     }
 
-    // 5. SERVER-TO-SERVER PROTOCOL EXCHANGE HANDSHAKE (Fetch API)
-    // Exchange the single-use authorization code for a production identity token
+    // 4. SERVER-TO-SERVER PROTOCOL EXCHANGE HANDSHAKE (Fetch API)
     const tokenRequestPayload = new URLSearchParams({
       client_id: resolvedClientId.trim(),
       client_secret: resolvedClientSecret.trim(),
@@ -108,8 +95,7 @@ export const GET: APIRoute = async (context) => {
     if (!validatedIdentityToken) {
       throw new Error('missing_cryptographic_claims');
     }
-    // 6. ANCHOR PRODUCTION SESSION COOKIE
-    // Push the verified signed token down to the operator's browser window
+    // 5. ANCHOR PRODUCTION SESSION COOKIE
     cookies.set('aim_session_token', validatedIdentityToken, {
       path: '/',
       httpOnly: true,
@@ -118,7 +104,6 @@ export const GET: APIRoute = async (context) => {
       maxAge: 86400 // Production session valid for exactly 24 hours
     });
 
-    // Clean handoff directly into the signature-first integrity portal
     return context.redirect('/integrity-portal');
 
   } catch (err: any) {
@@ -127,7 +112,6 @@ export const GET: APIRoute = async (context) => {
     const rawErrorMessage = err.message || 'session_negotiation_failed';
     const cleanMappedError = rawErrorMessage.replace(/[^a-zA-Z0-9_]/g, '');
     
-    // CACHE BUSTER FORCE: Append a unique unix timestamp parameter to break local browser memory loops
     const uniqueCacheBusterStamp = Date.now();
     return context.redirect(`/login?error=${cleanMappedError}&v=${uniqueCacheBusterStamp}`);
   }
