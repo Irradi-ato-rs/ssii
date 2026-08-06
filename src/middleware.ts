@@ -1,5 +1,6 @@
 // src/middleware.ts
 import { defineMiddleware } from 'astro:middleware';
+import { env } from 'cloudflare:workers'; // ADD THIS IMPORT
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 
 interface DynamicIdPConfig {
@@ -20,23 +21,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
     cleanPath = cleanPath.slice(0, -1);
   }
 
-  // 2. Public Routes & CRITICAL Auth Callback Exclusion
+  // 2. Public Routes & API Exclusion
   const publicRoutes = ['/', '/login', '/architecture', '/onboarding'];
-  
-  // EXPLICITLY EXCLUDE THE CALLBACK ROUTE
-  // This MUST match your Entra ID Redirect URI path exactly to prevent loop
-  //const isAuthCallback = 
-    //url.pathname === '/api/auth/callback' || 
-    //url.pathname.startsWith('/api/auth/')
-    //url.pathname.startsWith('/api');
-// REPLACE isAuthCallback:
-const isApiRoute = 
-  url.pathname === '/api/register' || 
-  url.pathname === '/api/auth/callback' || 
-  url.pathname.startsWith('/api/auth/');   
-  
-  //if (isAuthCallback || publicRoutes.includes(cleanPath)) {
-    //return next();
+  const isApiRoute = 
+    url.pathname === '/api/register' || 
+    url.pathname === '/api/auth/callback' || 
+    url.pathname.startsWith('/api/auth/') ||
+    url.pathname.startsWith('/api/');
+
   if (isApiRoute || publicRoutes.includes(cleanPath)) {
     return next();
   }
@@ -46,20 +38,18 @@ const isApiRoute =
 
   if (!sessionToken || !sessionToken.value) {
     locals.user = null;
-    // FIX: Manual Response to prevent cookie drop issues in Workers
     const headers = new Headers();
     headers.append('Location', '/?error=unauthenticated_session_gateway');
     return new Response(null, { status: 302, headers });
   }
 
   try {
-    const runtimeEnv = locals.runtime?.env;
-    const tenantDirectory = runtimeEnv?.VM_TENANT_DIRECTORY;
+    // ✅ FIX: Access KV via imported env, NOT locals.runtime.env
+    const tenantDirectory = env.VM_TENANT_DIRECTORY;
 
     if (!tenantDirectory) {
       console.error('[VoidMetric Middleware] KV Binding Missing');
       locals.user = null;
-      // FIX: Manual Response
       const headers = new Headers();
       headers.append('Set-Cookie', 'aim_session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
       headers.append('Location', '/?error=infrastructure_environment_fault');
@@ -81,7 +71,6 @@ const isApiRoute =
     if (!serializedConfig) {
       console.error(`[VoidMetric Middleware] Domain not found: ${extractedDomain}`);
       locals.user = null;
-      // FIX: Manual Response
       const headers = new Headers();
       headers.append('Set-Cookie', 'aim_session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
       headers.append('Location', '/?error=tenant_access_denied');
@@ -89,10 +78,9 @@ const isApiRoute =
     }
     const targetConfig = JSON.parse(serializedConfig) as DynamicIdPConfig;
 
-    const resolvedAudienceId = runtimeEnv?.[targetConfig.clientIdEnv]?.trim();
+    const resolvedAudienceId = env[targetConfig.clientIdEnv];
     if (!resolvedAudienceId) {
       locals.user = null;
-      // FIX: Manual Response
       const headers = new Headers();
       headers.append('Set-Cookie', 'aim_session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
       headers.append('Location', '/?error=configuration_runtime_fault');
@@ -131,7 +119,6 @@ const isApiRoute =
     console.error('[VoidMetric Middleware Fault] JWT validation aborted:', (err as Error).message);
     locals.user = null;
     
-    // CRITICAL FIX: Manual Response for atomic cookie clear + redirect
     const responseHeaders = new Headers();
     responseHeaders.append('Set-Cookie', 'aim_session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
     responseHeaders.append('Location', '/?error=session_invalidated_by_middleware');
