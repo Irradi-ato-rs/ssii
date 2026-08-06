@@ -1,119 +1,84 @@
 // src/pages/api/register.ts
-import type { APIRoute } from 'astro';
-
 export const prerender = false;
+import type { APIRoute } from 'astro';
+import { getIdPConfig } from '../../config/tenants';
 
-// ENFORCED GLOBAL PROTOCOL ENTRANCE MATRIX v11
-export const POST: APIRoute = async ({ request, locals, cookies }) => {
-  const executionStartTime = Date.now();
-  const STANDARD_PROCESSING_LATENCY_MS = 120;
-
+export const POST: APIRoute = async (context) => {
+  const { request, locals } = context;
+  console.log('=== REGISTER API HIT ===');
+  
   try {
     const formData = await request.formData();
-    const email = formData.get('email');
+    const email = formData.get('email')?.toString();
 
-    if (!email || typeof email !== 'string' || !email.includes('@')) {
-      throw new Error('malformed_identity_vector');
+    if (!email || !email.includes('@')) {
+      return new Response(JSON.stringify({ error: 'Invalid email address' }), { 
+        status: 400, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
     }
 
-    const extractedDomain = email.split('@').pop()?.toLowerCase().trim() || '';
-    
-    if (!extractedDomain || extractedDomain.includes('.') === false) {
-      throw new Error('invalid_identity_realm');
-    }
-    const runtimeEnv = locals.runtime?.env;
-    const tenantDirectory = runtimeEnv?.VM_TENANT_DIRECTORY;
+    // Fixed array parsing bug to prevent execution runtime crashes
+    const domain = email.split('@')[1].toLowerCase().trim();
+    const config = getIdPConfig(email);
 
-    if (!tenantDirectory) {
-      console.error('[VoidMetric Register Fault] Core KV binding namespace configuration missing');
-      throw new Error('infrastructure_environment_fault');
-    }
-
-    // Retrieve target client configuration map from private storage vault
-    const serializedConfig = await tenantDirectory.get(`domain:${extractedDomain}`);
-    
-    const isRegisteredTenant = !!serializedConfig;
-    const targetConfig = isRegisteredTenant 
-      ? JSON.parse(serializedConfig) 
-      : { issuer: '', clientIdEnv: '', jwksUri: '' };
-
-    // Prevent dynamic property lock evaluation bypasses
-    const targetKeyString = String(targetConfig.clientIdEnv).trim();
-    const isKeySafe = /^[a-zA-Z0-9_]+$/.test(targetKeyString);
-    
-    const resolvedClientId = (isRegisteredTenant && isKeySafe) 
-      ? runtimeEnv[targetKeyString]?.trim() 
-      : null;
-
-    if (!resolvedClientId) {
-      console.error(`[VoidMetric Register Failure] Unauthorized Domain or Missing Client ID for domain: ${extractedDomain}`);
-      throw new Error('tenant_access_denied');
-    }
-    // 3. CRYPTOGRAPHIC STATE MATRIX GENERATION
-    // Fixes the undefined crash by generating high-entropy state payload vectors securely
-    const stateEntropyBuffer = new Uint8Array(32);
-    crypto.getRandomValues(stateEntropyBuffer);
-    const secureStateValue = Array.from(stateEntropyBuffer, byte => byte.toString(16).padStart(2, '0')).join('');
-
-    // Anchor verification context using server-side __Host cookie isolation parameters
-    cookies.set('__Host-oauth_state', secureStateValue, {
-      path: '/',
-      httpOnly: true,
-      secure: true,
-      sameSite: 'lax',
-      maxAge: 300
-    });
-
-    // Normalize issuer strings to guarantee trailing path consistency
-    let cleanBaseIssuer = String(targetConfig.issuer).trim();
-    if (cleanBaseIssuer.endsWith('/v2.0')) {
-      cleanBaseIssuer = cleanBaseIssuer.replace('/v2.0', '');
-    }
-    if (cleanBaseIssuer.endsWith('/')) {
-      cleanBaseIssuer = cleanBaseIssuer.slice(0, -1);
+    if (!config) {
+      return new Response(JSON.stringify({ 
+        error: 'Domain not authorized', 
+        message: 'Your organization is not yet onboarded.' 
+      }), { 
+        status: 403, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
     }
 
-    // Force strict static string definition to prevent intermediate platform stripping
-    const absoluteTargetEndpoint = `${cleanBaseIssuer}/oauth2/v2.0/authorize`;
-    
-    // STRATIFIED PARAMETER BLOCK ASSEMBLY
-    // Enforces the correct subdomain path to eliminate Microsoft redirect URI mismatches permanently
+    const runtimeEnv = locals.runtime?.env || (globalThis as any).process?.env || {};
+    const clientId = runtimeEnv[config.clientIdEnv];
+    const clientSecret = runtimeEnv[config.clientSecretEnv];
+
+    if (!clientId || !clientSecret) {
+      console.error(`MISSING SECRETS: ${config.clientIdEnv} or ${config.clientSecretEnv}`);
+      return new Response(JSON.stringify({ error: 'Configuration error: Missing secrets' }), { 
+        status: 500, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+
+    const statePayload = { domain, nonce: crypto.randomUUID() };
+    const state = btoa(JSON.stringify(statePayload));
+
+    const SITE_URL = runtimeEnv.SITE_URL || "https://fzoirm.com";
+    const redirectUri = `${SITE_URL}/api/auth/callback`;
+
+    const cleanAuthBase = String(config.authorizationEndpoint).trim();
     const federationQueryParameters = new URLSearchParams({
-      client_id: String(resolvedClientId).trim(),
+      client_id: String(clientId).trim(),
+      scope: 'openid profile email User.Read Group.Read.All', 
       response_type: 'code',
-      redirect_uri: 'https://fzoirm.com',
-      response_mode: 'query',
-      scope: 'openid profile email',
-      state: String(secureStateValue).trim()
+      state: state,
+      login_hint: email,
+      redirect_uri: redirectUri
     });
 
-    // Stitch the fully qualified URL string manually to guarantee no character-slicing can occur
-    const finalOutboundHandshakeUrl = absoluteTargetEndpoint + '?' + federationQueryParameters.toString();
+    const finalOutboundHandshakeUrl = cleanAuthBase + (cleanAuthBase.includes('?') ? '&' : '?') + federationQueryParameters.toString();
 
-    // Timing attack mitigation latency engine padding block
-    const activeProcessingTime = Date.now() - executionStartTime;
-    const remainingDelayPadding = STANDARD_PROCESSING_LATENCY_MS - activeProcessingTime;
-    if (remainingDelayPadding > 0) {
-      await new Promise(resolve => setTimeout(resolve, remainingDelayPadding));
-    }
+    const headers = new Headers();
+    headers.append('Content-Type', 'application/json');
+    headers.append(
+      'Set-Cookie', 
+      `oidc_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=300`
+    );
 
-    return new Response(JSON.stringify({ redirectUrl: finalOutboundHandshakeUrl }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
+    return new Response(JSON.stringify({ success: true, redirectUrl: finalOutboundHandshakeUrl }), { 
+      status: 200, 
+      headers 
     });
-  } catch (err: any) {
-    const activeProcessingTime = Date.now() - executionStartTime;
-    const remainingDelayPadding = STANDARD_PROCESSING_LATENCY_MS - activeProcessingTime;
-    if (remainingDelayPadding > 0) {
-      await new Promise(resolve => setTimeout(resolve, remainingDelayPadding));
-    }
 
-    const rawErrorMessage = err.message || 'handshake_negotiation_failed';
-    const cleanErrorResponse = rawErrorMessage.replace(/[^a-zA-Z0-9_]/g, '');
-
-    return new Response(JSON.stringify({ error: cleanErrorResponse }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' }
+  } catch (error) {
+    console.error('=== REGISTER CRASH ===', error);
+    return new Response(JSON.stringify({ error: 'Handshake failed', details: (error as Error).message }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' } 
     });
   }
 };
