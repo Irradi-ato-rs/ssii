@@ -58,7 +58,7 @@ export const POST: APIRoute = async ({ request }: APIContext) => {
     const statePayload = { domain, nonce: crypto.randomUUID() };
     const state = btoa(JSON.stringify(statePayload));
 
-    // FIX: Use hardcoded SITE_URL from env (not request headers)
+    // FIX: Use hardcoded SITE_URL from env (not request headers) / not iclassed.com
     const SITE_URL = env.SITE_URL || "https://ssii.fzoirm.com";
     const redirectUri = `${SITE_URL}/api/auth/callback`;
     
@@ -69,7 +69,8 @@ export const POST: APIRoute = async ({ request }: APIContext) => {
     authUrl.searchParams.set('client_id', clientId);
     authUrl.searchParams.set('redirect_uri', redirectUri);
     authUrl.searchParams.set('response_type', 'code');
-    authUrl.searchParams.set('scope', 'openid profile email groups');
+    // Valid scopes only: openid, profile, email, User.Read, Group.Read.All
+    authUrl.searchParams.set('scope', 'openid profile email User.Read Group.Read.All');   
     authUrl.searchParams.set('state', state);
     authUrl.searchParams.set('login_hint', email);
 
