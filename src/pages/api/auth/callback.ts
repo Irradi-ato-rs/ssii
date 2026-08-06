@@ -33,12 +33,12 @@ export const GET: APIRoute = async (context) => {
     return context.redirect('/login?error=invalid_state');
   }
 
-  // Evict validation token instantly upon successful validation match to prevent replay exploits
   cookies.delete('__Host-oauth_state', { path: '/' });
 
   if (!incomingCode) {
     return context.redirect('/login?error=malformed_auth_handshake');
   }
+
   try {
     const runtimeEnv = locals.runtime?.env;
     const tenantDirectory = runtimeEnv?.VM_TENANT_DIRECTORY;
@@ -48,7 +48,6 @@ export const GET: APIRoute = async (context) => {
     }
 
     // 3. ABSOLUTE IDENTITY REALM RESOLUTION
-    // Since codes cannot be decoded before transmission, we target your working configuration domain explicitly
     const targetedDomainKey = "fzoirm.com";
 
     // Load Isolated Key-Vault Config Credentials
@@ -57,7 +56,6 @@ export const GET: APIRoute = async (context) => {
     
     const targetConfig = JSON.parse(serializedConfig) as DynamicIdPConfig;
 
-    // Whitelist and safely retrieve secure environment variables from the edge runtime execution space
     const targetClientKey = String(targetConfig.clientIdEnv).trim();
     const targetSecretKey = String(targetConfig.clientSecretEnv).trim();
 
@@ -68,14 +66,10 @@ export const GET: APIRoute = async (context) => {
       throw new Error('configuration_runtime_fault');
     }
 
-    // 4. MULTITENANT ENDPOINT RESOLUTION
-    // Enforce the universal Microsoft Graph organization token exchange matrix to handle multitenant routing paths
-    let cleanTokenEndpoint = String(targetConfig.tokenEndpoint).trim();
-    if (cleanTokenEndpoint.includes('login.microsoftonline.com')) {
-      cleanTokenEndpoint = 'https://microsoftonline.com';
-    }
+    // 4. Try the original tenant-specific endpoint path first to evaluate multitenant cross-trust
+    const cleanTokenEndpoint = String(targetConfig.tokenEndpoint).trim();
 
-    // 5. SERVER-TO-SERVER PROTOCOL EXCHANGE HANDSHAKE (Fetch API)
+    // 5. SERVER-TO-SERVER PROTOCOL EXCHANGE HANDSHAKE
     const tokenRequestPayload = new URLSearchParams({
       client_id: resolvedClientId.trim(),
       client_secret: resolvedClientSecret.trim(),
@@ -93,8 +87,20 @@ export const GET: APIRoute = async (context) => {
 
     if (!tokenResponse.ok) {
       const rawFaultLog = await tokenResponse.text();
-      console.error(`[VoidMetric Token Exchange Fault] HTTP Status: ${tokenResponse.status} - Payload: ${rawFaultLog}`);
-      throw new Error('session_negotiation_failed');
+      console.error(`[VoidMetric Token Exchange Fault] Payload: ${rawFaultLog}`);
+      
+      // DIAGNOSTIC EXTRACTION LAYER: Parse out Microsoft's exact error token
+      let rawErrorToken = 'session_negotiation_failed';
+      try {
+        const parsedFault = JSON.parse(rawFaultLog);
+        if (parsedFault.error) {
+          rawErrorToken = String(parsedFault.error_description || parsedFault.error);
+        }
+      } catch {
+        rawErrorToken = rawFaultLog.substring(0, 50);
+      }
+      
+      throw new Error(rawErrorToken);
     }
 
     const tokenData = await tokenResponse.json() as { id_token?: string; access_token?: string };
@@ -103,13 +109,14 @@ export const GET: APIRoute = async (context) => {
     if (!validatedIdentityToken) {
       throw new Error('missing_cryptographic_claims');
     }
-    // 5. ANCHOR PRODUCTION SESSION COOKIE
+
+    // 6. ANCHOR PRODUCTION SESSION COOKIE
     cookies.set('aim_session_token', validatedIdentityToken, {
       path: '/',
       httpOnly: true,
       secure: true,
       sameSite: 'lax',
-      maxAge: 86400 // Production session valid for exactly 24 hours
+      maxAge: 86400
     });
 
     return context.redirect('/integrity-portal');
@@ -117,8 +124,11 @@ export const GET: APIRoute = async (context) => {
   } catch (err: any) {
     console.error('[VoidMetric Callback Core Failure] Pipeline halted:', err.message);
     
-    const rawErrorMessage = err.message || 'session_negotiation_failed';
-    const cleanMappedError = rawErrorMessage.replace(/[^a-zA-Z0-9_]/g, '');
+    // Safely map and transmit the real error string down to the user login banner layout interface
+    const cleanMappedError = err.message
+      .replace(/[^a-zA-Z0-9_ ]/g, '')
+      .replace(/\s+/g, '_')
+      .toLowerCase();
     
     const uniqueCacheBusterStamp = Date.now();
     return context.redirect(`/login?error=${cleanMappedError}&v=${uniqueCacheBusterStamp}`);
