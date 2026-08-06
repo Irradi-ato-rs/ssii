@@ -68,10 +68,11 @@ export const GET: APIRoute = async (context) => {
       return new Response('Missing Credentials', { status: 500 });
     }
 
-    // 4. Token Exchange -- FIXED: Bound rigidly to the matching subdomain constant
-    const rigidCallbackString = "https://ssii.fzoirm.com";
-    let tokenResponse;
+    // 4. Token Exchange -- FIXED: Bound rigidly to the matching subdomain constant WITH PATH
+    // CRITICAL: Must match Azure Portal Redirect URI exactly (including /api/auth/callback)
+    const rigidCallbackString = "https://ssii.fzoirm.com/api/auth/callback";
     
+    let tokenResponse;
     // Explicitly processes your verified client_secret_post setup stance uniformly
     const useBasicAuth = config.authMethod !== 'client_secret_post';
 
@@ -90,6 +91,7 @@ export const GET: APIRoute = async (context) => {
         })
       });
       
+      // Fallback to POST if Basic fails
       if (!tokenResponse.ok) {
         tokenResponse = await fetch(config.tokenEndpoint, {
           method: 'POST',
@@ -104,6 +106,7 @@ export const GET: APIRoute = async (context) => {
         });
       }
     } else {
+      // Standard client_secret_post (Recommended for Cloudflare Workers)
       tokenResponse = await fetch(config.tokenEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -139,8 +142,11 @@ export const GET: APIRoute = async (context) => {
 
     // 6. Set Cookies & Redirect
     const headers = new Headers();
+    // Clear state cookie
     headers.append('Set-Cookie', 'oidc_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+    // Set session token (1 hour expiry)
     headers.append('Set-Cookie', `aim_session_token=${idToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`);
+    // Redirect to dashboard
     headers.append('Location', '/integrity-portal');
 
     return new Response(null, { status: 302, headers });   
@@ -149,4 +155,4 @@ export const GET: APIRoute = async (context) => {
     console.error('[VoidMetric Auth] Crash:', error);
     return new Response('Internal Server Error', { status: 500 });
   }
-};
+};   
