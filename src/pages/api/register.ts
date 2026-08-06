@@ -32,7 +32,7 @@ export const POST: APIRoute = async (context: APIContext) => {
       });
     }
 
-    // FIXED: Contextual lookup maps your exact keys (e.g. PRIVATE_ENTRA_ICLASSED_CLIENT_ID) cleanly
+    // FIXED: Contextual lookup maps exact keys (e.g. PRIVATE_ENTRA_ICLASSED_CLIENT_ID) cleanly
     const runtimeEnv = locals.runtime?.env || (globalThis as any).process?.env || {};
     const clientId = runtimeEnv[config.clientIdEnv]?.trim();
     const clientSecret = runtimeEnv[config.clientSecretEnv]?.trim();
