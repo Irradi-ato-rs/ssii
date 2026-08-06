@@ -19,38 +19,47 @@ export const GET: APIRoute = async (context) => {
   const incomingState = url.searchParams.get('state');
   const oidcError = url.searchParams.get('error');
 
-  // 1. Upstream Provider Failure Interception
+  // 1. Upstream Identity Provider Failure Interception
   if (oidcError) {
     console.error(`[VoidMetric Callback] Upstream Provider Aborted: ${oidcError}`);
     return context.redirect(`/login?error=${oidcError}`);
   }
 
-  // 2. HARD CSRF VERIFICATION BOUNDARY ASSERTION
+  // 2. HARD CSRF VERIFICATION ENGINE
   const anchorStateCookie = cookies.get('__Host-oauth_state');
   const cookieStateValue = anchorStateCookie?.value?.trim();
   const incomingStateValue = incomingState?.trim();
   
-  // Enforce a strict length baseline check to instantly isolate empty or dropped token handshakes
   if (!cookieStateValue || !incomingStateValue || cookieStateValue.length < 32) {
-    console.error('[VoidMetric State Fault] Cryptographic cookie envelope or tracking state parameter was dropped');
+    console.error('[VoidMetric State Fault] Cryptographic tracking context missing or dropped');
     cookies.delete('__Host-oauth_state', { path: '/' });
     return context.redirect('/login?error=invalid_state');
   }
 
-  // Cryptographic assertion loop matching criteria
   if (incomingStateValue !== cookieStateValue) {
-    console.error('[VoidMetric State Fault] Token verification mismatch detected');
+    console.error('[VoidMetric State Fault] Cryptographic handshake token mismatch');
     cookies.delete('__Host-oauth_state', { path: '/' });
     return context.redirect('/login?error=invalid_state');
   }
 
-  // Invalidate validation token instantly upon successful validation match to prevent replay exploits
+  // Evict validation token instantly upon successful validation match to prevent replay exploits
   cookies.delete('__Host-oauth_state', { path: '/' });
 
+  if (!incomingCode) {
+    return context.redirect('/login?error=malformed_auth_handshake');
+  }
+  try {
+    const runtimeEnv = locals.runtime?.env;
+    const tenantDirectory = runtimeEnv?.VM_TENANT_DIRECTORY;
+
+    if (!tenantDirectory) {
+      throw new Error('infrastructure_environment_fault');
+    }
+
     // 3. TARGET REALM DETERMINATION
-    // Force direct configuration resolution matching your active directory domain key
     const targetedDomainKey = "fzoirm.com";
 
+    // Load Isolated Key-Vault Config Credentials
     const serializedConfig = await tenantDirectory.get(`domain:${targetedDomainKey}`);
     if (!serializedConfig) throw new Error('tenant_access_denied');
     
@@ -65,8 +74,7 @@ export const GET: APIRoute = async (context) => {
     if (!resolvedClientId || !resolvedClientSecret) {
       throw new Error('configuration_runtime_fault');
     }
-    // 4. SECURE PROTOCOL TRANSACTION ENFORCEMENT
-    // Establish literal parameter strings to bypass variable environmental data drifts
+    // 4. SECURE SERVER-TO-SERVER PROTOCOL TRANSACTION EXCHANGE
     const cleanTokenEndpoint = String(targetConfig.tokenEndpoint).trim();
     const rigidCallbackString = "https://fzoirm.com";
 
@@ -108,7 +116,7 @@ export const GET: APIRoute = async (context) => {
     if (!validatedIdentityToken) {
       throw new Error('missing_cryptographic_claims');
     }
-    // 5. ANCHOR PRODUCTION SESSION COOKIE Context Entry
+    // 5. ANCHOR PRODUCTION SESSION COOKIE CONTEXT ENTRY
     cookies.set('aim_session_token', validatedIdentityToken, {
       path: '/',
       httpOnly: true,
@@ -122,6 +130,7 @@ export const GET: APIRoute = async (context) => {
   } catch (err: any) {
     console.error('[VoidMetric Callback Core Failure] Pipeline halted:', err.message);
     
+    // Safely map and transmit the real error string down to the user login banner layout interface
     const cleanMappedError = err.message
       .replace(/[^a-zA-Z0-9_ ]/g, '')
       .replace(/\s+/g, '_')
