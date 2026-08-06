@@ -44,7 +44,9 @@ const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
         <div class="text-left md:text-right text-xs space-y-0.5">
           <p class="text-slate-400">OPERATOR: <span class="font-bold text-white">{user.email}</span></p>
           <p class="text-slate-500 uppercase">ACCESS_SCOPE: <span class="text-blue-400 font-bold">{user.role}</span></p>
-          <a href="/api/auth/logout" class="text-rose-400/80 hover:text-rose-400 underline underline-offset-4 inline-block mt-2 font-bold transition">/terminate-session</a>
+          <!-- <a href="/api/auth/logout" class="text-rose-400/80 hover:text-rose-400 underline underline-offset-4 inline-block mt-2 font-bold transition">/terminate-session</a> -->
+        <!-- Replace old /api/auth/logout link with this fresh route name -->
+          <a href="/api/auth/signout" class="text-rose-400/80 hover:text-rose-400 underline underline-offset-4 inline-block mt-2 font-bold transition">/terminate-session</a>
         </div>
       </div>
       <!-- INTERACTIVE ONBOARDING MODAL -->

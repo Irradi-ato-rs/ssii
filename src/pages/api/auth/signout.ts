@@ -1,11 +1,9 @@
-// src/pages/api/auth/logout.ts
+// src/pages/api/auth/signout.ts
 import type { APIRoute } from 'astro';
 
 export const prerender = false;
 
-// EXPLICIT FORCE ENGINE CACHE BUST COMPILATION IDENTIFIER
 export const GET: APIRoute = async ({ cookies }) => {
-  // 1. Peek inside the current session token to discover the real Microsoft tenant context
   const sessionToken = cookies.get('aim_session_token');
   let microsoftTenantId = 'common'; 
 
@@ -14,18 +12,16 @@ export const GET: APIRoute = async ({ cookies }) => {
       const tokenChunks = sessionToken.value.split('.');
       if (tokenChunks.length === 3) {
         const rawEnvelopePayload = JSON.parse(atob(tokenChunks[1]));
-        // Extract the original Entra ID Directory Tenant ID claim safely
         if (rawEnvelopePayload.tid) {
           microsoftTenantId = String(rawEnvelopePayload.tid).trim();
         }
       }
     } catch {
-      // Graceful fallback to common pool context on parsing failure
       microsoftTenantId = 'common';
     }
   }
 
-  // 2. Force clear the session token locally by dropping its lifetime to 0
+  // Clear cookie local instance
   cookies.set('aim_session_token', '', {
     path: '/',
     httpOnly: true,
@@ -34,9 +30,12 @@ export const GET: APIRoute = async ({ cookies }) => {
     maxAge: 0
   });
 
-  // 3. SECURED ROUTE ASSEMBLY: Notice the critical hardcoded trailing slash after the domain name
-  const baseReturnTarget = "https://fzoirm.com";
-  const externalFederatedLogoutTarget = "https://microsoftonline.com" + microsoftTenantId + "/oauth2/v2.0/logout?post_logout_redirect_uri=" + encodeURIComponent(baseReturnTarget);
+  // Explicit string generation using clean separate declarations to bypass caching bugs
+  const domainPrefix = "https://microsoftonline.com";
+  const querySuffix = "/oauth2/v2.0/logout?post_logout_redirect_uri=";
+  const destinationTarget = encodeURIComponent("https://fzoirm.com");
+
+  const externalFederatedLogoutTarget = domainPrefix + microsoftTenantId + querySuffix + destinationTarget;
 
   return new Response(null, {
     status: 302,

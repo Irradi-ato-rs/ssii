@@ -34,9 +34,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   // Public Document Routes & API Handlers
   const publicRoutes = ['/', '/login', '/architecture', '/onboarding'];
+  //const isApiRoute = 
+    //url.pathname === '/api/register' || 
+    //url.pathname === '/api/auth/callback' || 
+    //url.pathname.startsWith('/api/auth/');   
   const isApiRoute = 
     url.pathname === '/api/register' || 
     url.pathname === '/api/auth/callback' || 
+    url.pathname === '/api/auth/signout' || 
     url.pathname.startsWith('/api/auth/');   
   
   if (isApiRoute || publicRoutes.includes(cleanPath)) {
