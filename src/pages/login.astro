@@ -12,13 +12,12 @@ const urlError = url.searchParams.get('error');
 let translatedError = '';
 if (urlError) {
   if (urlError === 'tenant_access_denied') {
-    translatedError = 'TENANT ACCESS DENIED. IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE TECHNOLOGY ADMINISTRATOR TO GET YOUR WORK ACCOUNT ASSIGNED.';
+    translatedError = 'TENANT ACCESS DENIED -- IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE IT ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
   } else {
-    translatedError = `SESSION FAILURE: ${urlError.replace(/[^a-zA-Z0-9_]/g, '').toUpperCase()}`;
+    translatedError = `SESSION FAILURE: ${urlError.replace(/[^a-zA-Z0-9_ ]/g, '').toUpperCase()}`;
   }
 }
 ---
-
 
   <main class="w-full max-w-2xl mx-auto px-4 py-16 text-left text-slate-300 font-mono text-xs leading-relaxed selection:bg-slate-800">
     
@@ -34,7 +33,7 @@ if (urlError) {
     <!-- Authentication Interface -->
     <section class="mb-16 space-y-6 pt-8 border-t border-slate-900">
       <div class="space-y-1">
-        <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— ENTERPRISE OPERATOR IDENTIFICATION</h2>
+        <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">-- ENTERPRISE OPERATOR IDENTIFICATION</h2>
         <p class="text-slate-400">
           Enter your corporate email to initiate the encrypted OIDC handshake. 
           Your domain determines the identity provider (Entra ID / Okta).
@@ -50,8 +49,8 @@ if (urlError) {
         {translatedError}
       </div>
 
-      <!-- Login Form -->
-      <form id="loginForm" class="space-y-4 max-w-md">
+      <!-- Hardened Form: Form boundary overrides default action completely -->
+      <form id="loginForm" class="space-y-4 max-w-md" onsubmit="return false;">
         <div class="space-y-1.5">
           <label for="email" class="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">
             Corporate Email Address
@@ -78,19 +77,17 @@ if (urlError) {
     </section>
 
     <Footer />
-
   </main>
-
   <script>
     const form = document.getElementById('loginForm') as HTMLFormElement;
     const errorBanner = document.getElementById('error-banner') as HTMLDivElement;
     const submitBtn = document.getElementById('submitBtn') as HTMLButtonElement;
     const REQUEST_TIMEOUT_MS = 8000;
 
-    // HARD EXCLUSION: Halt native browser form actions completely
+    // HARD EXCLUSION: Halt native browser submission pipelines completely
     form?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      e.stopPropagation(); // Block event bubbling into legacy routing listeners
+      e.stopPropagation(); // Shield execution from external click bubbling listeners
       
       if (errorBanner) errorBanner.classList.add('hidden');
       if (submitBtn) {
@@ -104,7 +101,7 @@ if (urlError) {
       try {
         const formData = new FormData(form);
         
-        // Explicitly hit the serverless edge worker route relative path natively
+        // Target relative API endpoint accurately at the serverless edge
         const response = await fetch('/api/register', {
           method: 'POST',
           body: formData,
@@ -123,11 +120,8 @@ if (urlError) {
 
         const data = await response.json();
 
-        // Validate the return payload target before allowing browser migration
-        if (data.redirectUrl && data.redirectUrl.includes('ssii.fzoirm.com')) {
-          window.location.replace(data.redirectUrl); // Use replace to drop broken history steps
-        } else if (data.redirectUrl) {
-          // If the URL is correct but string transformations stacked paths
+        // Enforce safe transition using location.replace to purge bad redirect history
+        if (data.redirectUrl) {
           window.location.replace(data.redirectUrl);
         } else {
           throw new Error('missing_federation_target_url');
@@ -141,7 +135,11 @@ if (urlError) {
           errorText = 'EDGE TIMEOUT: CONNECTION TO SECURE GATEWAY TIMED OUT. RETRY IMPERATIVE.';
         } else if (err.message) {
           const exactMsg = err.message.toUpperCase().replace(/[^a-zA-Z0-9_ ]/g, '');
-          errorText = `AUTH FAILURE: ${exactMsg}`;
+          if (exactMsg === 'TENANT_ACCESS_DENIED') {
+            errorText = 'TENANT ACCESS DENIED -- IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE IT ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
+          } else {
+            errorText = `AUTH FAILURE: ${exactMsg}`;
+          }
         }
 
         if (errorBanner) {
@@ -159,7 +157,11 @@ if (urlError) {
     const urlParams = new URLSearchParams(window.location.search);
     const errorMsg = urlParams.get('error');
     if (errorMsg && errorBanner) {
-      errorBanner.innerText = `SESSION FAILURE: ${errorMsg.replace(/[^a-zA-Z0-9_ ]/g, '').toUpperCase()}`;
+      if (errorMsg === 'tenant_access_denied') {
+        errorBanner.innerText = 'TENANT ACCESS DENIED -- IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE IT ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
+      } else {
+        errorBanner.innerText = `SESSION FAILURE: ${errorMsg.replace(/[^a-zA-Z0-9_ ]/g, '').toUpperCase()}`;
+      }
       errorBanner.classList.remove('hidden');
     }
   </script>
