@@ -31,15 +31,17 @@ export const GET: APIRoute = async (context) => {
       return new Response('Missing code or state', { status: 400 });
     }
 
-    // 1. Validate State
+    // 1. Validate State Cookie (CSRF Protection)
     const stateCookie = cookies.get('oidc_state');
     if (!stateCookie || stateCookie.value !== state) {
       console.error('[VoidMetric Auth] State mismatch');
       return new Response('Invalid state', { status: 403 });
     }
 
-    // Decode Domain -- FIXED: Sanitized padding loop prevents standard Base64Url exceptions under load
+    // 2. Decode Domain & Nonce from State
     let domain: string;
+    let stateNonceCheck = "";
+    
     try {
       let base64Payload = state.replace(/-/g, '+').replace(/_/g, '/');
       while (base64Payload.length % 4) {
@@ -47,18 +49,18 @@ export const GET: APIRoute = async (context) => {
       }
       const decoded = JSON.parse(atob(base64Payload));
       domain = decoded.domain;
+      stateNonceCheck = decoded.nonce || "";
     } catch (e) {
       return new Response('Invalid state format', { status: 400 });
     }
 
-    // 2. Get Tenant Config
+    // 3. Get Tenant Config
     const config = getIdPConfig(`user@${domain}`) as DynamicIdPConfig;
-
     if (!config) {
       return new Response('Domain not found', { status: 500 });
     }
 
-    // 3. Access Secrets -- FIXED: Safe contextual lookup isolates keys from empty environment frames
+    // 4. Access Secrets
     const runtimeEnv = locals.runtime?.env || (globalThis as any).process?.env || {};
     const clientId = runtimeEnv[config.clientIdEnv]?.trim();
     const clientSecret = runtimeEnv[config.clientSecretEnv]?.trim();
@@ -68,12 +70,11 @@ export const GET: APIRoute = async (context) => {
       return new Response('Missing Credentials', { status: 500 });
     }
 
-    // 4. Token Exchange -- FIXED: Bound rigidly to the matching subdomain constant WITH PATH
-    // CRITICAL: Must match Azure Portal Redirect URI exactly (including /api/auth/callback)
+    // 5. Token Exchange
+    // CRITICAL FIX: Must match Azure Portal Redirect URI exactly
     const rigidCallbackString = "https://ssii.fzoirm.com/api/auth/callback";
     
     let tokenResponse;
-    // Explicitly processes your verified client_secret_post setup stance uniformly
     const useBasicAuth = config.authMethod !== 'client_secret_post';
 
     if (useBasicAuth) {
@@ -106,7 +107,6 @@ export const GET: APIRoute = async (context) => {
         });
       }
     } else {
-      // Standard client_secret_post (Recommended for Cloudflare Workers)
       tokenResponse = await fetch(config.tokenEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -131,16 +131,20 @@ export const GET: APIRoute = async (context) => {
 
     if (!idToken) return new Response('No ID Token', { status: 500 });
 
-    // 5. Verify Token
+    // 6. Verify Token Signatures & Secure Core Claims
     const JWKS = createRemoteJWKSet(new URL(config.jwksUri));
+    
+    // Hard check validation matrix: Enforces that the ID Token was generated specifically for THIS login sequence
     await jwtVerify(idToken, JWKS, {
       issuer: config.issuer,
       audience: clientId,
       algorithms: ['RS256', 'RS384', 'RS512'],
-      clockTolerance: '60s'
+      clockTolerance: '60s',
+      // CRITICAL LAYER: Token validation matching requirement (Prevents Replay Attacks)
+      ...(stateNonceCheck ? { nonce: stateNonceCheck } : {})
     });
 
-    // 6. Set Cookies & Redirect
+    // 7. Set Cookies & Redirect
     const headers = new Headers();
     // Clear state cookie
     headers.append('Set-Cookie', 'oidc_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
