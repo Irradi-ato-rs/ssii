@@ -75,7 +75,7 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
 
     // Force absolute configuration construction block to override environmental drifts
     const authorizationTarget = new URL(`${cleanBaseIssuer}/oauth2/v2.0/authorize`);
-    const rigidCallbackString = "https://ssii.fzoirm.com";
+    const rigidCallbackString = "https://ssii.fzoirm.com/api/auth/callback";
 
     authorizationTarget.searchParams.set('client_id', resolvedClientId);
     authorizationTarget.searchParams.set('response_type', 'code');
