@@ -50,7 +50,8 @@ export const POST: APIRoute = async (context: APIContext) => {
     const state = btoa(JSON.stringify(statePayload));
 
     // 4. Resolve Canonical Origin -- FIXED: Immutable string constant blocks V8 path stripping
-    const rigidRedirectUri = "https://ssii.fzoirm.com";
+    // CRITICAL FIX: Added '/api/auth/callback' to match Azure App Registration exactly
+    const rigidRedirectUri = "https://ssii.fzoirm.com/api/auth/callback";
 
     // 5. Construct IdP Authorization URL via Stratified Parameter Block
     const cleanAuthBase = String(config.authorizationEndpoint).trim();
@@ -96,4 +97,4 @@ export const POST: APIRoute = async (context: APIContext) => {
       headers: { 'Content-Type': 'application/json' } 
     });
   }
-};
+};   
