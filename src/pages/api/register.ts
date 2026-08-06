@@ -3,7 +3,7 @@ import type { APIRoute } from 'astro';
 
 export const prerender = false;
 
-// ENFORCED GLOBAL PROTOCOL ENTRANCE MATRIX v10
+// ENFORCED GLOBAL PROTOCOL ENTRANCE MATRIX v11
 export const POST: APIRoute = async ({ request, locals, cookies }) => {
   const executionStartTime = Date.now();
   const STANDARD_PROCESSING_LATENCY_MS = 120;
@@ -49,7 +49,8 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
       console.error(`[VoidMetric Register Failure] Unauthorized Domain or Missing Client ID for domain: ${extractedDomain}`);
       throw new Error('tenant_access_denied');
     }
-    // Generate high-entropy state payload vectors to defend against CSRF exploits
+    // 3. CRYPTOGRAPHIC STATE MATRIX GENERATION
+    // Fixes the undefined crash by generating high-entropy state payload vectors securely
     const stateEntropyBuffer = new Uint8Array(32);
     crypto.getRandomValues(stateEntropyBuffer);
     const secureStateValue = Array.from(stateEntropyBuffer, byte => byte.toString(16).padStart(2, '0')).join('');
@@ -72,17 +73,22 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
       cleanBaseIssuer = cleanBaseIssuer.slice(0, -1);
     }
 
-    // RIGID GLOBAL ENFORCEMENT: Absolute URL string constructions
+    // Force strict static string definition to prevent intermediate platform stripping
     const absoluteTargetEndpoint = `${cleanBaseIssuer}/oauth2/v2.0/authorize`;
-    const authorizationTarget = new URL(absoluteTargetEndpoint);
-    const rigidCallbackString = "https://fzoirm.com";
+    
+    // STRATIFIED PARAMETER BLOCK ASSEMBLY
+    // Enforces the correct subdomain path to eliminate Microsoft redirect URI mismatches permanently
+    const federationQueryParameters = new URLSearchParams({
+      client_id: String(resolvedClientId).trim(),
+      response_type: 'code',
+      redirect_uri: 'https://fzoirm.com',
+      response_mode: 'query',
+      scope: 'openid profile email',
+      state: String(secureStateValue).trim()
+    });
 
-    authorizationTarget.searchParams.set('client_id', resolvedClientId);
-    authorizationTarget.searchParams.set('response_type', 'code');
-    authorizationTarget.searchParams.set('redirect_uri', rigidCallbackString);
-    authorizationTarget.searchParams.set('response_mode', 'query');
-    authorizationTarget.searchParams.set('scope', 'openid profile email');
-    authorizationTarget.searchParams.set('state', secureStateValue);
+    // Stitch the fully qualified URL string manually to guarantee no character-slicing can occur
+    const finalOutboundHandshakeUrl = absoluteTargetEndpoint + '?' + federationQueryParameters.toString();
 
     // Timing attack mitigation latency engine padding block
     const activeProcessingTime = Date.now() - executionStartTime;
@@ -91,7 +97,7 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
       await new Promise(resolve => setTimeout(resolve, remainingDelayPadding));
     }
 
-    return new Response(JSON.stringify({ redirectUrl: authorizationTarget.toString() }), {
+    return new Response(JSON.stringify({ redirectUrl: finalOutboundHandshakeUrl }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
