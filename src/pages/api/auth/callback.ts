@@ -1,112 +1,179 @@
+// src/pages/api/auth/callback.ts
 export const prerender = false;
+
 import type { APIRoute } from 'astro';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
-import { env } from 'cloudflare:workers'; // Direct Astro 6 edge runtime variable injection
-import { getIdPConfig } from '../../../config/tenants';   
+import { getIdPConfig } from '../../../config/tenants';
+
+interface DynamicIdPConfig {
+  issuer: string;
+  clientIdEnv: string;
+  clientSecretEnv: string;
+  tokenEndpoint: string;
+  jwksUri: string;
+  authMethod?: 'client_secret_basic' | 'client_secret_post';
+}
+
+function errorRedirect(code: string): Response {
+  const headers = new Headers();
+  headers.set('Location', `/login?error=${encodeURIComponent(code)}`);
+  return new Response(null, { status: 302, headers });
+}
+
+// Clears the short-lived flow cookies regardless of outcome.
+function clearFlowCookies(headers: Headers) {
+  headers.append('Set-Cookie', 'oidc_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+  headers.append('Set-Cookie', 'pkce_verifier=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+}
 
 export const GET: APIRoute = async (context) => {
-  const { request, cookies, redirect } = context;
+  const { request, cookies, locals } = context;
 
   try {
     const requestUrl = new URL(request.url);
     const code = requestUrl.searchParams.get('code');
     const state = requestUrl.searchParams.get('state');
-    const error = requestUrl.searchParams.get('error');
+    const idpError = requestUrl.searchParams.get('error');
 
-    if (error) return redirect(`/login?error=${encodeURIComponent(error)}`, 303);
-    if (!code || !state) return redirect('/login?error=missing_params', 303);
-
-    // 1. Strict XSRF State Cookie Matching (The Cryptographic Anchor)
-    const browserCookieVerification = cookies.get('__Host-auth_state_verification')?.value;
-    if (!browserCookieVerification || browserCookieVerification !== state) {
-      return redirect('/login?error=xsrf_state_mismatch', 303);
+    if (idpError) {
+      console.error('[VoidMetric Auth] IdP error:', idpError);
+      const resp = errorRedirect('tenant_access_denied');
+      clearFlowCookies(resp.headers);
+      return resp;
     }
 
-    // 2. Race Condition Isolation (Atomic Cache Deletion Loop)
-    const storedPayload = await env.SESSION.get(`oidc_state:${state}`);
-    if (!storedPayload) return redirect('/login?error=invalid_state', 303);
-    
-    // Purge entry transaction instantly before running remote requests to isolate replays
-    await env.SESSION.delete(`oidc_state:${state}`);
-    cookies.delete('__Host-auth_state_verification', { path: '/' });
-
-    const { domain, email } = JSON.parse(storedPayload);
-
-    // 3. Secured Tenant Environment Mapping Checks
-    const config = getIdPConfig(`user@${domain}`);
-    if (!config) return redirect('/login?error=domain_not_found', 303);
-
-    const clientIdEnvKey = config.clientIdEnv;
-    const clientSecretEnvKey = config.clientSecretEnv;
-    if (!clientIdEnvKey.startsWith('PRIVATE_ENTRA_') || !clientSecretEnvKey.startsWith('PRIVATE_ENTRA_')) {
-      return redirect('/login?error=system_violation', 303);
+    if (!code || !state) {
+      return errorRedirect('missing_code_or_state');
     }
 
-    const clientId = env[clientIdEnvKey]?.trim();
-    const clientSecret = env[clientSecretEnvKey]?.trim();
-    if (!clientId || !clientSecret) return redirect('/login?error=config_error', 303);
-
-    // 4. Token Exchange Flow Configuration (No Dangerous Magic Fallbacks)
-    const rigidCallbackString = "https://fzoirm.com";
-    const requestHeaders: Record<string, string> = { 'Content-Type': 'application/x-www-form-urlencoded' };
-    const bodyParams = new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: rigidCallbackString
-    });
-
-    if (config.authMethod === 'client_secret_post') {
-      bodyParams.set('client_id', clientId);
-      bodyParams.set('client_secret', clientSecret);
-    } else {
-      requestHeaders['Authorization'] = `Basic ${btoa(`${clientId}:${clientSecret}`)}`;
+    // 1. Validate state cookie (CSRF protection)
+    const stateCookie = cookies.get('oidc_state');
+    if (!stateCookie || stateCookie.value !== state) {
+      console.error('[VoidMetric Auth] State mismatch');
+      return errorRedirect('invalid_state');
     }
 
-    const tokenResponse = await fetch(config.tokenEndpoint, {
-      method: 'POST',
-      headers: requestHeaders,
-      body: bodyParams
-    });
+    // 2. Retrieve PKCE verifier
+    const pkceCookie = cookies.get('pkce_verifier');
+    if (!pkceCookie?.value) {
+      console.error('[VoidMetric Auth] Missing PKCE verifier cookie');
+      return errorRedirect('invalid_state');
+    }
+    const codeVerifier = pkceCookie.value;
 
-    if (!tokenResponse.ok) return redirect('/login?error=token_exchange_failed', 303);
+    // 3. Decode domain & nonce from state
+    let domain: string;
+    let stateNonce = '';
+    try {
+      let base64Payload = state.replace(/-/g, '+').replace(/_/g, '/');
+      while (base64Payload.length % 4) base64Payload += '=';
+      const decoded = JSON.parse(atob(base64Payload));
+      domain = decoded.domain;
+      stateNonce = decoded.nonce || '';
+    } catch {
+      return errorRedirect('invalid_state');
+    }
+
+    // 4. Get tenant config
+    const config = getIdPConfig(`user@${domain}`) as DynamicIdPConfig;
+    if (!config) {
+      console.error(`[VoidMetric Auth] No IdP config for domain=${domain}`);
+      return errorRedirect('tenant_access_denied');
+    }
+
+    // 5. Access secrets
+    const runtimeEnv = locals.runtime?.env || (globalThis as any).process?.env || {};
+    const clientId = runtimeEnv[config.clientIdEnv]?.trim();
+    const clientSecret = runtimeEnv[config.clientSecretEnv]?.trim();
+
+    if (!clientId || !clientSecret) {
+      console.error(`[VoidMetric Auth] Missing secret for domain=${domain}`);
+      return errorRedirect('signin_unavailable');
+    }
+
+    // 6. Token exchange (with PKCE code_verifier included)
+    const rigidCallbackString = 'https://ssii.fzoirm.com/api/auth/callback';
+    const useBasicAuth = config.authMethod !== 'client_secret_post';
+
+    async function exchangeWithBasicAuth() {
+      const encoded = btoa(`${clientId}:${clientSecret}`);
+      return fetch(config.tokenEndpoint, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${encoded}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: rigidCallbackString,
+          code_verifier: codeVerifier,
+        }),
+      });
+    }
+
+    async function exchangeWithClientSecretPost() {
+      return fetch(config.tokenEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: rigidCallbackString,
+          client_id: clientId,
+          client_secret: clientSecret,
+          code_verifier: codeVerifier,
+        }),
+      });
+    }
+
+    let tokenResponse = useBasicAuth ? await exchangeWithBasicAuth() : await exchangeWithClientSecretPost();
+
+    if (!tokenResponse.ok && useBasicAuth) {
+      const firstAttemptError = await tokenResponse.text();
+      console.error('[VoidMetric Auth] Basic auth token exchange failed, retrying with client_secret_post:', firstAttemptError);
+      tokenResponse = await exchangeWithClientSecretPost();
+    }
+
+    if (!tokenResponse.ok) {
+      const err = await tokenResponse.text();
+      console.error('[VoidMetric Auth] Token exchange failed:', err);
+      return errorRedirect('handshake_failed');
+    }
 
     const tokenData = await tokenResponse.json();
     const idToken = tokenData.id_token;
-    if (!idToken) return redirect('/login?error=no_id_token', 303);
 
-    // 5. Cryptographic Signature Validation
-    const JWKS = createRemoteJWKSet(new URL(config.jwksUri));
-    const { payload } = await jwtVerify(idToken, JWKS, {
-      issuer: config.issuer,
-      audience: clientId,
-      algorithms: ['RS256', 'RS384', 'RS512'],
-      clockTolerance: 60
-    });
-
-    // Identity Mapping Cross-Validation Protection
-    if (payload.email && String(payload.email).toLowerCase() !== email.toLowerCase()) {
-      return redirect('/login?error=identity_mismatch', 303);
+    if (!idToken) {
+      console.error('[VoidMetric Auth] No id_token in token response');
+      return errorRedirect('handshake_failed');
     }
 
-    // 6. Deploy Ephemeral Production Edge Session Identity
-    const sessionId = crypto.randomUUID();
-    await env.SESSION.put(`session:${sessionId}`, JSON.stringify({
-      email,
-      createdAt: Date.now(),
-    }), { expirationTtl: 3600 });
+    // 7. Verify token signature & claims
+    const JWKS = createRemoteJWKSet(new URL(config.jwksUri));
 
-    // Set production tracking cookie session token
-    cookies.set('aim_session_token', sessionId, {
-      path: '/',
-      secure: true,
-      httpOnly: true,
-      sameSite: 'lax', // Lax is required to preserve user state after standard redirects
-      maxAge: 3600
-    });
+    try {
+      await jwtVerify(idToken, JWKS, {
+        issuer: config.issuer,
+        audience: clientId,
+        algorithms: ['RS256', 'RS384', 'RS512'],
+        clockTolerance: '60s',
+        ...(stateNonce ? { nonce: stateNonce } : {}),
+      });
+    } catch (verifyErr) {
+      console.error('[VoidMetric Auth] ID token verification failed:', verifyErr);
+      return errorRedirect('handshake_failed');
+    }
 
-    return redirect('/integrity-portal', 302);
+    // 8. Set session cookie, clear flow cookies, redirect
+    const headers = new Headers();
+    clearFlowCookies(headers);
+    headers.append('Set-Cookie', `aim_session_token=${idToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`);
+    headers.append('Location', '/integrity-portal');
 
-  } catch (error) {
-    return redirect('/login?error=internal_callback_error', 303);
+    return new Response(null, { status: 302, headers });
+  } catch (err) {
+    console.error('[VoidMetric Auth] Crash:', err);
+    return errorRedirect('handshake_failed');
   }
 };

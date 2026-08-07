@@ -1,88 +1,106 @@
+// src/pages/api/register.ts
 export const prerender = false;
-import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers'; // Direct Astro 6 edge runtime variable injection
+
+import type { APIRoute, APIContext } from 'astro';
 import { getIdPConfig } from '../../config/tenants';
 
-export const POST: APIRoute = async (context) => {
-  const { request, cookies, redirect } = context;
-  
+function parseEmailDomain(email: string): string | null {
+  const at = email.lastIndexOf('@');
+  if (at <= 0 || at === email.length - 1) return null;
+  const domain = email.slice(at + 1).toLowerCase().trim();
+  if (!domain.includes('.')) return null;
+  return domain;
+}
+
+function base64url(bytes: ArrayBuffer | Uint8Array): string {
+  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  let str = '';
+  for (const b of arr) str += String.fromCharCode(b);
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function generatePkcePair(): Promise<{ verifier: string; challenge: string }> {
+  const verifierBytes = crypto.getRandomValues(new Uint8Array(32));
+  const verifier = base64url(verifierBytes);
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  const challenge = base64url(digest);
+  return { verifier, challenge };
+}
+
+function jsonError(message: string, status: number): Response {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+export const POST: APIRoute = async (context: APIContext) => {
+  const { request, locals } = context;
+
   try {
     const formData = await request.formData();
-    
-    // 1. Strict Anti-CSRF Token Validation Gate
-    const formAnchorToken = formData.get('form_anchor')?.toString();
-    const cookieAnchorToken = cookies.get('__Host-login_form_anchor')?.value;
+    const email = formData.get('email')?.toString().trim();
 
-    if (!formAnchorToken || formAnchorToken !== cookieAnchorToken) {
-      // Intentionally drop invalid cross-site requests back to login view node
-      return redirect('/login?error=security_violation', 303);
-    }
-    // Burn the anchor token instantly upon check to prevent token reuse attempts
-    cookies.delete('__Host-login_form_anchor', { path: '/' });
-
-    const rawEmail = formData.get('email')?.toString().trim();
-
-    // 2. Strict Input Structural Regex Validation
-    if (!rawEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail)) {
-      return redirect('/login?error=malformed_email', 303);
+    if (!email || !email.includes('@')) {
+      return jsonError('Invalid email address', 400);
     }
 
-    const email = rawEmail.toLowerCase();
-    const domain = email.split('@').pop()?.trim() || '';
+    const domain = parseEmailDomain(email);
+    if (!domain) {
+      return jsonError('Invalid email address', 400);
+    }
 
-    // Extract tenant infrastructure mapping profile
     const config = getIdPConfig(email);
     if (!config) {
-      return redirect('/login?error=tenant_access_denied', 303);
+      return jsonError('Unable to start sign-in for this account.', 403);
     }
 
-    // 3. Safe Environment Mapping Integrity Check
-    const clientIdEnvKey = config.clientIdEnv;
-    const clientSecretEnvKey = config.clientSecretEnv;
-
-    if (!clientIdEnvKey.startsWith('PRIVATE_ENTRA_') || !clientSecretEnvKey.startsWith('PRIVATE_ENTRA_')) {
-      return redirect('/login?error=security_violation', 303);
-    }
-
-    const clientId = env[clientIdEnvKey]?.trim();
-    const clientSecret = env[clientSecretEnvKey]?.trim();
+    const runtimeEnv = locals.runtime?.env || (globalThis as any).process?.env || {};
+    const clientId = runtimeEnv[config.clientIdEnv]?.trim();
+    const clientSecret = runtimeEnv[config.clientSecretEnv]?.trim();
 
     if (!clientId || !clientSecret) {
-      return redirect('/login?error=config_error', 303);
+      console.error(`register: missing secret for domain=${domain}`);
+      return jsonError('Sign-in is temporarily unavailable.', 500);
     }
 
-    // 4. Ephemeral State Token Generation
-    const stateToken = crypto.randomUUID();
-    const statePayload = { domain, email, nonce: stateToken };
-    
-    // Save transactional metadata inside Cloudflare KV for the callback phase
-    await env.SESSION.put(`oidc_state:${stateToken}`, JSON.stringify(statePayload), { 
-      expirationTtl: 300 // Bound to a tight 5-minute lifecycle window
+    const nonce = crypto.randomUUID();
+    const statePayload = { domain, nonce };
+    const state = base64url(new TextEncoder().encode(JSON.stringify(statePayload)));
+
+    const { verifier, challenge } = await generatePkcePair();
+
+    const rigidRedirectUri = 'https://ssii.fzoirm.com/api/auth/callback';
+    const cleanAuthBase = String(config.authorizationEndpoint).trim();
+
+    const federationQueryParameters = new URLSearchParams({
+      client_id: clientId,
+      scope: 'openid profile email',
+      response_type: 'code',
+      state,
+      nonce, // required so callback.ts can verify the id_token's nonce claim
+      login_hint: email,
+      redirect_uri: rigidRedirectUri,
+      code_challenge: challenge,
+      code_challenge_method: 'S256',
     });
 
-    // 5. Secure Host-Locked Cookie Allocation
-    cookies.set('__Host-auth_state_verification', stateToken, {
-      path: '/',
-      secure: true,
-      httpOnly: true,
-      sameSite: 'lax', // Mandatory to handle cross-site OIDC callback state validation passes
-      maxAge: 300
+    const finalOutboundHandshakeUrl =
+      cleanAuthBase + (cleanAuthBase.includes('?') ? '&' : '?') + federationQueryParameters.toString();
+
+    const headers = new Headers();
+    headers.set('Content-Type', 'application/json');
+    headers.append('Set-Cookie', `oidc_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=300`);
+    headers.append('Set-Cookie', `pkce_verifier=${verifier}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=300`);
+
+    console.log(`register: handshake initiated for domain=${domain}`);
+
+    return new Response(JSON.stringify({ success: true, redirectUrl: finalOutboundHandshakeUrl }), {
+      status: 200,
+      headers,
     });
-
-    // 6. Complete and Rigid Parameter Handshake Buildout
-    const finalOutboundHandshakeUrl = new URL(String(config.authorizationEndpoint).trim());
-    finalOutboundHandshakeUrl.searchParams.set('client_id', clientId);
-    finalOutboundHandshakeUrl.searchParams.set('scope', 'openid profile email User.Read Group.Read.All');
-    finalOutboundHandshakeUrl.searchParams.set('response_type', 'code');
-    finalOutboundHandshakeUrl.searchParams.set('state', stateToken);
-    finalOutboundHandshakeUrl.searchParams.set('login_hint', email);
-    finalOutboundHandshakeUrl.searchParams.set('redirect_uri', "https://fzoirm.com");
-
-    // 7. Authoritative Server-Driven 303 See Other Redirect Handover
-    return redirect(finalOutboundHandshakeUrl.toString(), 303);
-
   } catch (error) {
-    // Fail-safe protection fallback to shield the core website structure from crashes
-    return redirect('/login?error=internal_gateway_fault', 303);
+    console.error('register: unhandled error', error);
+    return jsonError('Sign-in failed. Please try again.', 500);
   }
 };
