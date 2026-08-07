@@ -1,12 +1,12 @@
-# VoidMetric (Open-Framework Core)
+# VoidMetric (Extensible & On-Demand Core)
 
 VoidMetric is a novel dual-math risk orchestration paradigm designed to deconstruct "Compliance Theater" (the watermelon metric effect, where an infrastructure posture appears green and compliant on paper while harboring fatal operational exploits). 
 
-This repository houses the public open-core architecture, built natively using **Astro**, **Tailwind CSS**, and optimized for zero-cold-start execution inside serverless **Cloudflare Workers & Pages** environments.
+This GitHub public repository houses the public open-core architecture, built natively using **Astro**, **Tailwind CSS** and optimized for zero-cold-start execution inside serverless **Cloudflare Workers** environments.
 
 ## 1. Architectural Matrix Fabric
 
-VoidMetric operationalizes [Systemic Integrity Axiomatic 4 and Enablers 3](https://irradi.ato.rs/p/systemic-integrity-axiomatic-enablers.html). It maps corporate risk as a static 4 × 3 continuous matrix crossing four **Axiomatic Domains (I)** against three **Technical Enablers (J)**:
+VoidMetric operationalizes [Systemic Integrity Axiomatic 4 and Enablers 3](https://irradi.ato.rs/p/systemic-integrity-axiomatic-enablers.html). It maps corporate (strategic velocity) security intelligence and risk as a static 4 × 3 continuous matrix crossing four **Axiomatic Domains (I)** against three **Technical Enablers (J)**:
 
 | Axiomatic Domain (i) | Structures (j=0) | Contents (j=1) | Facilities (j=2) |
 | :--- | :--- | :--- | :--- |
@@ -34,10 +34,10 @@ $$\text{SI}_{\text{Live}} = \prod_{i=1}^{4} V_i = \prod_{i=1}^{4} \prod_{j=1}^{3
 
 ---
 
-## 3. Project File Directory Matrix
+## 3. Project File Directory Matrix // Initial Production-Grade Artifacts
 
 ```text
-├── .github/workflows/    <-- CI Automation pipeline validations
+├── .github/workflows/    <-- CI Automation pipeline validations // it's in the plan, we'll see soon enough
 ├── src/
 │   ├── components/
 │   │   └── Footer.astro  <-- Shared minimalist footer component module
@@ -48,11 +48,27 @@ $$\text{SI}_{\text{Live}} = \prod_{i=1}^{4} V_i = \prod_{i=1}^{4} \prod_{j=1}^{3
 │       │   └── compute.ts <-- Core headless V1 serverless math endpoint
 │       ├── architecture.astro   <-- Brutalist open system blueprint
 │       ├── index.astro          <-- Typography-driven interactive home node
-│       ├── integrity-portal.astro <-- Continuous monitoring portal & audio klaxons
-│       └── register.astro       <-- Multi-solution dynamic registration board
+│       ├── integrity-portal.astro <-- Governance system core, dedicated executive and technical windows, CREM/CTEM center
+│       └── register.astro       <-- Multi-solution dynamic registration board // being reconsidered if it will be retained
 ├── astro.config.mjs       <-- Cloudflare Serverless configuration adaptations
-└── wrangler.toml          <-- Cloudflare Worker infrastructure mappings
+└── wrangler.jsonc          <-- Cloudflare Worker infrastructure mappings
 ```
+# Governance System & Capabilities Blueprint [integrity-portal.astro]
+
+### Systemic Integrity Dashboard
+* **Core**: The centralized orchestration engine scoping roles, handling baseline policy, risk calculations and compliance rules.
+
+### Dual-Track Command Interfaces
+* **Dedicated Executive Window (The Meat where it is needed)**: Strategic, high-fidelity business impact console displaying financial loss modeling, legal/PR playbooks and risk indexes.
+* **Dedicated Technical Window (The Bones are built and somehow validated)**: Deep-dive operating window for security posture, infrastructure conditions, application/live code vulnerabilities and system-level mitigation controls.
+
+### Risk & Exposure
+* **CREM / CTEM Center**: Fully open, business-aligned framework handling security intelligence, continuous risk and threat exposure management.
+
+### High-Velocity Operating Features
+* **UI Overrides**: Automated dashboard redlining and screen-takeovers that inject incident maps during a crisis.
+* **Audio Klaxons**: Low-frequency, pulsing acoustic cues and automated browser-based text-to-speech voice notifications.
+* **Cross-Device Notification**: Simultaneous multi-channel blast dialing, text pushes, and mobile system-level audio bypasses.
 
 ---
 
@@ -84,4 +100,13 @@ curl -X POST https://ssii.fzoirm.com \
 
 This public framework handles **anonymous, normalized metrics grids only**. 
 
-For enterprise and sovereign customers connecting active logging environments (**Tenable, Microsoft Sentinel, CrowdStrike, AWS CloudTrail**), data ingestion, string parsers, normalization functions ($f_{\text{norm}}$), and custom SLA definitions are handled inside separate, secured and isolated service processing units including but not limited to private repositories and serverless compute. This guarantees that your enterprise log configurations and connection maps are completely hidden while ensuring runtime transparency.
+### Compliance Isolation of Identity and Ingestion
+
+* **Isolated Service Processing Units**: For enterprise and sovereign customers connecting active identity providers (Okta, Microsoft Entra ID, Ping Identity) alongside security intelligence APIs and active logging environments (Tenable, Microsoft Sentinel, CrowdStrike, AWS CloudTrail):
+  
+Data ingestion, identity token exchange, string parsers, normalization functions ($f_{norm}$), and custom SLA definitions are handled entirely inside separate, secured, and isolated service processing units—including but not limited to private repositories and serverless compute. 
+  
+Engineered exclusively as a **Stateless, Zero-Persistence, Edge-Native, Non-Linear Operational Validation Engine**, the platform processes telemetry in real-time fluid memory without writing data to disk. 
+  
+This guarantees that your enterprise identity mapping, log configurations and connection credentials are completely hidden and cryptographically separated while ensuring absolute runtime transparency.
+
