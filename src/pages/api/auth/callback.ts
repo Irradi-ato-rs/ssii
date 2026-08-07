@@ -1,54 +1,54 @@
-// src/pages/api/auth/callback.ts
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
-import { env } from 'cloudflare:workers';
+import { env } from 'cloudflare:workers'; // Direct Astro 6 edge runtime variable injection
 import { getIdPConfig } from '../../../config/tenants';   
 
-export const GET: APIRoute = async ({ request, cookies, redirect }) => {
+export const GET: APIRoute = async (context) => {
+  const { request, cookies, redirect } = context;
+
   try {
     const requestUrl = new URL(request.url);
     const code = requestUrl.searchParams.get('code');
     const state = requestUrl.searchParams.get('state');
     const error = requestUrl.searchParams.get('error');
 
-    if (error) return redirect(`/login?error=${encodeURIComponent(error)}`);
-    if (!code || !state) return redirect('/login?error=missing_params');
+    if (error) return redirect(`/login?error=${encodeURIComponent(error)}`, 303);
+    if (!code || !state) return redirect('/login?error=missing_params', 303);
 
-    // 1. STRICT CSRF COOKIE MATCHING (NO domain attribute allowed)
+    // 1. Strict XSRF State Cookie Matching (The Cryptographic Anchor)
     const browserCookieVerification = cookies.get('__Host-auth_state_verification')?.value;
     if (!browserCookieVerification || browserCookieVerification !== state) {
-      console.error('[VoidMetric Auth] State mismatch - possible CSRF');
-      return redirect('/login?error=xsrf_state_mismatch');
+      return redirect('/login?error=xsrf_state_mismatch', 303);
     }
 
-    // 2. IMMEDIATE STATE DELETION (Prevent Replay & Race Conditions)
+    // 2. Race Condition Isolation (Atomic Cache Deletion Loop)
     const storedPayload = await env.SESSION.get(`oidc_state:${state}`);
-    if (!storedPayload) return redirect('/login?error=invalid_state');
+    if (!storedPayload) return redirect('/login?error=invalid_state', 303);
     
-    // Nuclear option: Delete state immediately before handling heavy crypto/fetches
+    // Purge entry transaction instantly before running remote requests to isolate replays
     await env.SESSION.delete(`oidc_state:${state}`);
+    cookies.delete('__Host-auth_state_verification', { path: '/' });
 
-    // Parse the payload safely
     const { domain, email } = JSON.parse(storedPayload);
 
-    // 3. SECURE ENV VARIABLE ACQUISITION GUARDRAIL
+    // 3. Secured Tenant Environment Mapping Checks
     const config = getIdPConfig(`user@${domain}`);
-    if (!config) return redirect('/login?error=domain_not_found');
+    if (!config) return redirect('/login?error=domain_not_found', 303);
 
     const clientIdEnvKey = config.clientIdEnv;
     const clientSecretEnvKey = config.clientSecretEnv;
-    if (!clientIdEnvKey.startsWith('OIDC_') || !clientSecretEnvKey.startsWith('OIDC_')) {
-      return redirect('/login?error=system_violation');
+    if (!clientIdEnvKey.startsWith('PRIVATE_ENTRA_') || !clientSecretEnvKey.startsWith('PRIVATE_ENTRA_')) {
+      return redirect('/login?error=system_violation', 303);
     }
 
     const clientId = env[clientIdEnvKey]?.trim();
     const clientSecret = env[clientSecretEnvKey]?.trim();
-    if (!clientId || !clientSecret) return redirect('/login?error=config_error');
+    if (!clientId || !clientSecret) return redirect('/login?error=config_error', 303);
 
-    // 4. PRECISE METHOD TOKEN EXCHANGE (No Magic Fallbacks)
-    const rigidCallbackString = "https://ssii.fzoirm.com/api/auth/callback";
-    const headers: Record<string, string> = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    // 4. Token Exchange Flow Configuration (No Dangerous Magic Fallbacks)
+    const rigidCallbackString = "https://fzoirm.com";
+    const requestHeaders: Record<string, string> = { 'Content-Type': 'application/x-www-form-urlencoded' };
     const bodyParams = new URLSearchParams({
       grant_type: 'authorization_code',
       code,
@@ -59,22 +59,22 @@ export const GET: APIRoute = async ({ request, cookies, redirect }) => {
       bodyParams.set('client_id', clientId);
       bodyParams.set('client_secret', clientSecret);
     } else {
-      headers['Authorization'] = `Basic ${btoa(`${clientId}:${clientSecret}`)}`;
+      requestHeaders['Authorization'] = `Basic ${btoa(`${clientId}:${clientSecret}`)}`;
     }
 
     const tokenResponse = await fetch(config.tokenEndpoint, {
       method: 'POST',
-      headers,
+      headers: requestHeaders,
       body: bodyParams
     });
 
-    if (!tokenResponse.ok) return redirect('/login?error=token_exchange_failed');
+    if (!tokenResponse.ok) return redirect('/login?error=token_exchange_failed', 303);
 
     const tokenData = await tokenResponse.json();
     const idToken = tokenData.id_token;
-    if (!idToken) return redirect('/login?error=no_id_token');
+    if (!idToken) return redirect('/login?error=no_id_token', 303);
 
-    // 5. CRYPTOGRAPHIC INTEGRITY VERIFICATION
+    // 5. Cryptographic Signature Validation
     const JWKS = createRemoteJWKSet(new URL(config.jwksUri));
     const { payload } = await jwtVerify(idToken, JWKS, {
       issuer: config.issuer,
@@ -83,35 +83,30 @@ export const GET: APIRoute = async ({ request, cookies, redirect }) => {
       clockTolerance: 60
     });
 
-    // Verify parsed token email matches the session initialization email
+    // Identity Mapping Cross-Validation Protection
     if (payload.email && String(payload.email).toLowerCase() !== email.toLowerCase()) {
-      return redirect('/login?error=identity_mismatch');
+      return redirect('/login?error=identity_mismatch', 303);
     }
 
-    // 6. DEPLOY AUTHORITATIVE RUNTIME SESSION
+    // 6. Deploy Ephemeral Production Edge Session Identity
     const sessionId = crypto.randomUUID();
     await env.SESSION.put(`session:${sessionId}`, JSON.stringify({
       email,
       createdAt: Date.now(),
     }), { expirationTtl: 3600 });
 
-    // 7. COMPLIANT RESPONSE CLEANUP & REDIRECT
-    // CRITICAL: DO NOT add 'domain' attribute to __Host- cookie deletion
-    cookies.delete('__Host-auth_state_verification', { path: '/' });
-    
-    cookies.set('session', sessionId, {
+    // Set production tracking cookie session token
+    cookies.set('aim_session_token', sessionId, {
       path: '/',
       secure: true,
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'lax', // Lax is required to preserve user state after standard redirects
       maxAge: 3600
     });
 
-    return redirect('/integrity-portal');
+    return redirect('/integrity-portal', 302);
 
   } catch (error) {
-    // OPTIMIZATION: Log error details for production debugging
-    console.error('[VoidMetric Auth] Critical Failure:', error);
-    return redirect('/login?error=internal_error');
+    return redirect('/login?error=internal_callback_error', 303);
   }
-};   
+};
