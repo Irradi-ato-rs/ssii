@@ -15,9 +15,10 @@ export const GET: APIRoute = async ({ request, cookies, redirect }) => {
     if (error) return redirect(`/login?error=${encodeURIComponent(error)}`);
     if (!code || !state) return redirect('/login?error=missing_params');
 
-    // 1. STRICT CSRF COOKIE MATCHING (The Browser Anchor)
+    // 1. STRICT CSRF COOKIE MATCHING (NO domain attribute allowed)
     const browserCookieVerification = cookies.get('__Host-auth_state_verification')?.value;
     if (!browserCookieVerification || browserCookieVerification !== state) {
+      console.error('[VoidMetric Auth] State mismatch - possible CSRF');
       return redirect('/login?error=xsrf_state_mismatch');
     }
 
@@ -80,7 +81,6 @@ export const GET: APIRoute = async ({ request, cookies, redirect }) => {
       audience: clientId,
       algorithms: ['RS256', 'RS384', 'RS512'],
       clockTolerance: 60
-      // Note: Removed faulty 'nonce' matching unless OIDC implicit flow explicitly supplies it
     });
 
     // Verify parsed token email matches the session initialization email
@@ -96,6 +96,7 @@ export const GET: APIRoute = async ({ request, cookies, redirect }) => {
     }), { expirationTtl: 3600 });
 
     // 7. COMPLIANT RESPONSE CLEANUP & REDIRECT
+    // CRITICAL: DO NOT add 'domain' attribute to __Host- cookie deletion
     cookies.delete('__Host-auth_state_verification', { path: '/' });
     
     cookies.set('session', sessionId, {
