@@ -14,13 +14,27 @@ interface DynamicIdPConfig {
   authMethod?: 'client_secret_basic' | 'client_secret_post';
 }
 
+// Module-level cache: one JWKS fetcher per jwksUri, reused across requests.
+// jose's createRemoteJWKSet already caches keys internally (with cooldown on
+// unrecognized kid), but that caching only helps if the *same instance*
+// persists across invocations — recreating it per-request defeats it.
+const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
+
+function getJwks(jwksUri: string) {
+  let jwks = jwksCache.get(jwksUri);
+  if (!jwks) {
+    jwks = createRemoteJWKSet(new URL(jwksUri));
+    jwksCache.set(jwksUri, jwks);
+  }
+  return jwks;
+}
+
 function errorRedirect(code: string): Response {
   const headers = new Headers();
   headers.set('Location', `/login?error=${encodeURIComponent(code)}`);
   return new Response(null, { status: 302, headers });
 }
 
-// Clears the short-lived flow cookies regardless of outcome.
 function clearFlowCookies(headers: Headers) {
   headers.append('Set-Cookie', 'oidc_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
   headers.append('Set-Cookie', 'pkce_verifier=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
@@ -46,14 +60,12 @@ export const GET: APIRoute = async (context) => {
       return errorRedirect('missing_code_or_state');
     }
 
-    // 1. Validate state cookie (CSRF protection)
     const stateCookie = cookies.get('oidc_state');
     if (!stateCookie || stateCookie.value !== state) {
       console.error('[VoidMetric Auth] State mismatch');
       return errorRedirect('invalid_state');
     }
 
-    // 2. Retrieve PKCE verifier
     const pkceCookie = cookies.get('pkce_verifier');
     if (!pkceCookie?.value) {
       console.error('[VoidMetric Auth] Missing PKCE verifier cookie');
@@ -61,7 +73,6 @@ export const GET: APIRoute = async (context) => {
     }
     const codeVerifier = pkceCookie.value;
 
-    // 3. Decode domain & nonce from state
     let domain: string;
     let stateNonce = '';
     try {
@@ -74,14 +85,12 @@ export const GET: APIRoute = async (context) => {
       return errorRedirect('invalid_state');
     }
 
-    // 4. Get tenant config
     const config = getIdPConfig(`user@${domain}`) as DynamicIdPConfig;
     if (!config) {
       console.error(`[VoidMetric Auth] No IdP config for domain=${domain}`);
       return errorRedirect('tenant_access_denied');
     }
 
-    // 5. Access secrets
     const runtimeEnv = locals.runtime?.env || (globalThis as any).process?.env || {};
     const clientId = runtimeEnv[config.clientIdEnv]?.trim();
     const clientSecret = runtimeEnv[config.clientSecretEnv]?.trim();
@@ -91,7 +100,6 @@ export const GET: APIRoute = async (context) => {
       return errorRedirect('signin_unavailable');
     }
 
-    // 6. Token exchange (with PKCE code_verifier included)
     const rigidCallbackString = 'https://ssii.fzoirm.com/api/auth/callback';
     const useBasicAuth = config.authMethod !== 'client_secret_post';
 
@@ -149,26 +157,38 @@ export const GET: APIRoute = async (context) => {
       return errorRedirect('handshake_failed');
     }
 
-    // 7. Verify token signature & claims
-    const JWKS = createRemoteJWKSet(new URL(config.jwksUri));
+    // Verify token signature & claims — JWKS instance is reused across requests.
+    const JWKS = getJwks(config.jwksUri);
 
+    let exp: number | undefined;
     try {
-      await jwtVerify(idToken, JWKS, {
+      const { payload } = await jwtVerify(idToken, JWKS, {
         issuer: config.issuer,
         audience: clientId,
         algorithms: ['RS256', 'RS384', 'RS512'],
         clockTolerance: '60s',
         ...(stateNonce ? { nonce: stateNonce } : {}),
       });
+      exp = payload.exp;
     } catch (verifyErr) {
       console.error('[VoidMetric Auth] ID token verification failed:', verifyErr);
       return errorRedirect('handshake_failed');
     }
 
-    // 8. Set session cookie, clear flow cookies, redirect
+    // Derive session cookie lifetime from the token's real expiry rather
+    // than a hardcoded value. Fall back to a conservative default if the
+    // IdP omitted exp (shouldn't happen for a valid OIDC id_token, but
+    // don't trust a missing claim into an unbounded session).
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const DEFAULT_MAX_AGE = 3600;
+    const MIN_MAX_AGE = 60; // guard against a clock-skew/edge-case negative or near-zero value
+    const sessionMaxAge = exp
+      ? Math.max(MIN_MAX_AGE, exp - nowSeconds)
+      : DEFAULT_MAX_AGE;
+
     const headers = new Headers();
     clearFlowCookies(headers);
-    headers.append('Set-Cookie', `aim_session_token=${idToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`);
+    headers.append('Set-Cookie', `aim_session_token=${idToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${sessionMaxAge}`);
     headers.append('Location', '/integrity-portal');
 
     return new Response(null, { status: 302, headers });
