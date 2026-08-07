@@ -14,10 +14,9 @@ interface DynamicIdPConfig {
   authMethod?: 'client_secret_basic' | 'client_secret_post';
 }
 
-// Module-level cache: one JWKS fetcher per jwksUri, reused across requests.
-// jose's createRemoteJWKSet already caches keys internally (with cooldown on
-// unrecognized kid), but that caching only helps if the *same instance*
-// persists across invocations — recreating it per-request defeats it.
+// Module-level cache: one JWKS fetcher per jwksUri, reused across requests
+// within a warm isolate so jose's internal key caching actually persists
+// instead of being rebuilt from scratch on every login.
 const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 
 function getJwks(jwksUri: string) {
@@ -35,6 +34,7 @@ function errorRedirect(code: string): Response {
   return new Response(null, { status: 302, headers });
 }
 
+// Clears the short-lived flow cookies used only during the login round-trip.
 function clearFlowCookies(headers: Headers) {
   headers.append('Set-Cookie', 'oidc_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
   headers.append('Set-Cookie', 'pkce_verifier=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
@@ -60,12 +60,14 @@ export const GET: APIRoute = async (context) => {
       return errorRedirect('missing_code_or_state');
     }
 
+    // 1. Validate state cookie (CSRF protection)
     const stateCookie = cookies.get('oidc_state');
     if (!stateCookie || stateCookie.value !== state) {
       console.error('[VoidMetric Auth] State mismatch');
       return errorRedirect('invalid_state');
     }
 
+    // 2. Retrieve PKCE verifier
     const pkceCookie = cookies.get('pkce_verifier');
     if (!pkceCookie?.value) {
       console.error('[VoidMetric Auth] Missing PKCE verifier cookie');
@@ -73,6 +75,7 @@ export const GET: APIRoute = async (context) => {
     }
     const codeVerifier = pkceCookie.value;
 
+    // 3. Decode domain & nonce from state
     let domain: string;
     let stateNonce = '';
     try {
@@ -85,12 +88,14 @@ export const GET: APIRoute = async (context) => {
       return errorRedirect('invalid_state');
     }
 
+    // 4. Get tenant config
     const config = getIdPConfig(`user@${domain}`) as DynamicIdPConfig;
     if (!config) {
       console.error(`[VoidMetric Auth] No IdP config for domain=${domain}`);
       return errorRedirect('tenant_access_denied');
     }
 
+    // 5. Access secrets
     const runtimeEnv = locals.runtime?.env || (globalThis as any).process?.env || {};
     const clientId = runtimeEnv[config.clientIdEnv]?.trim();
     const clientSecret = runtimeEnv[config.clientSecretEnv]?.trim();
@@ -100,6 +105,9 @@ export const GET: APIRoute = async (context) => {
       return errorRedirect('signin_unavailable');
     }
 
+    // 6. Token exchange (with PKCE code_verifier included)
+    // Must match the redirect_uri registered in the IdP app registration
+    // exactly — this is the served origin (ssii.fzoirm.com), never the apex.
     const rigidCallbackString = 'https://ssii.fzoirm.com/api/auth/callback';
     const useBasicAuth = config.authMethod !== 'client_secret_post';
 
@@ -157,7 +165,7 @@ export const GET: APIRoute = async (context) => {
       return errorRedirect('handshake_failed');
     }
 
-    // Verify token signature & claims — JWKS instance is reused across requests.
+    // 7. Verify token signature & claims — JWKS instance is reused across requests.
     const JWKS = getJwks(config.jwksUri);
 
     let exp: number | undefined;
@@ -176,19 +184,25 @@ export const GET: APIRoute = async (context) => {
     }
 
     // Derive session cookie lifetime from the token's real expiry rather
-    // than a hardcoded value. Fall back to a conservative default if the
-    // IdP omitted exp (shouldn't happen for a valid OIDC id_token, but
-    // don't trust a missing claim into an unbounded session).
+    // than a hardcoded value, with a floor to guard against a near-expired
+    // or clock-skewed token producing an already-dead cookie, and a
+    // fallback only if exp is somehow absent.
     const nowSeconds = Math.floor(Date.now() / 1000);
     const DEFAULT_MAX_AGE = 3600;
-    const MIN_MAX_AGE = 60; // guard against a clock-skew/edge-case negative or near-zero value
+    const MIN_MAX_AGE = 60;
     const sessionMaxAge = exp
       ? Math.max(MIN_MAX_AGE, exp - nowSeconds)
       : DEFAULT_MAX_AGE;
 
+    // 8. Set session cookies, clear flow cookies, redirect
     const headers = new Headers();
     clearFlowCookies(headers);
     headers.append('Set-Cookie', `aim_session_token=${idToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${sessionMaxAge}`);
+    // Records which tenant/email domain this session belongs to, so
+    // signout.ts can resolve the correct IdP's end-session endpoint
+    // without decoding the JWT. Not sensitive — same lifetime as the
+    // session itself.
+    headers.append('Set-Cookie', `auth_domain=${domain}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${sessionMaxAge}`);
     headers.append('Location', '/integrity-portal');
 
     return new Response(null, { status: 302, headers });

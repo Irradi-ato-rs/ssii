@@ -1,33 +1,44 @@
 // src/pages/api/auth/signout.ts
-import type { APIRoute } from 'astro';
-
 export const prerender = false;
 
-export const GET: APIRoute = async ({ cookies, locals }) => {
-  // 1. Evict the local token
-  cookies.set('aim_session_token', '', {
-    path: '/',
-    httpOnly: true,
-    secure: true,
-    sameSite: 'lax',
-    maxAge: 0
-  });
+import type { APIRoute } from 'astro';
+import { getIdPConfigByDomain } from '../../../config/tenants';
 
-  // 2. Construct Azure Logout URL
-  // 'post_logout_redirect_uri' must be registered in Azure App Registration > Authentication
-  const azureLogoutEndpoint = 'https://login.microsoftonline.com/common/oauth2/v2.0/logout';
-  const redirectUri = encodeURIComponent('https://ssii.fzoirm.com/login');
-  
+function clearAuthCookies(headers: Headers) {
+  headers.append('Set-Cookie', 'aim_session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+  headers.append('Set-Cookie', 'auth_domain=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+  headers.append('Set-Cookie', 'oidc_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+  headers.append('Set-Cookie', 'pkce_verifier=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+}
+
+export const POST: APIRoute = async ({ cookies }) => {
   const headers = new Headers();
   headers.append('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
   headers.append('Pragma', 'no-cache');
   headers.append('Expires', '0');
-  
-  // Redirect to Azure to kill the SSO session, then bounce back to your login page
-  headers.append('Location', `${azureLogoutEndpoint}?post_logout_redirect_uri=${redirectUri}`);
 
-  return new Response(null, {
-    status: 302,
-    headers
-  });
-};   
+  const domainCookie = cookies.get('auth_domain');
+  const config = domainCookie?.value ? getIdPConfigByDomain(domainCookie.value) : null;
+
+  clearAuthCookies(headers);
+
+  const redirectUri = encodeURIComponent('https://ssii.fzoirm.com/login');
+
+  if (config?.endSessionEndpoint) {
+    // RP-Initiated Logout per the OIDC spec — works for any IdP that
+    // implements end_session_endpoint (Microsoft, Okta, Auth0, Google
+    // Workspace, etc.), not just Microsoft.
+    const separator = config.endSessionEndpoint.includes('?') ? '&' : '?';
+    headers.append(
+      'Location',
+      `${config.endSessionEndpoint}${separator}post_logout_redirect_uri=${redirectUri}`
+    );
+  } else {
+    // No known end-session endpoint for this tenant (or no session cookie
+    // to identify one) — local session is already cleared above, so just
+    // return the user to login rather than guessing at an external URL.
+    headers.append('Location', '/login');
+  }
+
+  return new Response(null, { status: 302, headers });
+};
