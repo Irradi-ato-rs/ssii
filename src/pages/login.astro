@@ -9,14 +9,26 @@ const urlError = url.searchParams.get('error');
 
 let translatedError = '';
 if (urlError) {
+  // Enforce a strict length boundary to insulate server operations from memory inflation
   const boundedError = urlError.slice(0, 64).replace(/[^a-zA-Z0-9_ ]/g, '').toUpperCase();
   
+  // Exact template text matching from your blueprint
   if (boundedError === 'TENANT_ACCESS_DENIED') {
-    translatedError = 'TENANT ACCESS DENIED -- IDENTITY PROVIDER REJECTED FEDERATION.';
+    translatedError = 'TENANT ACCESS DENIED -- IDENTITY PROVIDER REJECTED FEDERATION. CONTACT YOUR CORPORATE IT ADMINISTRATOR TO ASSIGN YOUR WORK ACCOUNT.';
   } else if (boundedError) {
     translatedError = `SESSION FAILURE: ${boundedError}`;
   }
 }
+
+// Generate a strict, server-side anti-CSRF token anchor bound to this unique render instance
+const formAnchorToken = crypto.randomUUID();
+Astro.cookies.set('__Host-login_form_anchor', formAnchorToken, {
+  path: '/',
+  secure: true,
+  httpOnly: true,
+  sameSite: 'strict',
+  maxAge: 300 // Valid for 5 minutes
+});
 ---
 
 <BaseLayout title="VoidMetric | Authentication Gateway ⟢">
@@ -24,23 +36,33 @@ if (urlError) {
     
     <header class="mb-12 space-y-2">
       <div class="flex items-center gap-2 mb-4">
-        <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-        <h1 class="text-xl font-bold tracking-tight text-white">VOIDMETRIC AUTH GATEWAY</h1>
+        <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" aria-hidden="true"></span>
+        <h1 class="text-xl font-bold tracking-tight text-white"><a href="https://fzoirm.com">VOIDMETRIC</a> AUTH GATEWAY</h1>
       </div>
       <p class="text-slate-400">Sovereign Systemic Integrity Intelligence</p>
+      <p class="text-slate-500">Zero-Persistence. Edge-Native. Dynamic Tenant Federation.</p>
     </header>
 
     <section class="mb-16 space-y-6 pt-8 border-t border-slate-900">
+      <div class="space-y-1">
+        <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— ENTERPRISE OPERATOR IDENTIFICATION</h2>
+        <p class="text-slate-400">Enter your corporate email to initiate the encrypted OIDC handshake.</p>
+      </div>
+
+      <!-- Hardened Error Banner Container matching your original style parameters -->
       {translatedError && (
-        <div role="alert" class="p-3 bg-red-900/20 border border-red-900 text-red-400 font-bold rounded break-words uppercase text-[10px]">
+        <div id="error-banner" role="alert" class="p-3 bg-red-900/20 border border-red-900 text-red-400 text-[10px] uppercase tracking-wider font-bold rounded break-words whitespace-normal">
           {translatedError}
         </div>
       )}
 
-      <!-- PURE HTML FORM (No JavaScript) -->
+      <!-- Pure HTML form execution layout without script lockouts -->
       <form method="POST" action="/api/register" class="space-y-4 w-full">
+        <!-- Securely pass the server-rendered cryptographic token -->
+        <input type="hidden" name="form_anchor" value={formAnchorToken} />
+
         <div class="space-y-1.5">
-          <label for="email" class="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">
+          <label for="email" class="text-[10px] text-slate-500 uppercase font-bold tracking-wider block whitespace-normal">
             Corporate Email Address
           </label>
           <input 
@@ -50,11 +72,11 @@ if (urlError) {
             placeholder="operator@enterprise.com" 
             required 
             autocomplete="email"
-            class="w-full bg-[#020203] border border-slate-800 focus:border-blue-500/50 rounded px-3 py-2 text-white outline-none"
+            class="w-full bg-[#020203] border border-slate-800 focus:border-blue-500/50 rounded px-3 py-2 text-xs text-white placeholder-slate-600 font-mono transition duration-150 outline-none"
           />
         </div>
 
-        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded text-[11px] uppercase transition cursor-pointer">
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded text-[11px] uppercase tracking-wider transition duration-150 cursor-pointer shadow-lg shadow-blue-600/10">
           [INITIATE HANDSHAKE]
         </button>
       </form>
@@ -62,4 +84,4 @@ if (urlError) {
 
     <Footer />
   </main>
-</BaseLayout>   
+</BaseLayout>
