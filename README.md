@@ -34,7 +34,7 @@ $$\text{SI}_{\text{Live}} = \prod_{i=1}^{4} V_i = \prod_{i=1}^{4} \prod_{j=1}^{3
 
 ---
 
-## 3. Project File Directory Matrix // Initial Production-Grade Artifacts
+## 3. Governance System & Capabilities Blueprint [integrity-portal.astro] // Project File Directory Matrix // Initial Production-Grade Artifacts
 
 ```text
 ├── .github/workflows/    <-- CI Automation pipeline validations // it's in the plan, we'll see soon enough
@@ -53,8 +53,6 @@ $$\text{SI}_{\text{Live}} = \prod_{i=1}^{4} V_i = \prod_{i=1}^{4} \prod_{j=1}^{3
 ├── astro.config.mjs       <-- Cloudflare Serverless configuration adaptations
 └── wrangler.jsonc          <-- Cloudflare Worker infrastructure mappings
 ```
-# Governance System & Capabilities Blueprint [integrity-portal.astro]
-
 ### Systemic Integrity Dashboard
 * **Core**: The centralized orchestration engine scoping roles, handling baseline policy, risk calculations and compliance rules.
 
