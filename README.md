@@ -2,11 +2,11 @@
 
 VoidMetric is a novel dual-math risk orchestration paradigm designed to deconstruct "Compliance Theater" (the watermelon metric effect, where an infrastructure posture appears green and compliant on paper while harboring fatal operational exploits). 
 
-This GitHub public repository houses the public open-core architecture, built natively using **Astro**, **Tailwind CSS** and optimized for zero-cold-start execution inside serverless **Cloudflare Workers** environments.
+This GitHub [public repository](https://github.com/Irradi-ato-rs/ssii) houses not only the open-core architecture but every artifact that powers VoidMetric except for a few proprietary dynamics, built natively using **Astro**, **Tailwind CSS** and optimized for zero-cold-start execution inside serverless **Cloudflare Workers** environments.
 
 ## 1. Architectural Matrix Fabric
 
-VoidMetric operationalizes [Systemic Integrity Axiomatic 4 and Enablers 3](https://irradi.ato.rs/p/systemic-integrity-axiomatic-enablers.html). It maps corporate (strategic velocity) security intelligence and risk as a static 4 × 3 continuous matrix crossing four **Axiomatic Domains (I)** against three **Technical Enablers (J)**:
+VoidMetric operationalizes [Systemic Integrity Axiomatic 4 and Enablers 3](https://irradi.ato.rs/p/systemic-integrity-axiomatic-enablers.html) which serves as a cognitive catalyst in consulting engagements, aligning every stakeholder without requiring them to possess the formal notation to understand business system capabilities while uncovering value creators. It maps corporate (strategic velocity) security intelligence and risk as a static 4 × 3 continuous matrix crossing four **Axiomatic Domains (I)** against three **Technical Enablers (J)**:
 
 | Axiomatic Domain (i) | Structures (j=0) | Contents (j=1) | Facilities (j=2) |
 | :--- | :--- | :--- | :--- |
@@ -34,7 +34,7 @@ $$\text{SI}_{\text{Live}} = \prod_{i=1}^{4} V_i = \prod_{i=1}^{4} \prod_{j=1}^{3
 
 ---
 
-## 3. Governance System & Capabilities Blueprint [integrity-portal.astro] // Project File Directory Matrix // Initial Production-Grade Artifacts
+## 3. Governance System & Capabilities Blueprint [integrity-portal.astro] // Project File Directory
 
 ```text
 ├── .github/workflows/    <-- CI Automation pipeline validations // it's in the plan, we'll see soon enough
@@ -46,7 +46,7 @@ $$\text{SI}_{\text{Live}} = \prod_{i=1}^{4} V_i = \prod_{i=1}^{4} \prod_{j=1}^{3
 │   └── pages/
 │       ├── api/v1/
 │       │   └── compute.ts <-- Core headless V1 serverless math endpoint
-│       ├── architecture.astro   <-- Brutalist open system blueprint
+│       ├── architecture.astro   <-- Open system blueprint
 │       ├── index.astro          <-- Typography-driven interactive home node
 │       ├── integrity-portal.astro <-- Governance system core, dedicated executive and technical windows, CREM/CTEM center
 │       └── register.astro       <-- Multi-solution dynamic registration board // being reconsidered if it will be retained
