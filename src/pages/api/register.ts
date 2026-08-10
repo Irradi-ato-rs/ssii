@@ -3,6 +3,11 @@ export const prerender = false;
 
 import type { APIRoute, APIContext } from 'astro';
 import { getIdPConfig } from '../../config/tenants';
+import { env } from 'cloudflare:workers';
+import type { KVNamespace } from '@cloudflare/workers-types';
+
+// Bind to the KV namespace defined in wrangler.jsonc
+const TENANT_KV = env.VM_TENANT_DIRECTORY as KVNamespace;
 
 function parseEmailDomain(email: string): string | null {
   const at = email.lastIndexOf('@');
@@ -50,7 +55,8 @@ export const POST: APIRoute = async (context: APIContext) => {
       return jsonError('Invalid email address', 400);
     }
 
-    const config = getIdPConfig(email);
+    // FIX: Pass KV namespace and await the async function
+    const config = await getIdPConfig(email, TENANT_KV);
     if (!config) {
       return jsonError('Unable to start sign-in for this account.', 403);
     }
@@ -78,7 +84,7 @@ export const POST: APIRoute = async (context: APIContext) => {
       scope: 'openid profile email',
       response_type: 'code',
       state,
-      nonce, // required so callback.ts can verify the id_token's nonce claim
+      nonce,
       login_hint: email,
       redirect_uri: rigidRedirectUri,
       code_challenge: challenge,
@@ -103,4 +109,4 @@ export const POST: APIRoute = async (context: APIContext) => {
     console.error('register: unhandled error', error);
     return jsonError('Sign-in failed. Please try again.', 500);
   }
-};
+};   
