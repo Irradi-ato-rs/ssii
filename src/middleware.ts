@@ -1,7 +1,8 @@
 // src/middleware.ts
 import { defineMiddleware } from 'astro:middleware';
+import { env } from 'cloudflare:workers'; // REQUIRED for Astro 6
 import { jwtVerify, createRemoteJWKSet } from 'jose';
-import { getIdPConfig } from './config/tenants';
+import { getIdPConfigByDomain } from './config/tenants';
 
 const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 function getJwks(jwksUri: string) {
@@ -19,14 +20,6 @@ function parseEmailDomain(email: string): string {
   return email.slice(at + 1).toLowerCase().trim();
 }
 
-// Resolves governance/admin/executive/engineer from a VoidMetric-controlled
-// allow-list — never from a customer tenant's own group/role claims.
-// A customer's own Entra admin must never be able to grant platform-level
-// access by creating a similarly-named group in their own directory.
-// Expected env shape (PRIVATE_ROLE_ALLOWLIST, JSON string), stored as a
-// Cloudflare secret binding, never committed to the public repo:
-//   { "governance": ["you@fzoirm.com"], "admin": ["ops@fzoirm.com"],
-//     "executive": ["cfo@iclassed.com"], "engineer": ["alice@iclassed.com"] }
 function resolveRole(
   email: string,
   roleAllowlistRaw: string | undefined
@@ -44,7 +37,6 @@ function resolveRole(
       console.error('[VoidMetric Guard] Malformed PRIVATE_ROLE_ALLOWLIST');
     }
   }
-  // Authenticated, but no explicit role assignment — safe minimal default.
   return 'engineer';
 }
 
@@ -80,11 +72,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const validatedEmail = (rawEnvelopePayload.email || '') as string;
     if (!validatedEmail) throw new Error('missing_email_claim');
 
-    const config = getIdPConfig(validatedEmail);
+    // Get config from KV (PASS env, use domain lookup)
+    const domain = parseEmailDomain(validatedEmail);
+    const config = await getIdPConfigByDomain(env, domain); // Changed
     if (!config) throw new Error('unauthorized_domain');
 
-    const runtimeEnv = locals.runtime?.env || (globalThis as any).process?.env || {};
-    const resolvedAudienceId = runtimeEnv[config.clientIdEnv]?.trim();
+    // Access secrets from imported env (NOT locals.runtime)
+    const resolvedAudienceId = env[config.clientIdEnv]?.trim(); // Changed
     if (!resolvedAudienceId) throw new Error('configuration_fault');
 
     const JWKS = getJwks(config.jwksUri);
@@ -95,12 +89,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
       clockTolerance: '30s',
     });
 
-    const evaluatedRole = resolveRole(validatedEmail, runtimeEnv.PRIVATE_ROLE_ALLOWLIST);
+    // Access role allowlist from imported env
+    const evaluatedRole = resolveRole(validatedEmail, env.PRIVATE_ROLE_ALLOWLIST); // Changed
 
     locals.user = {
       email: validatedEmail,
       role: evaluatedRole,
-      tenant: parseEmailDomain(validatedEmail),
+      tenant: domain,
       rawClaimsPayload: payload,
     };
 
@@ -110,4 +105,4 @@ export const onRequest = defineMiddleware(async (context, next) => {
     cookies.delete('aim_session_token', { path: '/' });
     return context.redirect('/login?error=session_invalidated_by_middleware');
   }
-});
+});   
