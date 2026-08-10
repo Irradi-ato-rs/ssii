@@ -4,9 +4,12 @@ declare namespace App {
   interface Locals extends Runtime {
     user?: {
       email: string;
-      role: 'admin' | 'executive' | 'engineer';
+      role: 'governance' | 'admin' | 'executive' | 'engineer';
       tenant: string;
-      rawClaimsPayload: any;
+      // Raw decoded id_token claims — kept for audit/debug purposes.
+      // Server-side use only; never pass this object directly into a
+      // template/component prop.
+      rawClaimsPayload: Record<string, unknown>;
     };
   }
 }
