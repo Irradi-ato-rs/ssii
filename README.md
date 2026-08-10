@@ -44,8 +44,8 @@ $$\text{SI}_{\text{Live}} = \prod_{i=1}^{4} V_i = \prod_{i=1}^{4} \prod_{j=1}^{3
 │   ├── layouts/
 │   │   └── BaseLayout.astro
 │   └── pages/
-│       ├── api/v1/
-│       │   └── compute.ts <-- Core headless V1 serverless math endpoint
+│       ├── api/
+│       │   └── compute.ts <-- Core headless V1 serverless math endpoint(authenticated)
 │       ├── architecture.astro   <-- Open system blueprint
 │       ├── index.astro          <-- Typography-driven interactive home node
 │       ├── integrity-portal.astro <-- Governance system core, dedicated executive and technical windows, CREM/CTEM center
@@ -103,8 +103,7 @@ This public framework handles **anonymous, normalized metrics grids only**.
 * **Isolated Service Processing Units**: For enterprise and sovereign customers connecting active identity providers (Okta, Microsoft Entra ID, Ping Identity) alongside security intelligence APIs and active logging environments (Tenable, Microsoft Sentinel, CrowdStrike, AWS CloudTrail):
   
 Data ingestion, identity token exchange, string parsers, normalization functions ($f_{norm}$), and custom SLA definitions are handled entirely inside separate, secured, and isolated service processing units—including but not limited to private repositories and serverless compute. 
-  
-Engineered exclusively as a **Stateless, Zero-Persistence, Edge-Native, Non-Linear Operational Validation Engine**, the platform processes telemetry in real-time fluid memory without writing data to disk. 
-  
-This guarantees that your enterprise identity mapping, log configurations and connection credentials are completely hidden and cryptographically separated while ensuring absolute runtime transparency.
 
+Engineered as a **Stateless, Zero-Persistence**, **Edge-Native**, **Non-Linear Operational Validation Engine**, the compute pipeline itself processes telemetry in real-time fluid memory without writing metric data to disk. A narrow, explicitly-scoped exception exists for tenant onboarding-status tracking——a small key-value store holding only onboarding-completion flags and invite lists per tenant domain. This is control-plane bookkeeping, not telemetry storage, and holds no metric values, raw signals, or credentials.
+
+This guarantees that your enterprise credentials——SIEM/webhook tokens, IdP client secrets, and platform role assignments — never enter the public codebase and are handled exclusively within isolated, private service boundaries, while the compute engine's own math, the federation protocol logic, and the role-based access model remain fully open for audit. (Tenant identity endpoints——issuer URLs and tenant IDs necessary for OIDC federation——are part of the public configuration by design, since the federation logic itself must be auditable; what stays private is the credential material and access-control decisions layered on top of it.) True to the dependable desigm and practical reality of systemic integrity, a cryptographically separated mechanism to securely operationalized handling of enterprise credentials is continuously being worked out, this while it still ensures absolute runtime transparency.
