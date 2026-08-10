@@ -1,4 +1,3 @@
-```markdown
 # VoidMetric (Extensible & On-Demand Core)
 
 VoidMetric is a dual-math risk orchestration approach designed to close the gap between reported compliance and actual operational integrity — cases where a technological posture appears compliant on paper while harboring fatal operational exploits (the "watermelon metric effect"). It pairs an additive compliance metric with a multiplicative weakest-link metric side-by-side, using the gap between them as the primary diagnostic signal — surfaced through a 4×3 axiomatic/enabler matrix taxonomy.
@@ -162,4 +161,3 @@ Engineered as a **Stateless, Zero-Persistence, Edge-Native, Non-Linear Operation
 This guarantees that your enterprise credentials — SIEM/webhook tokens, IdP client secrets, tenant identity records, and platform role assignments — never enter the public codebase and are isolated within private, non-public runtime data stores and service boundaries, while the compute engine's own math, the federation protocol logic, and the role-based access model remain fully open for audit.
 
 *(A stronger, cryptographic-at-rest guarantee for this isolated data is a planned follow-up, not yet implemented — this document will be updated when that lands.)*
-```
