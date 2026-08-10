@@ -49,13 +49,13 @@ export const POST: APIRoute = async ({ request }) => {
       return jsonError('Invalid email address', 400);
     }
 
-    // 👇 PASS 'env' to getIdPConfig (now async)
+    // PASS 'env' to getIdPConfig (now async)
     const config = await getIdPConfig(env, email);
     if (!config) {
       return jsonError('Unable to start sign-in for this account.', 403);
     }
 
-    // 👇 Access secrets directly from imported 'env'
+    // Access secrets directly from imported 'env'
     const clientId = env[config.clientIdEnv]?.trim();
     const clientSecret = env[config.clientSecretEnv]?.trim();
 

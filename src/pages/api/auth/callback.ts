@@ -2,8 +2,9 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
+import { env } from 'cloudflare:workers'; // REQUIRED for Astro 6
 import { jwtVerify, createRemoteJWKSet } from 'jose';
-import { getIdPConfig } from '../../../config/tenants';
+import { getIdPConfigByDomain } from '../../../config/tenants';
 
 interface DynamicIdPConfig {
   issuer: string;
@@ -14,9 +15,7 @@ interface DynamicIdPConfig {
   authMethod?: 'client_secret_basic' | 'client_secret_post';
 }
 
-// Module-level cache: one JWKS fetcher per jwksUri, reused across requests
-// within a warm isolate so jose's internal key caching actually persists
-// instead of being rebuilt from scratch on every login.
+// Module-level cache: one JWKS fetcher per jwksUri
 const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 
 function getJwks(jwksUri: string) {
@@ -34,15 +33,12 @@ function errorRedirect(code: string): Response {
   return new Response(null, { status: 302, headers });
 }
 
-// Clears the short-lived flow cookies used only during the login round-trip.
 function clearFlowCookies(headers: Headers) {
   headers.append('Set-Cookie', 'oidc_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
   headers.append('Set-Cookie', 'pkce_verifier=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
 }
 
-export const GET: APIRoute = async (context) => {
-  const { request, cookies, locals } = context;
-
+export const GET: APIRoute = async ({ request, cookies }) => { // Removed 'locals'
   try {
     const requestUrl = new URL(request.url);
     const code = requestUrl.searchParams.get('code');
@@ -88,17 +84,16 @@ export const GET: APIRoute = async (context) => {
       return errorRedirect('invalid_state');
     }
 
-    // 4. Get tenant config
-    const config = getIdPConfig(`user@${domain}`) as DynamicIdPConfig;
+    // 4. Get tenant config from KV (PASS env)
+    const config = await getIdPConfigByDomain(env, domain); // Changed
     if (!config) {
       console.error(`[VoidMetric Auth] No IdP config for domain=${domain}`);
       return errorRedirect('tenant_access_denied');
     }
 
-    // 5. Access secrets
-    const runtimeEnv = locals.runtime?.env || (globalThis as any).process?.env || {};
-    const clientId = runtimeEnv[config.clientIdEnv]?.trim();
-    const clientSecret = runtimeEnv[config.clientSecretEnv]?.trim();
+    // 5. Access secrets from imported env (NOT locals.runtime)
+    const clientId = env[config.clientIdEnv]?.trim(); // Changed
+    const clientSecret = env[config.clientSecretEnv]?.trim(); // Changed
 
     if (!clientId || !clientSecret) {
       console.error(`[VoidMetric Auth] Missing secret for domain=${domain}`);
@@ -106,8 +101,6 @@ export const GET: APIRoute = async (context) => {
     }
 
     // 6. Token exchange (with PKCE code_verifier included)
-    // Must match the redirect_uri registered in the IdP app registration
-    // exactly — this is the served origin (ssii.fzoirm.com), never the apex.
     const rigidCallbackString = 'https://ssii.fzoirm.com/api/auth/callback';
     const useBasicAuth = config.authMethod !== 'client_secret_post';
 
@@ -165,7 +158,7 @@ export const GET: APIRoute = async (context) => {
       return errorRedirect('handshake_failed');
     }
 
-    // 7. Verify token signature & claims — JWKS instance is reused across requests.
+    // 7. Verify token signature & claims
     const JWKS = getJwks(config.jwksUri);
 
     let exp: number | undefined;
@@ -183,10 +176,7 @@ export const GET: APIRoute = async (context) => {
       return errorRedirect('handshake_failed');
     }
 
-    // Derive session cookie lifetime from the token's real expiry rather
-    // than a hardcoded value, with a floor to guard against a near-expired
-    // or clock-skewed token producing an already-dead cookie, and a
-    // fallback only if exp is somehow absent.
+    // 8. Derive session cookie lifetime
     const nowSeconds = Math.floor(Date.now() / 1000);
     const DEFAULT_MAX_AGE = 3600;
     const MIN_MAX_AGE = 60;
@@ -194,14 +184,10 @@ export const GET: APIRoute = async (context) => {
       ? Math.max(MIN_MAX_AGE, exp - nowSeconds)
       : DEFAULT_MAX_AGE;
 
-    // 8. Set session cookies, clear flow cookies, redirect
+    // 9. Set session cookies, clear flow cookies, redirect
     const headers = new Headers();
     clearFlowCookies(headers);
     headers.append('Set-Cookie', `aim_session_token=${idToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${sessionMaxAge}`);
-    // Records which tenant/email domain this session belongs to, so
-    // signout.ts can resolve the correct IdP's end-session endpoint
-    // without decoding the JWT. Not sensitive — same lifetime as the
-    // session itself.
     headers.append('Set-Cookie', `auth_domain=${domain}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${sessionMaxAge}`);
     headers.append('Location', '/integrity-portal');
 
@@ -210,4 +196,4 @@ export const GET: APIRoute = async (context) => {
     console.error('[VoidMetric Auth] Crash:', err);
     return errorRedirect('handshake_failed');
   }
-};
+};   
