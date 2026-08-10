@@ -24,14 +24,16 @@ Input metrics are continuously streamed via automated edge scripts and normalize
 ### Metric A: Continuous Maturity Matrix (Additive)
 
 Tracks cumulative administrative effort, organizational spend, and checkmark compliance over time via context-weighted summation:
+'''math
 $$\text{Score}_A = \frac{\sum_{i,j} C_{i,j} \cdot w_j(\vec{t}) \cdot \alpha_i}{\sum_{i,j} w_j(\vec{t}) \cdot \alpha_i}$$
 where $w_j(\vec{t})$ are enabler weights dynamically re-allocated in proportion to a live threat-intelligence vector $\vec{t}$, and $\alpha_i$ is each axiomatic domain's fixed priority coefficient.
-
+'''
 ### Metric B: The Operational Blueprint (Multiplicative Core, Spectral-Adjusted)
 
 An uncompromising series system built around a **Risk Switch**: row verification vectors are aggregated via a weighted geometric product per row, then combined harmonically across rows so that any single collapsed row dominates the aggregate rather than being diluted by strong rows elsewhere:
+'''math
 $$V_i = \prod_{j=1}^{3} (C_{i,j})^{w_j}, \qquad \text{SI}_{\text{raw}} = \left( \sum_{i=1}^{4} \frac{\alpha_i}{V_i} \right)^{-1}$$
-
+'''
 Each $C_{i,j}$ is itself derived from raw telemetry through a temporal decay function (older, unrefreshed signals drift toward zero confidence) and a sigmoid confidence transform before entering the matrix.
 
 $\text{SI}_{\text{raw}}$ is further adjusted by a **spectral chaos penalty**, derived from the principal eigenvalue of the domain-covariance matrix, which detects correlated multi-domain degradation that a naive per-cell view would miss:
