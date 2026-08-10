@@ -1,4 +1,4 @@
-src/pages/api/register.ts
+// src/pages/api/register.ts
 export const prerender = false;
 
 import type { APIRoute, APIContext } from 'astro';
@@ -54,7 +54,7 @@ export const POST: APIRoute = async (context: APIContext) => {
     if (!config) {
       return jsonError('Unable to start sign-in for this account.', 403);
     }
-    Last paste -- 
+
     const runtimeEnv = locals.runtime?.env || (globalThis as any).process?.env || {};
     const clientId = runtimeEnv[config.clientIdEnv]?.trim();
     const clientSecret = runtimeEnv[config.clientSecretEnv]?.trim();
