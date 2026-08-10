@@ -1,7 +1,8 @@
 // src/pages/api/register.ts
 export const prerender = false;
 
-import type { APIRoute, APIContext } from 'astro';
+import type { APIRoute } from 'astro';
+import { env } from 'cloudflare:workers'; // REQUIRED for Astro 6
 import { getIdPConfig } from '../../config/tenants';
 
 function parseEmailDomain(email: string): string | null {
@@ -34,9 +35,7 @@ function jsonError(message: string, status: number): Response {
   });
 }
 
-export const POST: APIRoute = async (context: APIContext) => {
-  const { request, locals } = context;
-
+export const POST: APIRoute = async ({ request }) => {
   try {
     const formData = await request.formData();
     const email = formData.get('email')?.toString().trim();
@@ -50,14 +49,15 @@ export const POST: APIRoute = async (context: APIContext) => {
       return jsonError('Invalid email address', 400);
     }
 
-    const config = getIdPConfig(email);
+    // 👇 PASS 'env' to getIdPConfig (now async)
+    const config = await getIdPConfig(env, email);
     if (!config) {
       return jsonError('Unable to start sign-in for this account.', 403);
     }
 
-    const runtimeEnv = locals.runtime?.env || (globalThis as any).process?.env || {};
-    const clientId = runtimeEnv[config.clientIdEnv]?.trim();
-    const clientSecret = runtimeEnv[config.clientSecretEnv]?.trim();
+    // 👇 Access secrets directly from imported 'env'
+    const clientId = env[config.clientIdEnv]?.trim();
+    const clientSecret = env[config.clientSecretEnv]?.trim();
 
     if (!clientId || !clientSecret) {
       console.error(`register: missing secret for domain=${domain}`);
@@ -78,7 +78,7 @@ export const POST: APIRoute = async (context: APIContext) => {
       scope: 'openid profile email',
       response_type: 'code',
       state,
-      nonce, // required so callback.ts can verify the id_token's nonce claim
+      nonce,
       login_hint: email,
       redirect_uri: rigidRedirectUri,
       code_challenge: challenge,
@@ -103,4 +103,4 @@ export const POST: APIRoute = async (context: APIContext) => {
     console.error('register: unhandled error', error);
     return jsonError('Sign-in failed. Please try again.', 500);
   }
-};
+};   

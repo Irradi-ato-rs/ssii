@@ -12,7 +12,7 @@ export interface IdPConfig {
 
 // Use 'Env' type from your env.d.ts for consistency, or keep explicit interface
 export async function getIdPConfig(
-  env: { VM_TENANT_DIRECTORY: KVNamespace }, // ✅ Valid if @cloudflare/workers-types is installed
+  env: { VM_TENANT_DIRECTORY: KVNamespace }, // Valid if @cloudflare/workers-types is installed
   email: string
 ): Promise<IdPConfig | null> {
   const at = email.lastIndexOf('@');
