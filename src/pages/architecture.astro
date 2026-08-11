@@ -1,23 +1,19 @@
 ---
 // src/pages/architecture.astro
-export const prerender = false; // High-speed global edge caching pass / must changed true
+export const prerender = false; // High-speed global edge caching pass
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Footer from '../components/Footer.astro';
 ---
 
 <BaseLayout title="Architecture Specification | VoidMetric / iclassed">
   <main class="w-full max-w-2xl mx-auto px-4 py-16 text-left text-slate-300 font-mono text-xs leading-relaxed selection:bg-slate-800">
-    
-    <!-- Navigation Back Link -->
-   
-    <!-- Document Header -->
+
     <header class="mb-12 space-y-2">
       <h1 class="text-xl font-bold tracking-tight text-white"><a href="https://ssii.fzoirm.com">VOIDMETRIC</a> ARCHITECTURE</h1>
       <p class="text-slate-400">The Decoupled Dual-Engine & Stateless Edge Pipeline Architecture</p>
       <p class="text-slate-500">Document ID: VM-ARCH-2026.08 // Classification: Open Core</p>
     </header>
 
-    <!-- Section 1: Open Core Strategy -->
     <section class="mb-12 space-y-3">
       <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— 1. OPEN-CORE STRATIFICATION MAP</h2>
       <p class="text-slate-400">
@@ -27,23 +23,28 @@ import Footer from '../components/Footer.astro';
         <div>
           <span class="text-white font-bold">[PUBLIC_OPEN_CORE]</span>
           <p class="text-slate-500 mt-1 pl-4">
-            Houses the Astro UI layer, manual simulation sandboxes, and headless mathematical algorithms. Accessible to academic peers and client infrastructure architects for code auditing.
+            Houses the Astro UI layer, manual simulation sandboxes, and headless mathematical algorithms. Accessible to academic peers and client infrastructure architects for code auditing. Tenant identity records are not part of this boundary — see below.
           </p>
         </div>
         <div>
           <span class="text-white font-bold">[PRIVATE_INGESTION_CORE]</span>
           <p class="text-slate-500 mt-1 pl-4">
-            Isolated edge parsing worker handling raw enterprise SIEM and telemetry webhooks (Tenable, Sentinel). Transforms counts into matrix states via proprietary normalization keys, hiding client infrastructure details [INDEX].
+            Isolated edge parsing worker handling raw enterprise SIEM and telemetry webhooks (Tenable, Sentinel). Transforms counts into matrix states via proprietary normalization keys, hiding client infrastructure details.
+          </p>
+        </div>
+        <div>
+          <span class="text-white font-bold">[TENANT_DIRECTORY]</span>
+          <p class="text-slate-500 mt-1 pl-4">
+            Customer domain-to-identity-provider records (tenant IDs, OIDC endpoints) are held exclusively in a private Cloudflare KV namespace, populated out-of-band during onboarding. Never committed to the public repository. The lookup logic that queries this data is open-core; the records themselves are not.
           </p>
         </div>
       </div>
     </section>
 
-    <!-- Section 2: Pipeline ASCII Flow Chart -->
     <section class="mb-12 space-y-4">
       <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— 2. STATELESS DATA EXTRACTION PIPELINE</h2>
       <p class="text-slate-400">
-        VoidMetric does not preserve database state. Data metrics pass directly through serverless threads at the edge, mitigating data footprint exposures [INDEX].
+        VoidMetric does not preserve database state for telemetry. Data metrics pass directly through serverless threads at the edge, mitigating data footprint exposures.
       </p>
       <pre class="bg-slate-950 border border-slate-900 rounded-lg p-4 text-[11px] font-mono text-slate-400 overflow-x-auto leading-relaxed">
 [ Raw Inbound Telemetry Stream ]  &lt;-- Pushed via automated enterprise webhooks
@@ -56,7 +57,7 @@ import Footer from '../components/Footer.astro';
                │ Executing proprietary f_norm normalization mappings
                ▼
  ┌───────────────────────────┐
- │  VoidMetric Math Engine   │  &lt;-- Invokes POST /api/v1/compute
+ │  VoidMetric Math Engine   │  &lt;-- Invokes POST /api/compute
  │  (Stateless V8 Isolate)   │
  └──────┬─────────────┬──────┘
         │             │
@@ -67,13 +68,12 @@ import Footer from '../components/Footer.astro';
       </pre>
     </section>
 
-    <!-- Section 3: Universal Matrix Schema Mappings -->
     <section class="mb-12 space-y-4">
       <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— 3. VERIFICATION FIELD CONSTRAINTS (4x3 MATRIX)</h2>
       <p class="text-slate-400">
         Every log entry maps dynamically into specific coordinates inside our $4 \times 3$ verification fabric. The engine ensures that administrative checkmarks can never subsidize critical technical flaws.
       </p>
-      
+
       <div class="space-y-4 text-[11px]">
         <div class="grid grid-cols-4 border-b border-slate-900 pb-1.5 text-slate-500 uppercase font-bold text-[9px]">
           <div>Axiomatic Domain (i)</div>
@@ -81,28 +81,28 @@ import Footer from '../components/Footer.astro';
           <div>Contents (j=1)</div>
           <div>Facilities (j=2)</div>
         </div>
-        
+
         <div class="grid grid-cols-4 border-b border-slate-900/40 pb-1.5">
           <div class="text-white font-bold">1. Function</div>
           <div class="text-slate-500">Architecture Policy</div>
           <div class="text-slate-500">Logic Flows / Rules</div>
           <div class="text-slate-500">Cloud Environments</div>
         </div>
-        
+
         <div class="grid grid-cols-4 border-b border-slate-900/40 pb-1.5">
           <div class="text-white font-bold">2. Features</div>
           <div class="text-slate-500">RBAC / IAM Schemas</div>
           <div class="text-slate-500">Crypto Payloads</div>
           <div class="text-slate-500">API Gateway Points</div>
         </div>
-        
+
         <div class="grid grid-cols-4 border-b border-slate-900/40 pb-1.5">
           <div class="text-white font-bold">3. Elements</div>
           <div class="text-slate-500">Config Profiles</div>
           <div class="text-slate-500">Data Asset Matrix</div>
           <div class="text-slate-500">Storage Buckets</div>
         </div>
-        
+
         <div class="grid grid-cols-4 pb-1.5">
           <div class="text-white font-bold">4. Execution</div>
           <div class="text-slate-500">Runtime Boundaries</div>
@@ -112,7 +112,6 @@ import Footer from '../components/Footer.astro';
       </div>
     </section>
 
-    <!-- Section 4: Engine Specs Specifications Metric Matrix -->
     <section class="mb-12 space-y-3">
       <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— 4. RUNTIME SYSTEM BOUNDS</h2>
       <div class="max-w-md space-y-2 text-slate-400">
@@ -126,12 +125,11 @@ import Footer from '../components/Footer.astro';
           <span>Network Payload Footprint:</span><span class="text-white">~216 Bytes</span>
         </div>
         <div class="flex justify-between">
-          <span>State Persistent Databases:</span><span class="text-white">0 Bytes (Zero State Storage Overhead)</span>
+          <span>State Persistent Databases:</span><span class="text-white">0 Bytes for telemetry (control-plane exceptions noted above)</span>
         </div>
       </div>
     </section>
 
-    <!-- Shared Minimalist Footer Integration -->
     <Footer />
 
   </main>
