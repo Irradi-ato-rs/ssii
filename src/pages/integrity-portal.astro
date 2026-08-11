@@ -10,11 +10,10 @@ const url = new URL(Astro.request.url);
 const urlError = url.searchParams.get('error');
 
 if (urlError) {
-  // Transfer the specific OIDC provider error directly back to the login gateway display
   return Astro.redirect(`/login?error=${urlError}`);
 }
 
-// 2. HARD SECURITY ISOLATION BOUNDARY: Instant redirection if session context is null
+// 2. HARD SECURITY ISOLATION BOUNDARY
 if (!Astro.locals.user) {
   return Astro.redirect('/login?error=unauthenticated_session_gateway');
 }
@@ -25,8 +24,6 @@ const user = Astro.locals.user;
 const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
 
 // 3. LIVE POSTURE — read-only. Written exclusively by PRIVATE_INGESTION_CORE
-// after a verified_ingestion compute call. This page never computes or
-// accepts a live score from the browser — it only ever reads the cache.
 let livePosture: {
   metric_a_compliance: number;
   metric_b_integrity: number;
@@ -38,21 +35,22 @@ let livePosture: {
 } | null = null;
 
 try {
-  const raw = await env.VM_LIVE_POSTURE_CACHE.get(user.tenant);
-  if (raw) livePosture = JSON.parse(raw);
+  // Ensure VM_LIVE_POSTURE_CACHE is bound in wrangler.jsonc
+  if (env.VM_LIVE_POSTURE_CACHE) {
+    const raw = await env.VM_LIVE_POSTURE_CACHE.get(user.tenant);
+    if (raw) livePosture = JSON.parse(raw);
+  }
 } catch (err) {
   console.error('[VoidMetric Portal] Failed to read live posture cache:', err);
-  // livePosture stays null — page renders the "awaiting sync" state, never
-  // a stale or fabricated number.
 }
 
-// 4. HARD ANTI-CACHING HEADERS: Force the browser to evaluate the network layer on BACK button click
+// 4. HARD ANTI-CACHING HEADERS
 Astro.response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
 Astro.response.headers.set('Pragma', 'no-cache');
 Astro.response.headers.set('Expires', '0');
 ---
+
 <BaseLayout title="VoidMetric OS // Systemic Posture Control Center">
-  <!-- Hardened Content Security Policy Matrix via Meta Tag -->
   <meta 
     http-equiv="Content-Security-Policy" 
     content="default-src 'self'; script-src 'self' 'unsafe-inline' https://tailwindcss.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';"
@@ -164,13 +162,14 @@ Astro.response.headers.set('Expires', '0');
       </div>
       
       <div class="flex flex-wrap gap-3">
-        <button id="testMath" type="button" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-5 rounded text-xs transition duration-150 tracking-wide shadow-md shadow-blue-600/10 cursor-pointer">
+        <button id="testMathBtn" type="button" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-5 rounded text-xs transition duration-150 tracking-wide shadow-md shadow-blue-600/10 cursor-pointer">
           [RUN_BLIND_TELEMETRY_CALCULATION]
         </button>
         <button id="injectZeroBtn" type="button" class="bg-slate-900 border border-rose-900/60 hover:bg-rose-950/30 text-rose-400 font-bold py-2.5 px-5 rounded text-xs transition duration-150 tracking-wide cursor-pointer">
           [INJECT_STRUCTURAL_ZERO_VECTOR]
         </button>
       </div>
+
       <!-- Dynamic Feedback Indicators -->
       <div id="results" class="hidden space-y-6 pt-4 border-t border-slate-900">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
@@ -222,6 +221,7 @@ Astro.response.headers.set('Expires', '0');
     <Footer />
 
   </main>
+
   <script>
     // Force immediate validation check if page is pulled out of back-forward cache memory
     window.addEventListener('pageshow', (event) => {
@@ -239,11 +239,9 @@ Astro.response.headers.set('Expires', '0');
       onboardingModal?.classList.add('hidden');
     });
 
-    // Sandbox Computation — real /api/compute call, always tagged
-    // provenance: "user_submitted_sandbox" by the server. Never presented
-    // as, or confused with, the tenant's live posture panel above.
+    // Sandbox Computation — real /api/compute call
     document.addEventListener('DOMContentLoaded', () => {
-      const testMathBtn = document.getElementById('testMath');
+      const testMathBtn = document.getElementById('testMathBtn');
       const injectZeroBtn = document.getElementById('injectZeroBtn');
       const resultsSection = document.getElementById('results');
 
@@ -312,7 +310,10 @@ Astro.response.headers.set('Expires', '0');
             resStatus.className = critical
               ? 'text-[11px] font-bold uppercase tracking-wider text-red-500 bg-red-950/30 px-2 py-0.5 rounded border border-red-900/50'
               : 'text-[11px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/30 px-2 py-0.5 rounded border border-emerald-900/50';
-            if (theaterAlarm) critical ? theaterAlarm.classList.remove('hidden') : theaterAlarm.classList.add('hidden');
+            
+            if (theaterAlarm) {
+              critical ? theaterAlarm.classList.remove('hidden') : theaterAlarm.classList.add('hidden');
+            }
           }
 
           if (data.spectral_analysis) {
@@ -332,4 +333,4 @@ Astro.response.headers.set('Expires', '0');
       injectZeroBtn?.addEventListener('click', () => triggerCalculation(true));
     });
   </script>
-</BaseLayout>
+</BaseLayout>   
