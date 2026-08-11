@@ -5,8 +5,9 @@ import cloudflare from '@astrojs/cloudflare';
 export default defineConfig({
   site: 'https://ssii.fzoirm.com',
   output: 'server',
-  adapter: cloudflare(),
-  // Force ALL pages to be server-rendered (no prerendering)
+  adapter: cloudflare({
+    prerenderEnvironment: 'workerd', // CRITICAL FIX
+  }),
   prerender: {
     default: false,
   },
