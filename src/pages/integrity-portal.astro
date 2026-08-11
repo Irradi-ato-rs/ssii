@@ -1,29 +1,58 @@
-// src/pages/integrity-portal.astro
 ---
+// src/pages/integrity-portal.astro
 export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Footer from '../components/Footer.astro';
+import { env } from 'cloudflare:workers';
 
-// 1. ERROR INTERCEPTION
+// 1. ERROR INTERCEPTION: Catch identity failure params before running isolation boundary
 const url = new URL(Astro.request.url);
 const urlError = url.searchParams.get('error');
+
 if (urlError) {
+  // Transfer the specific OIDC provider error directly back to the login gateway display
   return Astro.redirect(`/login?error=${urlError}`);
 }
 
-// 2. HARD SECURITY ISOLATION
+// 2. HARD SECURITY ISOLATION BOUNDARY: Instant redirection if session context is null
 if (!Astro.locals.user) {
   return Astro.redirect('/login?error=unauthenticated_session_gateway');
 }
+
 const user = Astro.locals.user;
+
+// Evaluate structural cookie presence natively using the stable Astro context API
 const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
 
-// 3. ANTI-CACHING HEADERS
+// 3. LIVE POSTURE — read-only. Written exclusively by PRIVATE_INGESTION_CORE
+// after a verified_ingestion compute call. This page never computes or
+// accepts a live score from the browser — it only ever reads the cache.
+let livePosture: {
+  metric_a_compliance: number;
+  metric_b_integrity: number;
+  status: string;
+  theater_gap_delta: number;
+  row_validations?: number[];
+  spectral_analysis?: Record<string, unknown>;
+  computedAt: string;
+} | null = null;
+
+try {
+  const raw = await env.VM_LIVE_POSTURE_CACHE.get(user.tenant);
+  if (raw) livePosture = JSON.parse(raw);
+} catch (err) {
+  console.error('[VoidMetric Portal] Failed to read live posture cache:', err);
+  // livePosture stays null — page renders the "awaiting sync" state, never
+  // a stale or fabricated number.
+}
+
+// 4. HARD ANTI-CACHING HEADERS: Force the browser to evaluate the network layer on BACK button click
 Astro.response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
 Astro.response.headers.set('Pragma', 'no-cache');
 Astro.response.headers.set('Expires', '0');
 ---
-<BaseLayout title="VoidMetric Controller">
+<BaseLayout title="VoidMetric OS // Systemic Posture Control Center">
+  <!-- Hardened Content Security Policy Matrix via Meta Tag -->
   <meta 
     http-equiv="Content-Security-Policy" 
     content="default-src 'self'; script-src 'self' 'unsafe-inline' https://tailwindcss.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';"
@@ -32,7 +61,7 @@ Astro.response.headers.set('Expires', '0');
 
   <main class="w-full max-w-5xl mx-auto px-4 py-8 text-left text-slate-300 font-mono text-xs leading-relaxed selection:bg-slate-800 selection:text-white space-y-6">
     
-    <!-- Top Operational Status Header -->
+    <!-- Top Operational Status Header Panel -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center p-6 bg-slate-900/40 border border-slate-900 rounded-xl gap-4">
       <div>
         <div class="flex items-center gap-3">
@@ -45,14 +74,56 @@ Astro.response.headers.set('Expires', '0');
         <p class="text-slate-400">OPERATOR: <span class="font-bold text-white">{user.email}</span></p>
         <p class="text-slate-500 uppercase">ACCESS_SCOPE: <span class="text-blue-400 font-bold">{user.role}</span></p>
         <form method="POST" action="/api/auth/signout" class="mt-2 inline-block">
-          <button type="submit" class="text-rose-400/80 hover:text-rose-400 underline underline-offset-4 font-bold transition cursor-pointer bg-transparent border-none p-0">
+          <button
+            type="submit"
+            class="text-rose-400/80 hover:text-rose-400 underline underline-offset-4 font-bold transition cursor-pointer bg-transparent border-none p-0"
+          >
             /terminate-session
           </button>
         </form>
       </div>
     </div>
 
-    <!-- Onboarding Modal -->
+    <!-- Live Tenant Posture Panel -->
+    <div class="bg-[#07070a] border border-slate-900 rounded-xl p-6 space-y-4 shadow-xl">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <h2 class="text-sm font-bold text-white uppercase tracking-wider">📡 Live Tenant Posture</h2>
+        {livePosture && (
+          <span class="text-[9px] text-slate-500 uppercase tracking-wider">Synced {livePosture.computedAt}</span>
+        )}
+      </div>
+
+      {livePosture ? (
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-1">
+            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Metric A // Compliance Posture</p>
+            <p class="text-xl font-bold text-slate-100">{(livePosture.metric_a_compliance * 100).toFixed(1)}%</p>
+          </div>
+          <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-1">
+            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Metric B // Real Operational Integrity</p>
+            <p class={`text-xl font-bold ${livePosture.metric_b_integrity < 0.2 ? 'text-red-500' : 'text-emerald-400'}`}>
+              {(livePosture.metric_b_integrity * 100).toFixed(1)}%
+            </p>
+          </div>
+          <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-1">
+            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Operational Security Status</p>
+            <p class={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border inline-block ${
+              livePosture.status === 'CRITICAL_RISK_SWITCH_TRIGGERED'
+                ? 'text-red-500 bg-red-950/30 border-red-900/50'
+                : 'text-emerald-400 bg-emerald-950/30 border-emerald-900/50'
+            }`}>
+              {livePosture.status.replace(/_/g, ' ')}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div class="p-4 bg-slate-900/30 border border-slate-800 rounded text-[11px] text-slate-500 leading-relaxed">
+          No telemetry has been synced for your organization yet. Once your engineer completes SIEM/webhook onboarding, live posture will appear here automatically — no action needed on this page.
+        </div>
+      )}
+    </div>
+
+    <!-- INTERACTIVE ONBOARDING MODAL -->
     {isFirstVisit && (
       <div id="onboarding-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md px-4">
         <div class="bg-[#09090b] border border-blue-500/20 p-8 rounded-xl max-w-md w-full shadow-2xl space-y-6">
@@ -60,6 +131,7 @@ Astro.response.headers.set('Expires', '0');
             <h2 class="text-base font-bold text-white uppercase tracking-wider">// INITIALIZING NODE ENTRY</h2>
             <p class="text-slate-500 text-[11px]">Systemic Integrity matrix calibration will execute inside volatile memory maps.</p>
           </div>
+          
           <div class="space-y-3 text-[11px] border-y border-slate-900 py-4">
             <div class="flex items-center gap-3">
               <span class="flex items-center justify-center w-5 h-5 rounded bg-emerald-950 text-emerald-400 font-bold">✓</span>
@@ -67,13 +139,14 @@ Astro.response.headers.set('Expires', '0');
             </div>
             <div class="flex items-center gap-3">
               <span class="flex items-center justify-center w-5 h-5 rounded bg-blue-950 text-blue-400 font-bold">2</span>
-              <span class="text-slate-400">Establishes Homomorphic Noise Blinding Vectors</span>
+              <span class="text-slate-400">Packs Homomorphic Noise Blinding Vectors</span>
             </div>
             <div class="flex items-center gap-3">
               <span class="flex items-center justify-center w-5 h-5 rounded bg-slate-900 text-slate-500 font-bold">3</span>
-              <span class="text-slate-400">Isolates Structural Compliance Gaps</span>
+              <span class="text-slate-400">Isolates Structural Compliance Theater Gaps</span>
             </div>
           </div>
+
           <button id="startTourBtn" type="button" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded text-xs transition duration-200 cursor-pointer shadow-lg shadow-blue-600/10">
             [EXECUTE_SYSTEM_CALIBRATION_TOUR]
           </button>
@@ -81,12 +154,12 @@ Astro.response.headers.set('Expires', '0');
       </div>
     )}
 
-    <!-- Primary Telemetry Panel -->
+    <!-- Primary Telemetry Panel Workspace (Sandbox) -->
     <div class="bg-[#07070a] border border-slate-900 rounded-xl p-6 space-y-6 shadow-xl">
       <div class="space-y-1.5">
         <h2 class="text-sm font-bold text-white uppercase tracking-wider">🧪 Live Stream Computation Matrix Terminal</h2>
         <p class="text-slate-500 text-[11px] leading-relaxed">
-          Real-time matrix decomposition of structural integrity vectors. Data sourced from edge parsing workers.
+          Submits a synthetic 32-element stream through the real scoring engine as an authenticated sandbox run — never presented as your organization's live posture. See the panel above for that.
         </p>
       </div>
       
@@ -98,7 +171,6 @@ Astro.response.headers.set('Expires', '0');
           [INJECT_STRUCTURAL_ZERO_VECTOR]
         </button>
       </div>
-
       <!-- Dynamic Feedback Indicators -->
       <div id="results" class="hidden space-y-6 pt-4 border-t border-slate-900">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
@@ -115,16 +187,16 @@ Astro.response.headers.set('Expires', '0');
             <p id="resStatus" class="text-[11px] font-bold uppercase tracking-wider transition-colors duration-200">-</p>
           </div>
         </div>
-        
-        <!-- Threat Warnings -->
+
+        <!-- Advanced Side-Channel Threat Warnings Display Indicator -->
         <div id="theaterAlarm" class="hidden p-4 bg-rose-950/20 border border-rose-900/50 rounded text-rose-400 text-[11px] space-y-1">
-          <p class="font-bold">// CRITICAL INTEGRITY DELTA DETECTED</p>
-          <p class="text-rose-500/90">Formal checkmarks remain high, but live integrity index indicates acute single-point failure exposure.</p>
+          <p class="font-bold">// CRITICAL COMPLIANCE THEATER DELTA DETECTED</p>
+          <p class="text-rose-500/90">Formal corporate checkmarks remain exceptionally high, but the live integrity index indicates acute single-point failure exposure.</p>
         </div>
         
         { (user.role === 'engineer' || user.role === 'admin') && (
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <!-- Spectral Analysis -->
+            <!-- Structural Decomposition Outputs View -->
             <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-2">
               <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Spectral Topology Analytics (Engineer View)</p>
               <div class="text-[11px] space-y-1 text-slate-400">
@@ -134,7 +206,7 @@ Astro.response.headers.set('Expires', '0');
               </div>
             </div>
 
-            <!-- Raw Stream Log -->
+            <!-- Raw Stream Asset Array Map Payload Inspector -->
             <div class="bg-[#020203] p-4 rounded border border-slate-900 space-y-2">
               <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Blinded Homomorphic Stream Map</p>
               <div id="rawStreamLog" class="text-[9px] text-slate-600 break-all max-h-[70px] overflow-y-auto leading-normal">
@@ -146,100 +218,118 @@ Astro.response.headers.set('Expires', '0');
       </div>
     </div>
 
+    <!-- Unified Footprint Core Indicator Component Loaded Natively Here -->
     <Footer />
-  </main>
 
+  </main>
   <script>
-    // Onboarding Modal
+    // Force immediate validation check if page is pulled out of back-forward cache memory
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    });
+
+    // Handle the Onboarding Modal state setting natively
     const startTourBtn = document.getElementById('startTourBtn');
     const onboardingModal = document.getElementById('onboarding-modal');
+
     startTourBtn?.addEventListener('click', () => {
       document.cookie = "ssii_onboard_complete=true; path=/; max-age=31536000; SameSite=Lax";
       onboardingModal?.classList.add('hidden');
     });
 
-    // Real API Call to /api/compute
-    const testMathBtn = document.getElementById('testMath');
-    const injectZeroBtn = document.getElementById('injectZeroBtn');
-    const resultsSection = document.getElementById('results');
+    // Sandbox Computation — real /api/compute call, always tagged
+    // provenance: "user_submitted_sandbox" by the server. Never presented
+    // as, or confused with, the tenant's live posture panel above.
+    document.addEventListener('DOMContentLoaded', () => {
+      const testMathBtn = document.getElementById('testMath');
+      const injectZeroBtn = document.getElementById('injectZeroBtn');
+      const resultsSection = document.getElementById('results');
 
-    async function triggerCalculation(forceExploit = false) {
-      if (!resultsSection) return;
-      resultsSection.classList.remove('hidden');
-
-      try {
-        // Generate test payload (32-element padded stream)
-        const testStream = Array.from({ length: 32 }, (_, i) => ({
-          maskedValue: forceExploit && i === 0 ? 0.01 : 0.5 + Math.random() * 0.5,
-          evaluationWeight: [0.4, 0.3, 0.3][i % 3],
-          capabilityPriority: [0.50, 0.30, 0.15, 0.05][Math.floor(i / 8)],
-          lastTelemetryHeartbeat: Math.floor(Date.now() / 1000)
-        }));
-
-        const threatIntel = forceExploit ? [0.9, 0.8, 0.7] : [0.1, 0.1, 0.1];
-
-        const response = await fetch('/api/compute', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            paddedStream: testStream,
-            threatIntelVector: threatIntel
-          })
-        });
-
-        if (!response.ok) throw new Error('Compute engine failed');
-        const data = await response.json();
-
-        // Update UI with real data
-        document.getElementById('resA').innerText = `${(data.metric_a_compliance * 100).toFixed(1)}%`;
-        
-        const resB = document.getElementById('resB');
-        resB.innerText = `${(data.metric_b_integrity * 100).toFixed(1)}%`;
-        resB.className = data.status === 'CRITICAL_RISK_SWITCH_TRIGGERED' 
-          ? 'text-xl font-bold text-red-500' 
-          : 'text-xl font-bold text-emerald-400';
-
-        const resStatus = document.getElementById('resStatus');
-        resStatus.innerText = data.status.replace(/_/g, ' ');
-        resStatus.className = data.status === 'CRITICAL_RISK_SWITCH_TRIGGERED'
-          ? 'text-[11px] font-bold uppercase tracking-wider text-red-500 bg-red-950/30 px-2 py-0.5 rounded border border-red-900/50'
-          : 'text-[11px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/30 px-2 py-0.5 rounded border border-emerald-900/50';
-
-        // Theater Gap Alarm
-        const theaterAlarm = document.getElementById('theaterAlarm');
-        if (data.theater_gap_delta > 0.3) {
-          theaterAlarm.classList.remove('hidden');
-        } else {
-          theaterAlarm.classList.add('hidden');
+      function buildSyntheticStream(forceExploit: boolean) {
+        const now = Math.floor(Date.now() / 1000);
+        const priorityAlpha = [0.50, 0.30, 0.15, 0.05];
+        const enablerWeights = [0.4, 0.3, 0.3];
+        const nodes = [];
+        for (let i = 0; i < 4; i++) {
+          for (let j = 0; j < 3; j++) {
+            const isZeroTarget = forceExploit && i === 2 && j === 2;
+            nodes.push({
+              maskedValue: isZeroTarget ? 0.02 : 0.85 + Math.random() * 0.15,
+              evaluationWeight: enablerWeights[j],
+              capabilityPriority: priorityAlpha[i],
+              lastTelemetryHeartbeat: now,
+            });
+          }
         }
-
-        // Engineer/Admin Spectral View
-        if (data.spectral_analysis) {
-          document.getElementById('specChaos').innerText = data.spectral_analysis.chaos_index_penalty.toFixed(5);
-          document.getElementById('specEigen').innerText = data.spectral_analysis.principal_eigenvalue.toFixed(5);
-          const specResonance = document.getElementById('specResonance');
-          specResonance.innerText = data.spectral_analysis.resonance_exploit_chain_detected ? 'VECTOR LINK DETECTED' : 'NONE';
-          specResonance.className = data.spectral_analysis.resonance_exploit_chain_detected ? 'text-red-400 font-bold' : 'text-slate-400';
+        while (nodes.length < 32) {
+          nodes.push({ maskedValue: 0.9, evaluationWeight: 0.3, capabilityPriority: 0.05, lastTelemetryHeartbeat: now });
         }
-
-        // Raw Stream Log (show first 10 validations)
-        const rawStreamLog = document.getElementById('rawStreamLog');
-        if (data.row_validations) {
-          rawStreamLog.innerText = `[${data.row_validations.slice(0, 10).join(', ')}...]`;
-        }
-
-      } catch (error) {
-        console.error('Computation failed:', error);
-        document.getElementById('resStatus').innerText = 'COMPUTATION_ERROR';
+        return nodes;
       }
-    }
 
-    testMathBtn?.addEventListener('click', () => triggerCalculation(false));
-    injectZeroBtn?.addEventListener('click', () => triggerCalculation(true));
-    
-    // Back-button cache invalidation
-    window.addEventListener('pageshow', (event) => {
-      if (event.persisted) window.location.reload();
+      async function triggerCalculation(forceExploit: boolean) {
+        if (!resultsSection) return;
+        resultsSection.classList.remove('hidden');
+
+        const resA = document.getElementById('resA');
+        const resB = document.getElementById('resB');
+        const resStatus = document.getElementById('resStatus');
+        const theaterAlarm = document.getElementById('theaterAlarm');
+        const rawStreamLog = document.getElementById('rawStreamLog');
+        const specChaos = document.getElementById('specChaos');
+        const specEigen = document.getElementById('specEigen');
+        const specResonance = document.getElementById('specResonance');
+
+        if (rawStreamLog) rawStreamLog.innerText = 'Running sandbox computation...';
+
+        try {
+          const response = await fetch('/api/compute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              paddedStream: buildSyntheticStream(forceExploit),
+              threatIntelVector: [0.0, 0.0, 0.0],
+            }),
+          });
+          const data = await response.json();
+
+          if (!response.ok) throw new Error(data.error || 'Compute request failed');
+
+          if (rawStreamLog) {
+            rawStreamLog.innerText = `[SANDBOX RUN — provenance: ${data.provenance}]`;
+          }
+
+          if (resA) resA.innerText = `${(data.metric_a_compliance * 100).toFixed(1)}%`;
+          if (resB) {
+            resB.innerText = `${(data.metric_b_integrity * 100).toFixed(1)}%`;
+            resB.className = data.metric_b_integrity < 0.2 ? 'text-xl font-bold text-red-500' : 'text-xl font-bold text-emerald-400';
+          }
+          if (resStatus) {
+            const critical = data.status === 'CRITICAL_RISK_SWITCH_TRIGGERED';
+            resStatus.innerText = data.status.replace(/_/g, ' ');
+            resStatus.className = critical
+              ? 'text-[11px] font-bold uppercase tracking-wider text-red-500 bg-red-950/30 px-2 py-0.5 rounded border border-red-900/50'
+              : 'text-[11px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/30 px-2 py-0.5 rounded border border-emerald-900/50';
+            if (theaterAlarm) critical ? theaterAlarm.classList.remove('hidden') : theaterAlarm.classList.add('hidden');
+          }
+
+          if (data.spectral_analysis) {
+            if (specChaos) specChaos.innerText = data.spectral_analysis.chaos_index_penalty.toFixed(4);
+            if (specEigen) specEigen.innerText = data.spectral_analysis.principal_eigenvalue.toFixed(4);
+            if (specResonance) {
+              specResonance.innerText = data.spectral_analysis.resonance_exploit_chain_detected ? 'VECTOR LINK DETECTED' : 'NONE';
+              specResonance.className = data.spectral_analysis.resonance_exploit_chain_detected ? 'text-red-400 font-bold' : 'text-slate-400';
+            }
+          }
+        } catch (err) {
+          if (rawStreamLog) rawStreamLog.innerText = `Error: ${(err as Error).message}`;
+        }
+      }
+
+      testMathBtn?.addEventListener('click', () => triggerCalculation(false));
+      injectZeroBtn?.addEventListener('click', () => triggerCalculation(true));
     });
   </script>
-</BaseLayout>   
+</BaseLayout>
