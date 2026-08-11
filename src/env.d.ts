@@ -7,6 +7,7 @@ interface Env {
   VM_TENANT_DIRECTORY: KVNamespace;    // Per-domain IdPConfig records — actual tenant onboarding data lives here, never in source.
   VM_PROPRIETARY_PARSERS: KVNamespace; // f_norm normalization logic/config. Trade-secret boundary — read only from PRIVATE_INGESTION_CORE.
   SESSION: KVNamespace;                // Reserved. Purpose not yet finalized — not currently read or written anywhere in this codebase.
+  VM_LIVE_POSTURE_CACHE: KVNamespace;
 
   // Secrets (injected via `wrangler secret put`)
   PRIVATE_ENTRA_ICLASSED_CLIENT_ID: string;
