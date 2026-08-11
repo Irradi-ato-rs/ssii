@@ -30,10 +30,6 @@
     {
       "binding": "VM_LIVE_POSTURE_CACHE",
       "id": "b1bce78115ec487a914c6e7d3420dd6b"
-    },
-    {
-      "binding": "INGESTION_SERVICE_SECRET",
-      "id": "987290eb1fb541bba3a95edcb17a346a"
     }
   ],
   "services": [
