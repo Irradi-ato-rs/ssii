@@ -4,6 +4,7 @@ import { env } from 'cloudflare:workers'; // REQUIRED for Astro 6
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { getIdPConfigByDomain } from './config/tenants';
 
+// --- Helper Functions (Preserved from your original) ---
 const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 function getJwks(jwksUri: string) {
   let jwks = jwksCache.get(jwksUri);
@@ -40,6 +41,7 @@ function resolveRole(
   return 'engineer';
 }
 
+// --- Middleware Logic ---
 export const onRequest = defineMiddleware(async (context, next) => {
   const { request, locals, cookies } = context;
   const url = new URL(request.url);
@@ -49,18 +51,22 @@ export const onRequest = defineMiddleware(async (context, next) => {
     cleanPath = cleanPath.slice(0, -1);
   }
 
+  // Skip static assets
   if (url.pathname.startsWith('/_astro') || url.pathname === '/favicon.ico' || url.pathname.includes('.')) {
     return next();
   }
 
+  // Public & API Routes
   const publicRoutes = ['/', '/login', '/architecture', '/onboarding'];
   const explicitApiRoutes = ['/api/register', '/api/auth/callback', '/api/auth/signout'];
   if (explicitApiRoutes.includes(url.pathname) || publicRoutes.includes(cleanPath)) {
     return next();
   }
 
+  // Session Validation
   const sessionToken = cookies.get('aim_session_token');
   if (!sessionToken?.value) {
+    locals.user = null; // Ensure locals.user is set
     return context.redirect('/login?error=unauthenticated_session_gateway');
   }
 
@@ -72,13 +78,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const validatedEmail = (rawEnvelopePayload.email || '') as string;
     if (!validatedEmail) throw new Error('missing_email_claim');
 
-    // Get config from KV (PASS env, use domain lookup)
     const domain = parseEmailDomain(validatedEmail);
-    const config = await getIdPConfigByDomain(env, domain); // Changed
+    
+    // Pass env to KV lookup
+    const config = await getIdPConfigByDomain(env, domain);
     if (!config) throw new Error('unauthorized_domain');
 
-    // Access secrets from imported env (NOT locals.runtime)
-    const resolvedAudienceId = env[config.clientIdEnv]?.trim(); // Changed
+    // Access secrets from imported env
+    const resolvedAudienceId = env[config.clientIdEnv]?.trim();
     if (!resolvedAudienceId) throw new Error('configuration_fault');
 
     const JWKS = getJwks(config.jwksUri);
@@ -89,8 +96,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       clockTolerance: '30s',
     });
 
-    // Access role allowlist from imported env
-    const evaluatedRole = resolveRole(validatedEmail, env.PRIVATE_ROLE_ALLOWLIST); // Changed
+    const evaluatedRole = resolveRole(validatedEmail, env.PRIVATE_ROLE_ALLOWLIST);
 
     locals.user = {
       email: validatedEmail,
@@ -103,6 +109,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   } catch (err) {
     console.error('[VoidMetric Guard Loop Exception]:', (err as Error).message);
     cookies.delete('aim_session_token', { path: '/' });
+    locals.user = null; // Ensure locals.user is set before redirect
     return context.redirect('/login?error=session_invalidated_by_middleware');
   }
 });   
