@@ -6,9 +6,9 @@ export default defineConfig({
   site: 'https://ssii.fzoirm.com',
   output: 'server',
   adapter: cloudflare(),
-  // Explicitly disable prerendering for all routes
+  // Force ALL pages to be server-rendered (no prerendering)
   prerender: {
-    default: false, // Forces SSR for all pages unless explicitly opted-in
+    default: false,
   },
   image: {
     service: {
