@@ -1,5 +1,6 @@
 ---
 // src/pages/register.astro
+export const prerender = false; // REQUIRED
 // Redirect to login since self-service is disabled
 return Astro.redirect('/login');
 ---   
