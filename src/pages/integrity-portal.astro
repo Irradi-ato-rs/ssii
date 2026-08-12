@@ -20,59 +20,51 @@ if (!Astro.locals.user) {
 const user = Astro.locals.user;
 const tenantId = user.tenant;
 
-// 3. API KEY & CONFIG MANAGEMENT
+// 3. API KEY MANAGEMENT
 let apiKey = "pending-generation";
 let apiKeyError = false;
 let errorMessage = "";
-let siemConfig = { url: "", token: "" };
-let configSavedMsg = "";
 
-// Handle Form Actions (Regenerate Key OR Save Config)
+// Handle Regenerate Action
 if (Astro.request.method === 'POST') {
-  const formData = await Astro.request.formData();
-  const action = formData.get('action');
-
-  if (action === 'regenerate_key') {
-    try {
-      const randomBytes = new Uint8Array(32);
-      crypto.getRandomValues(randomBytes);
-      const newKey = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
-      if (env.VM_TENANT_DIRECTORY) {
-        await env.VM_TENANT_DIRECTORY.put(`apikey:${tenantId}`, newKey);
-        apiKey = newKey;
-      } else { apiKeyError = true; errorMessage = "KV Binding Missing"; }
-    } catch (err) { apiKeyError = true; errorMessage = (err as Error).message; }
-  } 
-  else if (action === 'save_config') {
-    const siemUrl = formData.get('siem_url') as string;
-    const siemToken = formData.get('siem_token') as string;
-    try {
-      if (env.VM_TENANT_DIRECTORY) {
-        const config = { splunk_hec_url: siemUrl, splunk_token: siemToken };
-        await env.VM_TENANT_DIRECTORY.put(`config:${tenantId}`, JSON.stringify(config));
-        siemConfig = { url: siemUrl, token: siemToken }; // Optimistic update
-        configSavedMsg = "Configuration saved successfully.";
-      } else { apiKeyError = true; errorMessage = "KV Binding Missing"; }
-    } catch (err) { apiKeyError = true; errorMessage = (err as Error).message; }
+  try {
+    const randomBytes = new Uint8Array(32);
+    crypto.getRandomValues(randomBytes);
+    const newKey = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    if (env.VM_TENANT_DIRECTORY) {
+      await env.VM_TENANT_DIRECTORY.put(`apikey:${tenantId}`, newKey);
+      apiKey = newKey;
+    } else {
+      apiKeyError = true;
+      errorMessage = "KV Binding Missing";
+    }
+  } catch (err) {
+    apiKeyError = true;
+    errorMessage = (err as Error).message;
   }
 } else {
-  // Fetch Existing Key & Config
+  // Fetch Existing Key
   try {
     if (env.VM_TENANT_DIRECTORY) {
       const storedKey = await env.VM_TENANT_DIRECTORY.get(`apikey:${tenantId}`);
-      if (storedKey) apiKey = storedKey;
-      else {
+      if (storedKey) {
+        apiKey = storedKey;
+      } else {
         const randomBytes = new Uint8Array(32);
         crypto.getRandomValues(randomBytes);
         const newKey = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
         await env.VM_TENANT_DIRECTORY.put(`apikey:${tenantId}`, newKey);
         apiKey = newKey;
       }
-
-      const storedConfig = await env.VM_TENANT_DIRECTORY.get(`config:${tenantId}`);
-      if (storedConfig) siemConfig = JSON.parse(storedConfig);
-    } else { apiKeyError = true; errorMessage = "KV Binding Missing"; }
-  } catch (err) { apiKeyError = true; errorMessage = (err as Error).message; }
+    } else {
+      apiKeyError = true;
+      errorMessage = "KV Binding Missing";
+    }
+  } catch (err) {
+    apiKeyError = true;
+    errorMessage = (err as Error).message;
+  }
 }
 
 const webhookUrl = `https://void.fzoirm.com/ingest/${tenantId}`;
@@ -156,56 +148,38 @@ try {
           2. Set API Key in <code>Authorization</code> header.
         </p>
         
+        <!-- Webhook URL -->
         <div class="mb-4">
           <label class="text-[9px] text-slate-500 uppercase font-bold block mb-1">Webhook URL</label>
           <code id="webhookCode" class="block w-full bg-[#020203] border border-slate-800 rounded p-2 text-[9px] text-emerald-400 break-all font-mono select-all">{webhookUrl}</code>
-          <button type="button" data-copy="{webhookUrl}" class="copy-btn mt-1 text-[9px] text-blue-400 hover:text-blue-300 underline cursor-pointer">Copy URL</button>
+          <!-- FIXED: Uses data-copy attribute instead of inline onclick -->
+          <button type="button" data-copy={webhookUrl} class="copy-btn mt-1 text-[9px] text-blue-400 hover:text-blue-300 underline cursor-pointer">Copy URL</button>
         </div>
 
+        <!-- API Key -->
         <div class="mb-4 flex-grow">
           <label class="text-[9px] text-slate-500 uppercase font-bold block mb-1">API Key (Bearer)</label>
           {apiKeyError ? (
-            <div class="w-full bg-red-950/20 border border-red-900/50 rounded p-2 text-[9px] text-red-400 font-mono">{errorMessage}</div>
+            <div class="w-full bg-red-950/20 border border-red-900/50 rounded p-2 text-[9px] text-red-400 font-mono">
+              {errorMessage}
+            </div>
           ) : (
             <code id="apiKeyCode" class="block w-full bg-[#020203] border border-slate-800 rounded p-2 text-[9px] text-emerald-400 break-all font-mono select-all">{apiKey}</code>
           )}
-          <button type="button" data-copy="{apiKey}" class="copy-btn mt-1 text-[9px] text-blue-400 hover:text-blue-300 underline cursor-pointer">Copy Key</button>
+          <!-- FIXED: Uses data-copy attribute instead of inline onclick -->
+          <button type="button" data-copy={apiKey} class="copy-btn mt-1 text-[9px] text-blue-400 hover:text-blue-300 underline cursor-pointer">Copy Key</button>
         </div>
         
+        <!-- Regenerate Form -->
         <form method="POST" class="w-full">
           <input type="hidden" name="action" value="regenerate_key" />
-          <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 py-2 rounded text-[10px] uppercase font-bold transition">🔄 Regenerate Key</button>
+          <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 py-2 rounded text-[10px] uppercase font-bold transition">
+            🔄 Regenerate Key
+          </button>
         </form>
       </div>
 
-      <!-- 3. SIEM DESTINATION CONFIG (NEW) -->
-      <div class="lg:col-span-12 bg-[#07070a] border border-emerald-900/30 rounded-xl p-6 shadow-lg">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-sm font-bold text-white uppercase tracking-wider">📤 SIEM Forwarding Configuration</h2>
-          {configSavedMsg && <span class="text-[9px] text-emerald-400 font-bold">{configSavedMsg}</span>}
-        </div>
-        <p class="text-slate-500 text-[10px] mb-4">
-          Configure where VoidMetric forwards telemetry. Leave blank to disable forwarding. Data is sent statelessly from the edge.
-        </p>
-        <form method="POST" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-          <div class="md:col-span-5">
-            <label class="text-[9px] text-slate-500 uppercase font-bold block mb-1">SIEM Webhook URL (e.g., Splunk HEC)</label>
-            <input type="url" name="siem_url" value={siemConfig.url} placeholder="https://http-inputs-....splunkcloud.com:8088/services/collector/event" 
-              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-[9px] text-slate-300 font-mono focus:border-emerald-500 outline-none" />
-          </div>
-          <div class="md:col-span-5">
-            <label class="text-[9px] text-slate-500 uppercase font-bold block mb-1">SIEM Token / API Key</label>
-            <input type="password" name="siem_token" value={siemConfig.token} placeholder="Splunk HEC Token or Auth Key" 
-              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-[9px] text-slate-300 font-mono focus:border-emerald-500 outline-none" />
-          </div>
-          <div class="md:col-span-2">
-            <input type="hidden" name="action" value="save_config" />
-            <button type="submit" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-600 py-2 rounded text-[10px] uppercase font-bold transition">Save Config</button>
-          </div>
-        </form>
-      </div>
-
-      <!-- 4. SANDBOX TERMINAL -->
+      <!-- 3. SANDBOX TERMINAL -->
       <div class="lg:col-span-12 bg-[#07070a] border border-slate-800 rounded-xl p-6 shadow-lg">
         <div class="flex items-center justify-between mb-6">
           <div>
@@ -213,8 +187,12 @@ try {
             <p class="text-slate-500 text-[10px]">Synthetic 32-element stream test bench</p>
           </div>
           <div class="flex gap-3">
-            <button id="testMathBtn" type="button" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded text-[10px] uppercase tracking-wide cursor-pointer transition">[Run Blind Telemetry]</button>
-            <button id="injectZeroBtn" type="button" class="bg-slate-900 border border-rose-900/60 hover:bg-rose-950/30 text-rose-400 font-bold py-2 px-4 rounded text-[10px] uppercase tracking-wide cursor-pointer transition">[Inject Zero Vector]</button>
+            <button id="testMathBtn" type="button" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded text-[10px] uppercase tracking-wide cursor-pointer transition">
+              [Run Blind Telemetry]
+            </button>
+            <button id="injectZeroBtn" type="button" class="bg-slate-900 border border-rose-900/60 hover:bg-rose-950/30 text-rose-400 font-bold py-2 px-4 rounded text-[10px] uppercase tracking-wide cursor-pointer transition">
+              [Inject Zero Vector]
+            </button>
           </div>
         </div>
 
@@ -233,10 +211,12 @@ try {
           </div>
         </div>
         
+        <!-- Theater Alarm -->
         <div id="theaterAlarm" class="hidden mt-4 p-4 bg-rose-950/20 border border-rose-900/50 rounded text-rose-400 text-[11px]">
           <p class="font-bold">// CRITICAL COMPLIANCE THEATER DELTA DETECTED</p>
         </div>
 
+        <!-- Engineer Only: Spectral & Raw Stream -->
         { (user.role === 'engineer' || user.role === 'admin') && (
           <div id="engineerPanel" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4 pt-6 border-t border-slate-900">
             <div class="bg-[#020203] p-4 rounded border border-slate-900/50">
@@ -249,7 +229,9 @@ try {
             </div>
             <div class="bg-[#020203] p-4 rounded border border-slate-900/50">
               <p class="text-[10px] text-slate-500 uppercase font-bold mb-3">Raw Stream Map</p>
-              <div id="rawStreamLog" class="text-[9px] text-slate-600 break-all max-h-[80px] overflow-y-auto font-mono leading-tight">Initializing buffer...</div>
+              <div id="rawStreamLog" class="text-[9px] text-slate-600 break-all max-h-[80px] overflow-y-auto font-mono leading-tight">
+                Initializing buffer...
+              </div>
             </div>
           </div>
         )}
@@ -264,22 +246,28 @@ try {
     window.addEventListener('pageshow', (event) => { if (event.persisted) window.location.reload(); });
 
     document.addEventListener('DOMContentLoaded', () => {
-      // Copy Logic
+      // 1. Copy Button Logic (Replaces broken inline onclick)
       const copyButtons = document.querySelectorAll('.copy-btn');
       copyButtons.forEach(btn => {
         btn.addEventListener('click', (e) => {
+          // Correctly reads the value from the data attribute
           const textToCopy = (e.target as HTMLElement).getAttribute('data-copy');
           if (textToCopy) {
             navigator.clipboard.writeText(textToCopy).then(() => {
               const originalText = (e.target as HTMLElement).innerText;
               (e.target as HTMLElement).innerText = "Copied!";
-              setTimeout(() => { (e.target as HTMLElement).innerText = originalText; }, 2000);
+              setTimeout(() => {
+                (e.target as HTMLElement).innerText = originalText;
+              }, 2000);
+            }).catch(err => {
+              console.error('Failed to copy: ', err);
+              alert('Failed to copy to clipboard');
             });
           }
         });
       });
 
-      // Sandbox Logic
+      // 2. Sandbox Logic
       const testMathBtn = document.getElementById('testMathBtn');
       const injectZeroBtn = document.getElementById('injectZeroBtn');
       const resultsSection = document.getElementById('results');
