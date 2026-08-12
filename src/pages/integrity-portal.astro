@@ -21,45 +21,43 @@ const user = Astro.locals.user;
 const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
 
 // 3. REQUEST SIGNED URL FROM PRIVATE CORE (Via Service Binding)
-// Zero-Trust: Public worker never sees the secret. 
-// Uses 'PRIVATE_GATEWAY' binding from wrangler.jsonc.
+// CRITICAL FIX: Use a valid absolute URL (http://void.internal) for the Request constructor.
+// Service Bindings ignore the hostname but require valid URL syntax.
 let webhookUrl = "pending-configuration";
 let urlErrorOccurred = false;
+let errorMessage = "";
 
 try {
   if (env.PRIVATE_GATEWAY) {
-    // Construct request for the internal binding
-    // The URL hostname is ignored by the binding but must be valid syntax
-    // Inside integrity-portal.astro frontmatter (Section 3)
-try {
-  // Use a valid hostname (required by Fetch API, ignored by Service Binding)
-  const bindingRequest = new Request("http://void.internal/api/generate-url", {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${env.PRIVATE_INTERNAL_SYSTEM_TOKEN}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ tenantId: user.tenant })
+    const bindingRequest = new Request("http://void.internal/api/generate-url", {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.PRIVATE_INTERNAL_SYSTEM_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ tenantId: user.tenant })
     });
 
-    // Execute via binding
     const response = await env.PRIVATE_GATEWAY.fetch(bindingRequest);
-  
+
     if (response.ok) {
       const data = await response.json();
       webhookUrl = data.url;
     } else {
-      console.error(`[VoidMetric] Core returned ${response.status}`);
+      const errText = await response.text();
+      console.error(`[VoidMetric] Core returned ${response.status}: ${errText}`);
       urlErrorOccurred = true;
+      errorMessage = `Core Error ${response.status}`;
     }
   } else {
-    console.warn("[VoidMetric] PRIVATE_GATEWAY binding not found. Check wrangler.jsonc");
-    webhookUrl = "error-missing-binding";
+    console.error("[VoidMetric] PRIVATE_GATEWAY binding not found. Check wrangler.jsonc");
     urlErrorOccurred = true;
+    errorMessage = "Missing Service Binding";
   }
 } catch (err) {
   console.error("[VoidMetric] Failed to contact void core:", err);
   urlErrorOccurred = true;
+  errorMessage = (err as Error).message;
 }
 
 // 4. LIVE POSTURE (Read-Only)
@@ -74,7 +72,7 @@ try {
 }
 ---
 
-<BaseLayout title="VoidMetric Controller // Sovereign Systemic Integrity Intelligence">
+<BaseLayout title="VoidMetric OS // Systemic Posture Control Center">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://tailwindcss.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';" slot="head" />
   
   <main class="w-full max-w-5xl mx-auto px-4 py-8 text-left text-slate-300 font-mono text-xs leading-relaxed space-y-6">
@@ -84,7 +82,7 @@ try {
       <div>
         <div class="flex items-center gap-3">
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-          <h1 class="text-lg font-black tracking-wider text-white"><a href="https://ssii.fzoirm.com">VOIDMETRIC</a> Controller // Security Intelligence Posture</h1>
+          <h1 class="text-lg font-black tracking-wider text-white">VOIDMETRIC // SSII</h1>
         </div>
         <p class="text-slate-500 text-[10px] uppercase tracking-widest mt-1">Sovereign Systemic Integrity Intelligence Engine</p>
       </div>
@@ -140,7 +138,7 @@ try {
       <div class="relative group">
         {urlErrorOccurred ? (
           <div class="w-full bg-red-950/20 border border-red-900/50 rounded p-3 text-[10px] text-red-400 font-mono">
-            Error: Unable to retrieve signed URL from secure core. Check worker logs.
+            Error: {errorMessage}. Check Worker logs and Service Binding.
           </div>
         ) : (
           <code class="block w-full bg-[#020203] border border-slate-800 rounded p-3 text-[10px] text-emerald-400 break-all font-mono select-all">
