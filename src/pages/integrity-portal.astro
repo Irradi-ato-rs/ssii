@@ -18,51 +18,66 @@ if (!Astro.locals.user) {
 }
 
 const user = Astro.locals.user;
-const isFirstVisit = !Astro.cookies.has('ssii_onboard_complete');
+const tenantId = user.tenant;
 
-// 3. REQUEST SIGNED URL FROM PRIVATE CORE (Via Service Binding)
-let webhookUrl = "pending-configuration";
-let urlErrorOccurred = false;
+// 3. API KEY MANAGEMENT (Static, Long-Lived)
+let apiKey = "pending-generation";
+let apiKeyError = false;
 let errorMessage = "";
 
-try {
-  if (env.PRIVATE_GATEWAY) {
-    const bindingRequest = new Request("http://void.internal/api/generate-url", {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${env.PRIVATE_INTERNAL_SYSTEM_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ tenantId: user.tenant })
-    });
-
-    const response = await env.PRIVATE_GATEWAY.fetch(bindingRequest);
-
-    if (response.ok) {
-      const data = await response.json();
-      webhookUrl = data.url;
+// Handle Regenerate Action
+if (Astro.request.method === 'POST') {
+  try {
+    // Generate new 64-char hex key
+    const randomBytes = new Uint8Array(32);
+    crypto.getRandomValues(randomBytes);
+    const newKey = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    // Save to KV (VM_TENANT_DIRECTORY)
+    if (env.VM_TENANT_DIRECTORY) {
+      await env.VM_TENANT_DIRECTORY.put(`apikey:${tenantId}`, newKey);
+      apiKey = newKey;
     } else {
-      const errText = await response.text();
-      console.error(`[VoidMetric] Core returned ${response.status}: ${errText}`);
-      urlErrorOccurred = true;
-      errorMessage = `Core Error ${response.status}`;
+      apiKeyError = true;
+      errorMessage = "KV Binding Missing";
     }
-  } else {
-    console.error("[VoidMetric] PRIVATE_GATEWAY binding not found.");
-    urlErrorOccurred = true;
-    errorMessage = "Missing Service Binding";
+  } catch (err) {
+    apiKeyError = true;
+    errorMessage = (err as Error).message;
   }
-} catch (err) {
-  console.error("[VoidMetric] Failed to contact void core:", err);
-  urlErrorOccurred = true;
-  errorMessage = (err as Error).message;
+} else {
+  // Fetch Existing Key
+  try {
+    if (env.VM_TENANT_DIRECTORY) {
+      const storedKey = await env.VM_TENANT_DIRECTORY.get(`apikey:${tenantId}`);
+      if (storedKey) {
+        apiKey = storedKey;
+      } else {
+        // Generate initial key if missing
+        const randomBytes = new Uint8Array(32);
+        crypto.getRandomValues(randomBytes);
+        const newKey = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        await env.VM_TENANT_DIRECTORY.put(`apikey:${tenantId}`, newKey);
+        apiKey = newKey;
+      }
+    } else {
+      apiKeyError = true;
+      errorMessage = "KV Binding Missing";
+    }
+  } catch (err) {
+    apiKeyError = true;
+    errorMessage = (err as Error).message;
+  }
 }
+
+// Construct Static Webhook URL
+const webhookUrl = `https://void.fzoirm.com/ingest/${tenantId}`;
 
 // 4. LIVE POSTURE (Read-Only)
 let livePosture: any = null;
 try {
   if (env.VM_LIVE_POSTURE_CACHE) {
-    const raw = await env.VM_LIVE_POSTURE_CACHE.get(user.tenant);
+    const raw = await env.VM_LIVE_POSTURE_CACHE.get(tenantId);
     if (raw) livePosture = JSON.parse(raw);
   }
 } catch (err) {
@@ -129,34 +144,44 @@ try {
         )}
       </div>
 
-      <!-- 2. INGESTION ENDPOINT (Side Tile: Spans 4 cols) -->
+      <!-- 2. INGESTION CONFIG (Side Tile: Spans 4 cols) -->
       <div class="lg:col-span-4 bg-[#07070a] border border-blue-900/30 rounded-xl p-6 shadow-lg flex flex-col">
-        <h2 class="text-sm font-bold text-white uppercase tracking-wider mb-4">🔗 Ingestion Endpoint</h2>
+        <h2 class="text-sm font-bold text-white uppercase tracking-wider mb-4">🔗 Ingestion Config</h2>
         <p class="text-slate-500 text-[10px] mb-4 leading-relaxed">
-          Configure Okta/Sentinel to POST to this URL. Auth embedded in path.
+          1. Set URL in Okta/Sentinel.<br/>
+          2. Set API Key in <code>Authorization</code> header.
         </p>
         
-        <div class="flex-grow flex items-center">
-          {urlErrorOccurred ? (
-            <div class="w-full bg-red-950/20 border border-red-900/50 rounded p-3 text-[10px] text-red-400 font-mono">
+        <!-- Webhook URL -->
+        <div class="mb-4">
+          <label class="text-[9px] text-slate-500 uppercase font-bold block mb-1">Webhook URL</label>
+          <code class="block w-full bg-[#020203] border border-slate-800 rounded p-2 text-[9px] text-emerald-400 break-all font-mono select-all">
+            {webhookUrl}
+          </code>
+          <button type="button" onclick="navigator.clipboard.writeText('{webhookUrl}'); alert('URL copied');" class="mt-1 text-[9px] text-blue-400 hover:text-blue-300 underline cursor-pointer">Copy URL</button>
+        </div>
+
+        <!-- API Key -->
+        <div class="mb-4 flex-grow">
+          <label class="text-[9px] text-slate-500 uppercase font-bold block mb-1">API Key (Bearer)</label>
+          {apiKeyError ? (
+            <div class="w-full bg-red-950/20 border border-red-900/50 rounded p-2 text-[9px] text-red-400 font-mono">
               {errorMessage}
             </div>
           ) : (
             <code class="block w-full bg-[#020203] border border-slate-800 rounded p-2 text-[9px] text-emerald-400 break-all font-mono select-all">
-              {webhookUrl}
+              {apiKey}
             </code>
           )}
+          <button type="button" onclick="navigator.clipboard.writeText('{apiKey}'); alert('Key copied');" class="mt-1 text-[9px] text-blue-400 hover:text-blue-300 underline cursor-pointer">Copy Key</button>
         </div>
         
-        {!urlErrorOccurred && (
-          <button 
-            type="button"
-            onclick="navigator.clipboard.writeText('{webhookUrl}'); alert('URL copied');"
-            class="mt-4 w-full bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-600/30 py-2 rounded text-[10px] uppercase font-bold transition"
-          >
-            Copy URL
+        <!-- Regenerate Form -->
+        <form method="POST" class="w-full">
+          <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 py-2 rounded text-[10px] uppercase font-bold transition">
+            🔄 Regenerate Key
           </button>
-        )}
+        </form>
       </div>
 
       <!-- 3. SANDBOX TERMINAL (Full Width: Spans 12 cols) -->
@@ -196,7 +221,7 @@ try {
           <p class="font-bold">// CRITICAL COMPLIANCE THEATER DELTA DETECTED</p>
         </div>
 
-        <!-- Engineer Only: Spectral & Raw Stream (Spans 6+6) -->
+        <!-- Engineer Only: Spectral & Raw Stream -->
         { (user.role === 'engineer' || user.role === 'admin') && (
           <div id="engineerPanel" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4 pt-6 border-t border-slate-900">
             <div class="bg-[#020203] p-4 rounded border border-slate-900/50">
@@ -249,7 +274,7 @@ try {
       async function triggerCalculation(forceExploit: boolean) {
         if (!resultsSection) return;
         resultsSection.classList.remove('hidden');
-        resultsSection.classList.add('grid'); // Restore grid display
+        resultsSection.classList.add('grid');
         if(engineerPanel) {
             engineerPanel.classList.remove('hidden');
             engineerPanel.classList.add('grid');
