@@ -20,20 +20,17 @@ if (!Astro.locals.user) {
 const user = Astro.locals.user;
 const tenantId = user.tenant;
 
-// 3. API KEY MANAGEMENT (Static, Long-Lived)
+// 3. API KEY MANAGEMENT
 let apiKey = "pending-generation";
 let apiKeyError = false;
 let errorMessage = "";
 
-// Handle Regenerate Action
 if (Astro.request.method === 'POST') {
   try {
-    // Generate new 64-char hex key
     const randomBytes = new Uint8Array(32);
     crypto.getRandomValues(randomBytes);
     const newKey = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
     
-    // Save to KV (VM_TENANT_DIRECTORY)
     if (env.VM_TENANT_DIRECTORY) {
       await env.VM_TENANT_DIRECTORY.put(`apikey:${tenantId}`, newKey);
       apiKey = newKey;
@@ -46,14 +43,12 @@ if (Astro.request.method === 'POST') {
     errorMessage = (err as Error).message;
   }
 } else {
-  // Fetch Existing Key
   try {
     if (env.VM_TENANT_DIRECTORY) {
       const storedKey = await env.VM_TENANT_DIRECTORY.get(`apikey:${tenantId}`);
       if (storedKey) {
         apiKey = storedKey;
       } else {
-        // Generate initial key if missing
         const randomBytes = new Uint8Array(32);
         crypto.getRandomValues(randomBytes);
         const newKey = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -70,10 +65,9 @@ if (Astro.request.method === 'POST') {
   }
 }
 
-// Construct Static Webhook URL
 const webhookUrl = `https://void.fzoirm.com/ingest/${tenantId}`;
 
-// 4. LIVE POSTURE (Read-Only)
+// 4. LIVE POSTURE
 let livePosture: any = null;
 try {
   if (env.VM_LIVE_POSTURE_CACHE) {
@@ -86,7 +80,8 @@ try {
 ---
 
 <BaseLayout title="VoidMetric Controller // Sovereign Systemic Integrity Intelligence">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://tailwindcss.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';" slot="head" />
+  <!-- SECURE CSP: Removed 'unsafe-inline' -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';" slot="head" />
   
   <main class="w-full max-w-7xl mx-auto px-6 py-10 text-left text-slate-300 font-mono text-xs leading-relaxed">
     
@@ -111,7 +106,7 @@ try {
     <!-- BENTO GRID LAYOUT -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 auto-rows-min">
 
-      <!-- 1. LIVE TENANT POSTURE (Hero Tile: Spans 8 cols) -->
+      <!-- 1. LIVE TENANT POSTURE -->
       <div class="lg:col-span-8 bg-[#07070a] border border-slate-800 rounded-xl p-6 shadow-lg flex flex-col justify-between">
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-sm font-bold text-white uppercase tracking-wider">📡 Live Tenant Posture</h2>
@@ -144,7 +139,7 @@ try {
         )}
       </div>
 
-      <!-- 2. INGESTION CONFIG (Side Tile: Spans 4 cols) -->
+      <!-- 2. INGESTION CONFIG -->
       <div class="lg:col-span-4 bg-[#07070a] border border-blue-900/30 rounded-xl p-6 shadow-lg flex flex-col">
         <h2 class="text-sm font-bold text-white uppercase tracking-wider mb-4">🔗 Ingestion Config</h2>
         <p class="text-slate-500 text-[10px] mb-4 leading-relaxed">
@@ -155,10 +150,11 @@ try {
         <!-- Webhook URL -->
         <div class="mb-4">
           <label class="text-[9px] text-slate-500 uppercase font-bold block mb-1">Webhook URL</label>
-          <code class="block w-full bg-[#020203] border border-slate-800 rounded p-2 text-[9px] text-emerald-400 break-all font-mono select-all">
+          <code id="webhookCode" class="block w-full bg-[#020203] border border-slate-800 rounded p-2 text-[9px] text-emerald-400 break-all font-mono select-all">
             {webhookUrl}
           </code>
-          <button type="button" onclick="navigator.clipboard.writeText('{webhookUrl}'); alert('URL copied');" class="mt-1 text-[9px] text-blue-400 hover:text-blue-300 underline cursor-pointer">Copy URL</button>
+          <!-- Removed onclick, added data-copy -->
+          <button type="button" data-copy="{webhookUrl}" class="copy-btn mt-1 text-[9px] text-blue-400 hover:text-blue-300 underline cursor-pointer">Copy URL</button>
         </div>
 
         <!-- API Key -->
@@ -169,11 +165,12 @@ try {
               {errorMessage}
             </div>
           ) : (
-            <code class="block w-full bg-[#020203] border border-slate-800 rounded p-2 text-[9px] text-emerald-400 break-all font-mono select-all">
+            <code id="apiKeyCode" class="block w-full bg-[#020203] border border-slate-800 rounded p-2 text-[9px] text-emerald-400 break-all font-mono select-all">
               {apiKey}
             </code>
           )}
-          <button type="button" onclick="navigator.clipboard.writeText('{apiKey}'); alert('Key copied');" class="mt-1 text-[9px] text-blue-400 hover:text-blue-300 underline cursor-pointer">Copy Key</button>
+          <!-- Removed onclick, added data-copy -->
+          <button type="button" data-copy="{apiKey}" class="copy-btn mt-1 text-[9px] text-blue-400 hover:text-blue-300 underline cursor-pointer">Copy Key</button>
         </div>
         
         <!-- Regenerate Form -->
@@ -184,7 +181,7 @@ try {
         </form>
       </div>
 
-      <!-- 3. SANDBOX TERMINAL (Full Width: Spans 12 cols) -->
+      <!-- 3. SANDBOX TERMINAL -->
       <div class="lg:col-span-12 bg-[#07070a] border border-slate-800 rounded-xl p-6 shadow-lg">
         <div class="flex items-center justify-between mb-6">
           <div>
@@ -200,7 +197,7 @@ try {
             </button>
           </div>
         </div>
-        
+
         <div id="results" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t border-slate-900">
           <div class="bg-[#020203] p-4 rounded border border-slate-900/50">
             <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Metric A</p>
@@ -221,7 +218,7 @@ try {
           <p class="font-bold">// CRITICAL COMPLIANCE THEATER DELTA DETECTED</p>
         </div>
 
-        <!-- Engineer Only: Spectral & Raw Stream -->
+        <!-- Engineer Only -->
         { (user.role === 'engineer' || user.role === 'admin') && (
           <div id="engineerPanel" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4 pt-6 border-t border-slate-900">
             <div class="bg-[#020203] p-4 rounded border border-slate-900/50">
@@ -251,6 +248,27 @@ try {
     window.addEventListener('pageshow', (event) => { if (event.persisted) window.location.reload(); });
 
     document.addEventListener('DOMContentLoaded', () => {
+      // 1. Copy Button Logic (Replaces inline onclick)
+      const copyButtons = document.querySelectorAll('.copy-btn');
+      copyButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const textToCopy = (e.target as HTMLElement).getAttribute('data-copy');
+          if (textToCopy) {
+            navigator.clipboard.writeText(textToCopy).then(() => {
+              const originalText = (e.target as HTMLElement).innerText;
+              (e.target as HTMLElement).innerText = "Copied!";
+              setTimeout(() => {
+                (e.target as HTMLElement).innerText = originalText;
+              }, 2000);
+            }).catch(err => {
+              console.error('Failed to copy: ', err);
+              alert('Failed to copy to clipboard');
+            });
+          }
+        });
+      });
+
+      // 2. Sandbox Logic
       const testMathBtn = document.getElementById('testMathBtn');
       const injectZeroBtn = document.getElementById('injectZeroBtn');
       const resultsSection = document.getElementById('results');
