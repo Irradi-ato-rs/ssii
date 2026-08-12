@@ -19,7 +19,7 @@ Input metrics are continuously streamed via automated edge scripts and normalize
 
 ---
 
-## 2. The Dual-Math Core Mechanism
+## 2. The Dual-Math
 
 ### Metric A: Continuous Maturity Matrix (Additive)
 
