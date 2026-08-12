@@ -28,7 +28,6 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
-    "@astrojs/tailwind": "^6.0.0",
     "@types/uuid": "^10.0.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
