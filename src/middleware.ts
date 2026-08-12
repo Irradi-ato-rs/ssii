@@ -1,10 +1,10 @@
 // src/middleware.ts
 import { defineMiddleware } from 'astro:middleware';
-import { env } from 'cloudflare:workers'; // REQUIRED for Astro 6
+import { env } from 'cloudflare:workers';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { getIdPConfigByDomain } from './config/tenants';
 
-// --- Helper Functions (Preserved from your original) ---
+// --- Helper: JWKS Cache ---
 const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 function getJwks(jwksUri: string) {
   let jwks = jwksCache.get(jwksUri);
@@ -15,16 +15,33 @@ function getJwks(jwksUri: string) {
   return jwks;
 }
 
+// --- Helper: Parse Domain ---
 function parseEmailDomain(email: string): string {
   const at = email.lastIndexOf('@');
   if (at <= 0 || at === email.length - 1) return '';
   return email.slice(at + 1).toLowerCase().trim();
 }
 
+// --- Helper: Hybrid Role Resolution (Claims + Allowlist) ---
 function resolveRole(
   email: string,
-  roleAllowlistRaw: string | undefined
+  roleAllowlistRaw: string | undefined,
+  idpClaims: any
 ): 'governance' | 'admin' | 'executive' | 'engineer' {
+  
+  // 1. PRIORITY: Check IDP Claims (Entra ID / Okta Groups/Roles)
+  // Adjust claim keys ('roles', 'groups', 'extension_role') based on your IdP config
+  const roles = idpClaims?.roles || idpClaims?.groups || idpClaims?.extension_role || [];
+  
+  if (Array.isArray(roles)) {
+    // Map specific IdP group names to VoidMetric roles
+    if (roles.some((r: string) => r.includes('Governance') || r === 'void-governance')) return 'governance';
+    if (roles.some((r: string) => r.includes('Admin') || r === 'void-admin')) return 'admin';
+    if (roles.some((r: string) => r.includes('Executive') || r === 'void-executive')) return 'executive';
+    if (roles.some((r: string) => r.includes('Engineer') || r === 'void-engineer')) return 'engineer';
+  }
+
+  // 2. FALLBACK: Manual Allowlist (if no valid claim found)
   const normalizedEmail = email.toLowerCase();
   if (roleAllowlistRaw) {
     try {
@@ -38,6 +55,8 @@ function resolveRole(
       console.error('[VoidMetric Guard] Malformed PRIVATE_ROLE_ALLOWLIST');
     }
   }
+
+  // 3. DEFAULT
   return 'engineer';
 }
 
@@ -66,7 +85,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Session Validation
   const sessionToken = cookies.get('aim_session_token');
   if (!sessionToken?.value) {
-    locals.user = null; // Ensure locals.user is set
+    locals.user = null;
     return context.redirect('/login?error=unauthenticated_session_gateway');
   }
 
@@ -96,7 +115,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
       clockTolerance: '30s',
     });
 
-    const evaluatedRole = resolveRole(validatedEmail, env.PRIVATE_ROLE_ALLOWLIST);
+    // Hybrid Role Resolution
+    const evaluatedRole = resolveRole(validatedEmail, env.PRIVATE_ROLE_ALLOWLIST, payload);
 
     locals.user = {
       email: validatedEmail,
@@ -109,7 +129,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   } catch (err) {
     console.error('[VoidMetric Guard Loop Exception]:', (err as Error).message);
     cookies.delete('aim_session_token', { path: '/' });
-    locals.user = null; // Ensure locals.user is set before redirect
+    locals.user = null;
     return context.redirect('/login?error=session_invalidated_by_middleware');
   }
 });   
