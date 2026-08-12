@@ -30,18 +30,21 @@ try {
   if (env.PRIVATE_GATEWAY) {
     // Construct request for the internal binding
     // The URL hostname is ignored by the binding but must be valid syntax
-    const bindingRequest = new Request("https://void.internal/api/generate-url", {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${env.PRIVATE_INTERNAL_SYSTEM_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ tenantId: user.tenant })
+    // Inside integrity-portal.astro frontmatter (Section 3)
+try {
+  // Use a valid hostname (required by Fetch API, ignored by Service Binding)
+  const bindingRequest = new Request("http://void.internal/api/generate-url", {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${env.PRIVATE_INTERNAL_SYSTEM_TOKEN}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ tenantId: user.tenant })
     });
 
-    // Execute via Service Binding (Zero latency, private network)
+    // Execute via binding
     const response = await env.PRIVATE_GATEWAY.fetch(bindingRequest);
-
+  
     if (response.ok) {
       const data = await response.json();
       webhookUrl = data.url;
