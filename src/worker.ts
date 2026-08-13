@@ -1,9 +1,13 @@
 // src/worker.ts
-import { handle } from '@astrojs/cloudflare/handler';
+import { App } from 'astro/app';
+import { manifest } from 'astro:manifest'; // Virtual module (Safe)
 import { DurableObject } from "cloudflare:workers";
 import { runScoringEngine } from "./lib/scoring-engine";
 
-// Export PostureObject (Wrangler finds this)
+// Initialize App manually (Bypasses broken 'handle' function)
+const app = new App(manifest);
+
+// Export PostureObject for Wrangler
 export class PostureObject extends DurableObject {
   constructor(ctx: DurableObjectState, env: any) {
     super(ctx, env);
@@ -29,7 +33,7 @@ export class PostureObject extends DurableObject {
   }
 }
 
-// Export SsiiService
+// Export SsiiService for RPC
 export class SsiiService {
   constructor(private ctx: ExecutionContext, private env: any) {}
   async computeAndStore(data: { tenantId: string, paddedStream: any[], threatIntelVector: number[] }) {
@@ -46,9 +50,9 @@ export class SsiiService {
   }
 }
 
-// Standard Worker Export (Manifest is handled internally by 'handle')
+// Entry Point: Directly render (No 'handle' helper)
 export default {
   async fetch(request: Request, env: any, ctx: ExecutionContext) {
-    return handle(request, env, ctx);
+    return app.render(request);
   }
 };   
