@@ -1,46 +1,27 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "ssii",
-  "main": "./dist/_worker.js/index.js",
-  "compatibility_date": "2026-08-05",
+  "main": "./src/worker.ts",
+  "compatibility_date": "2026-08-13",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS"
   },
-  "observability": { 
-    "enabled": true 
-  },
+  "observability": { "enabled": true },
   "kv_namespaces": [
-    {
-      "binding": "VM_LIVE_POSTURE_CACHE",
-      "id": "b1bce78115ec487a914c6e7d3420dd6b",
-      "preview_id": "b1bce78115ec487a914c6e7d3420dd6b"
-    },
-    {
-      "binding": "SESSION", 
-      "id": "fbdbf19fdf494f388a8c8669c002ce10",
-      "preview_id": "fbdbf19fdf494f388a8c8669c002ce10"
-    }
+    { "binding": "VM_LIVE_POSTURE_CACHE", "id": "b1bce78115ec487a914c6e7d3420dd6b" },
+    { "binding": "SESSION", "id": "fbdbf19fdf494f388a8c8669c002ce10" }
   ],
   "services": [
-    {
-      "binding": "PRIVATE_GATEWAY",
-      "service": "void"
-    }
+    { "binding": "PRIVATE_GATEWAY", "service": "void" }
   ],
   "durable_objects": {
     "bindings": [
-      {
-        "name": "POSTURE_DO",
-        "class_name": "PostureObject"
-      }
+      { "name": "POSTURE_DO", "class_name": "PostureObject" }
     ]
   },
   "migrations": [
-    {
-      "tag": "v1-enable-sqlite",
-      "new_sqlite_classes": ["PostureObject"]
-    }
+    { "tag": "v1-enable-sqlite", "new_sqlite_classes": ["PostureObject"] }
   ]
 }   

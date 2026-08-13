@@ -29,10 +29,9 @@ export class PostureObject extends DurableObject {
   }
 }
 
-// MUST be exported for RPC binding
+// RPC Service for 'void'
 export class SsiiService {
   constructor(private ctx: ExecutionContext, private env: any) {}
-
   async computeAndStore(data: { tenantId: string, paddedStream: any[], threatIntelVector: number[] }) {
     const result = runScoringEngine(data.paddedStream, data.threatIntelVector);
     const id = this.env.POSTURE_DO.idFromName(data.tenantId);
@@ -47,7 +46,7 @@ export class SsiiService {
   }
 }
 
-// Default export for Astro frontend
+// Astro Handler
 export default {
   async fetch(request: Request, env: any, ctx: ExecutionContext) {
     return handle(request, env, ctx);
