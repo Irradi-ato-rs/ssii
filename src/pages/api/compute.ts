@@ -4,26 +4,25 @@ import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { runScoringEngine, type PaddedStreamNode } from '../../lib/scoring-engine';
 
+async function verifyIngestionSignature(rawBody: string, signatureHeader: string | null): Promise<boolean> {
+  if (!signatureHeader || !env.INGESTION_SERVICE_SECRET) return false;
+  return signatureHeader === env.INGESTION_SERVICE_SECRET;
+}
+
 export const POST: APIRoute = async ({ request, locals }) => {
   try {
     const rawBody = await request.text();
     const signatureHeader = request.headers.get('X-VoidMetric-Ingestion-Signature');
     
-    // DEBUG LOGS
-    console.log(`[SSII] Received POST. Signature Header Present: ${!!signatureHeader}`);
+    // DEBUG: Log verification status
+    console.log(`[SSII] Received POST. Signature Present: ${!!signatureHeader}`);
     console.log(`[SSII] Secret Loaded: ${!!env.INGESTION_SERVICE_SECRET}`);
     
-    let isVerifiedIngestion = false;
-    if (signatureHeader && env.INGESTION_SERVICE_SECRET) {
-      isVerifiedIngestion = (signatureHeader === env.INGESTION_SERVICE_SECRET);
-      console.log(`[SSII] Verification Match: ${isVerifiedIngestion}`);
-    } else {
-      console.warn(`[SSII] Verification Skipped. Sig: ${signatureHeader ? 'Present' : 'Missing'}, Secret: ${env.INGESTION_SERVICE_SECRET ? 'Loaded' : 'Missing'}`);
-    }
+    const isVerifiedIngestion = await verifyIngestionSignature(rawBody, signatureHeader);
+    console.log(`[SSII] Verification Match: ${isVerifiedIngestion}`);
 
-    // Allow authenticated dashboard users OR signed internal void worker
     if (!isVerifiedIngestion && !locals.user) {
-      console.error(`[SSII] Rejected: Not verified and no user session.`);
+      console.warn(`[SSII] Rejected: Not verified and no user session.`);
       return new Response(JSON.stringify({ error: 'Unauthorized payload transmission rejection.' }), { status: 401 });
     }
 
@@ -37,7 +36,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     const result = runScoringEngine(paddedStream, body.threatIntelVector || [0.0, 0.0, 0.0]);
 
-    // CRITICAL: Write to KV
+    // CRITICAL: Block and Write to KV
     if (env.VM_LIVE_POSTURE_CACHE && isVerifiedIngestion && tenantId) {
       try {
         const cacheData = {
@@ -47,13 +46,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
           theater_gap_delta: result.theater_gap_delta,
           computedAt: new Date().toISOString()
         };
+        
         await env.VM_LIVE_POSTURE_CACHE.put(tenantId, JSON.stringify(cacheData));
         console.log(`[SSII] ✅ CACHED DATA FOR TENANT: ${tenantId}`);
       } catch (cacheErr) {
         console.error(`[SSII] ❌ KV WRITE ERROR: ${cacheErr}`);
       }
     } else {
-      console.warn(`[SSII] Skipped Cache Write. Verified: ${isVerifiedIngestion}, Tenant: ${tenantId}, CacheBound: ${!!env.VM_LIVE_POSTURE_CACHE}`);
+      console.warn(`[SSII] Skipped Cache. Verified: ${isVerifiedIngestion}, Tenant: ${tenantId}, CacheBound: ${!!env.VM_LIVE_POSTURE_CACHE}`);
     }
 
     return new Response(JSON.stringify({
