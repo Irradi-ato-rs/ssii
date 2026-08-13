@@ -15,64 +15,45 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const signatureHeader = request.headers.get('X-VoidMetric-Ingestion-Signature');
     const isVerifiedIngestion = await verifyIngestionSignature(rawBody, signatureHeader);
 
-    // Allow authenticated dashboard users OR signed internal void worker
     if (!isVerifiedIngestion && !locals.user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized payload transmission rejection.' }), { status: 401 });
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }
 
     const body = JSON.parse(rawBody);
     const paddedStream = body.paddedStream as PaddedStreamNode[];
-    const threatIntel = body.threatIntelVector || [0.0, 0.0, 0.0];
-    const tenantId = body.tenantId; // Ensure void sends this
+    const tenantId = body.tenantId; // Critical: Must be sent from void
 
     if (!paddedStream || !Array.isArray(paddedStream) || paddedStream.length !== 32) {
-      return new Response(JSON.stringify({ error: 'Invalid payload matrix. Expected a padded 32-element array stream.' }), { status: 400 });
+      return new Response(JSON.stringify({ error: 'Invalid stream' }), { status: 400 });
     }
 
-    const result = runScoringEngine(paddedStream, threatIntel);
+    const result = runScoringEngine(paddedStream, body.threatIntelVector || [0.0, 0.0, 0.0]);
 
-    const userRole = (locals.user as any)?.role;
-    const includeDetail = isVerifiedIngestion || userRole === 'engineer' || userRole === 'admin';
-
-    const responsePayload: any = {
-      metric_a_compliance: result.metric_a_compliance,
-      metric_b_integrity: result.metric_b_integrity,
-      status: result.status,
-      theater_gap_delta: result.theater_gap_delta,
-      provenance: isVerifiedIngestion ? "verified_ingestion" : "user_submitted_sandbox",
-    };
-
-    if (includeDetail) {
-      responsePayload.row_validations = result.row_validations;
-      responsePayload.spectral_analysis = result.spectral_analysis;
-    }
-
-    // CRITICAL FIX: Save to KV for Dashboard Visualization
-    // This runs for verified ingestion (void worker) regardless of user session
+    // CRITICAL: Write to KV for Dashboard
     if (env.VM_LIVE_POSTURE_CACHE && isVerifiedIngestion && tenantId) {
       try {
-        const cacheData = {
+        await env.VM_LIVE_POSTURE_CACHE.put(tenantId, JSON.stringify({
           metric_a_compliance: result.metric_a_compliance,
           metric_b_integrity: result.metric_b_integrity,
           status: result.status,
           theater_gap_delta: result.theater_gap_delta,
-          computedAt: new Date().toISOString(),
-          source: "void_worker"
-        };
-        await env.VM_LIVE_POSTURE_CACHE.put(tenantId, JSON.stringify(cacheData));
-        console.log(`[SSII] Cached posture for tenant: ${tenantId}`);
-      } catch (cacheErr) {
-        console.error('[SSII] Failed to cache posture:', cacheErr);
+          computedAt: new Date().toISOString()
+        }));
+        console.log(`[SSII] ✅ Cached data for tenant: ${tenantId}`);
+      } catch (err) {
+        console.error(`[SSII] ❌ KV Write Failed: ${err}`);
       }
     }
 
-    return new Response(
-      JSON.stringify(responsePayload),
-      { status: 200, headers: { "Content-Type": "application/json", "X-VoidMetric-Engine": "v3.1-Provenance-Aware" } }
-    );
+    return new Response(JSON.stringify({
+      metric_a_compliance: result.metric_a_compliance,
+      metric_b_integrity: result.metric_b_integrity,
+      status: result.status,
+      provenance: isVerifiedIngestion ? "verified_ingestion" : "sandbox"
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
 
   } catch (error) {
-    console.error("Compute Execution Pipeline Failure:", error);
-    return new Response(JSON.stringify({ error: "Malformed streaming metric payload." }), { status: 400 });
+    console.error("Compute Error:", error);
+    return new Response(JSON.stringify({ error: "Failed" }), { status: 400 });
   }
 };   
