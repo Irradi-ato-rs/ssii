@@ -3,7 +3,8 @@ export const prerender = false;
 
 import { handle } from '@astrojs/cloudflare/handler';
 import { DurableObject } from "cloudflare:workers";
-import { runScoringEngine } from "./lib/scoring-engine";
+import { env } from 'cloudflare:workers';
+import { runScoringEngine, type PaddedStreamNode } from '../../lib/scoring-engine';
 
 // 1. Define Durable Object (Required for wrangler.jsonc)
 export class PostureObject extends DurableObject {
