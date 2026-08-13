@@ -1,8 +1,13 @@
-// src/lib/worker-exports.ts
+// src/worker.ts
+import { App } from 'astro/app';
+import { manifest } from './__GENERATED__/manifest.js';
 import { DurableObject } from "cloudflare:workers";
-import { runScoringEngine } from "./scoring-engine";
+import { runScoringEngine } from "./lib/scoring-engine";
 
-// Export PostureObject (Wrangler will find this in the bundle)
+// Initialize Astro App manually (Bypasses broken 'handle' helper)
+const app = new App(manifest);
+
+// MUST be exported here for Wrangler
 export class PostureObject extends DurableObject {
   constructor(ctx: DurableObjectState, env: any) {
     super(ctx, env);
@@ -28,7 +33,7 @@ export class PostureObject extends DurableObject {
   }
 }
 
-// Export SsiiService
+// RPC Service for 'void'
 export class SsiiService {
   constructor(private ctx: ExecutionContext, private env: any) {}
   async computeAndStore(data: { tenantId: string, paddedStream: any[], threatIntelVector: number[] }) {
@@ -43,4 +48,9 @@ export class SsiiService {
     });
     return result;
   }
-}   
+}
+
+// Entry Point
+export default {
+  fetch: (request: Request, env: any, ctx: ExecutionContext) => app.render(request)
+};   
