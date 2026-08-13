@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "ssii",
-  "main": "./src/worker.ts",
+  "main": "@astrojs/cloudflare/entrypoints/server",
   "compatibility_date": "2026-08-05",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
