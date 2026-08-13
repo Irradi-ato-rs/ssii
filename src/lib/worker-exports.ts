@@ -1,8 +1,8 @@
-// src/worker.ts
-import { handle } from '@astrojs/cloudflare/handler';
+// src/lib/worker-exports.ts
 import { DurableObject } from "cloudflare:workers";
-import { runScoringEngine } from "./lib/scoring-engine";
+import { runScoringEngine } from "./scoring-engine";
 
+// Export PostureObject (Wrangler will find this in the bundle)
 export class PostureObject extends DurableObject {
   constructor(ctx: DurableObjectState, env: any) {
     super(ctx, env);
@@ -28,6 +28,7 @@ export class PostureObject extends DurableObject {
   }
 }
 
+// Export SsiiService
 export class SsiiService {
   constructor(private ctx: ExecutionContext, private env: any) {}
   async computeAndStore(data: { tenantId: string, paddedStream: any[], threatIntelVector: number[] }) {
@@ -42,15 +43,4 @@ export class SsiiService {
     });
     return result;
   }
-}
-
-// Ensure env is passed correctly to handle
-export default {
-  async fetch(request: Request, env: any, ctx: ExecutionContext) {
-    // Debug: Log if ASSETS is missing (causes Invalid URL)
-    if (!env.ASSETS) {
-      return new Response("Missing ASSETS binding. Check wrangler.jsonc", { status: 500 });
-    }
-    return handle(request, env, ctx);
-  }
-};   
+}   
