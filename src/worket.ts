@@ -1,4 +1,6 @@
 // src/worker.ts
+export const prerender = false;
+
 import { handle } from '@astrojs/cloudflare/handler';
 import { DurableObject } from "cloudflare:workers";
 import { runScoringEngine } from "./lib/scoring-engine";
