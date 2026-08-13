@@ -1,9 +1,9 @@
 // src/worker.ts
 import { handle } from '@astrojs/cloudflare/handler';
 import { DurableObject } from "cloudflare:workers";
-import { runScoringEngine } from './lib/scoring-engine';
+import { runScoringEngine } from "./lib/scoring-engine";
 
-// 1. Define Durable Object (Required for wrangler.jsonc)
+// MUST be exported for Wrangler to find it
 export class PostureObject extends DurableObject {
   constructor(ctx: DurableObjectState, env: any) {
     super(ctx, env);
@@ -29,7 +29,7 @@ export class PostureObject extends DurableObject {
   }
 }
 
-// 2. Define RPC Service (Required for 'void' binding)
+// MUST be exported for RPC binding
 export class SsiiService {
   constructor(private ctx: ExecutionContext, private env: any) {}
 
@@ -47,8 +47,7 @@ export class SsiiService {
   }
 }
 
-// 3. Export Astro Handler (Required for Frontend/API Routes)
-// This delegates requests to your existing src/pages/api/... files
+// Default export for Astro frontend
 export default {
   async fetch(request: Request, env: any, ctx: ExecutionContext) {
     return handle(request, env, ctx);
