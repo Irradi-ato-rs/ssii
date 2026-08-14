@@ -17,7 +17,11 @@
   "kv_namespaces": [
     {
       "binding": "VM_LIVE_POSTURE_CACHE",
-      "id": "b1bce78115ec487a914c6e7d3420dd6b",
+      "id": "b1bce78115ec487a914c6e7d3420dd6b"
+    },
+    {
+      "binding": "SESSION",
+      "id": "2ce43a786c5c4f858bbb1bf2265ce31d"
     }
   ],
   "services": [
