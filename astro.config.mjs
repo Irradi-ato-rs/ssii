@@ -5,7 +5,6 @@ import cloudflare from '@astrojs/cloudflare';
 export default defineConfig({
   site: 'https://ssii.fzoirm.com',
   output: 'server',
-  session: false,
   adapter: cloudflare({
     prerenderEnvironment: 'workerd', // CRITICAL FIX
   }),
