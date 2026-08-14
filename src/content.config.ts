@@ -1,22 +1,19 @@
-// astro.config.mjs
-import { defineConfig } from 'astro/config';
-import cloudflare from '@astrojs/cloudflare';
+import { glob } from "astro/loaders";
+import { defineCollection } from "astro:content";
+import { z } from "astro/zod";
 
-export default defineConfig({
-  site: 'https://ssii.fzoirm.com',
-  output: 'server',
-  adapter: cloudflare({
-    prerenderEnvironment: 'workerd', // CRITICAL FIX
-  }),
-  prerender: {
-    default: false,
-  },
-  image: {
-    service: {
-      entrypoint: 'astro/assets/services/sharp',
-      config: {
-        allowBuild: () => true, 
-      }
-    }
-  }
-});   
+const blog = defineCollection({
+	// Load Markdown and MDX files in the `src/content/blog/` directory.
+	loader: glob({ base: "./src/content/blog", pattern: "**/*.{md,mdx}" }),
+	// Type-check frontmatter using a schema
+	schema: z.object({
+		title: z.string(),
+		description: z.string(),
+		// Transform string to Date object
+		pubDate: z.coerce.date(),
+		updatedDate: z.coerce.date().optional(),
+		heroImage: z.string().optional(),
+	}),
+});
+
+export const collections = { blog };
