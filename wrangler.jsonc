@@ -31,5 +31,18 @@
       "binding": "PRIVATE_GATEWAY",
       "service": "void"
     }
+  ],
+   "durable_objects": {
+    "bindings": [] 
+  },
+  "migrations": [
+    {
+      "tag": "v1-enable-sqlite",
+      "new_sqlite_classes": ["PostureObject"]
+    },
+    {
+      "tag": "v2-delete-posture",
+      "deleted_classes": ["PostureObject"]
+    }
   ]
 }
