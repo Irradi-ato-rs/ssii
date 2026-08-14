@@ -67,4 +67,4 @@ export const POST: APIRoute = async ({ request, locals }) => {
     console.error("Compute Critical Error:", error);
     return new Response(JSON.stringify({ error: "Internal Server Error" }), { status: 500 });
   }
-};   
+};

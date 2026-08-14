@@ -16,20 +16,14 @@
   },
   "kv_namespaces": [
     {
-      "binding": "VM_TENANT_DIRECTORY",
-      "id": "01d2aa05ebdf4a32b966bcd37d712bfe"
-    },
-    {
-      "binding": "VM_PROPRIETARY_PARSERS",
-      "id": "fa7275bedb434ee8b9f9b82555930827"
+      "binding": "VM_LIVE_POSTURE_CACHE",
+      "id": "b1bce78115ec487a914c6e7d3420dd6b",
+      "preview_id": "b1bce78115ec487a914c6e7d3420dd6b"
     },
     {
       "binding": "SESSION", 
-      "id": "fbdbf19fdf494f388a8c8669c002ce10"
-    },
-    {
-      "binding": "VM_LIVE_POSTURE_CACHE",
-      "id": "b1bce78115ec487a914c6e7d3420dd6b"
+      "id": "fbdbf19fdf494f388a8c8669c002ce10",
+      "preview_id": "fbdbf19fdf494f388a8c8669c002ce10"
     }
   ],
   "services": [
@@ -38,4 +32,4 @@
       "service": "void"
     }
   ]
-}   
+}
