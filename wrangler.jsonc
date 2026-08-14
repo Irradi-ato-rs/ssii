@@ -28,10 +28,14 @@
       "id": "2ce43a786c5c4f858bbb1bf2265ce31d"
     }
   ],
-  "services": [
-    {
-      "binding": "PRIVATE_GATEWAY",
-      "service": "void"
-    }
-  ]
+  "queues": {
+    "consumers": [
+      {
+        "queue": "void-scoring-queue",
+        "max_batch_size": 1,
+        "max_retries": 3,
+        "dead_letter_queue": "void-dlq" 
+      }
+    ]
+  }
 }   
