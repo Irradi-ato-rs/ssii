@@ -1,8 +1,12 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "ssii",
-  "compatibility_date": "2024-09-23",
-  "compatibility_flags": ["nodejs_compat"],
+  "main": "./dist/_worker.js/index.js",
+  "compatibility_date": "2026-08-05",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "disable_nodejs_process_v2"
+  ],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS"
@@ -13,7 +17,8 @@
   "kv_namespaces": [
     {
       "binding": "VM_LIVE_POSTURE_CACHE",
-      "id": "b1bce78115ec487a914c6e7d3420dd6b"
+      "id": "b1bce78115ec487a914c6e7d3420dd6b",
+      "preview_id": "b1bce78115ec487a914c6e7d3420dd6b"
     }
   ],
   "services": [
@@ -21,6 +26,5 @@
       "binding": "PRIVATE_GATEWAY",
       "service": "void"
     }
-  ],
-  "main": "@astrojs/cloudflare/entrypoints/server"
+  ]
 }   
