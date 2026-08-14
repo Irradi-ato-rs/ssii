@@ -6,7 +6,7 @@ export default defineConfig({
   site: 'https://ssii.fzoirm.com',
   output: 'server',
   adapter: cloudflare({
-    prerenderEnvironment: 'node', // CRITICAL FIX / from 'workerd'
+    prerenderEnvironment: 'workerd', // CRITICAL FIX / from 'node'
   }),
   prerender: {
     default: false,
