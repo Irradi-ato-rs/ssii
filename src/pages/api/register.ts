@@ -2,9 +2,9 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers';
+// Fallback import, but we prioritize context.cloudflare.env
+import { env as globalEnv } from 'cloudflare:workers'; 
 import { getIdPConfig } from '../../config/tenants';
-import { getSecret } from '../../lib/env-helpers';
 
 function parseEmailDomain(email: string): string | null {
   const at = email.lastIndexOf('@');
@@ -36,42 +36,53 @@ function jsonError(message: string, status: number): Response {
   });
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, cloudflare }) => {
+  // ✅ CRITICAL FIX: Use cloudflare.env from context. 
+  // Fallback to globalEnv only if context is missing (shouldn't happen in live Workers).
+  const env = cloudflare?.env || globalEnv;
+
+  if (!env) {
+    console.error('FATAL: Cloudflare environment bindings are undefined.');
+    return jsonError('Server configuration error', 500);
+  }
+
   try {
     const formData = await request.formData();
     const email = formData.get('email')?.toString().trim();
-
+    
     if (!email || !email.includes('@')) {
       return jsonError('Invalid email address', 400);
     }
-
+    
     const domain = parseEmailDomain(email);
     if (!domain) {
       return jsonError('Invalid email address', 400);
     }
-
+    
+    // ✅ Pass the validated 'env' object
     const config = await getIdPConfig(env, email);
     if (!config) {
       return jsonError('Unable to start sign-in for this account.', 403);
     }
-
-    const clientId = getSecret(env, config.clientIdEnv)?.trim();
-    const clientSecret = getSecret(env, config.clientSecretEnv)?.trim();
-
+    
+    // Access secrets directly from the validated 'env'
+    const clientId = env[config.clientIdEnv]?.trim();
+    const clientSecret = env[config.clientSecretEnv]?.trim();
+    
     if (!clientId || !clientSecret) {
-      console.error(`register: missing secret for domain=${domain}`);
+      console.error(`register: missing secret for domain=${domain}. Keys available: ${Object.keys(env).join(', ')}`);
       return jsonError('Sign-in is temporarily unavailable.', 500);
     }
-
+    
     const nonce = crypto.randomUUID();
     const statePayload = { domain, nonce };
     const state = base64url(new TextEncoder().encode(JSON.stringify(statePayload)));
-
+    
     const { verifier, challenge } = await generatePkcePair();
-
+    
     const rigidRedirectUri = 'https://ssii.fzoirm.com/api/auth/callback';
     const cleanAuthBase = String(config.authorizationEndpoint).trim();
-
+    
     const federationQueryParameters = new URLSearchParams({
       client_id: clientId,
       scope: 'openid profile email',
@@ -83,17 +94,17 @@ export const POST: APIRoute = async ({ request }) => {
       code_challenge: challenge,
       code_challenge_method: 'S256',
     });
-
+    
     const finalOutboundHandshakeUrl =
       cleanAuthBase + (cleanAuthBase.includes('?') ? '&' : '?') + federationQueryParameters.toString();
-
+    
     const headers = new Headers();
     headers.set('Content-Type', 'application/json');
     headers.append('Set-Cookie', `oidc_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=300`);
     headers.append('Set-Cookie', `pkce_verifier=${verifier}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=300`);
-
+    
     console.log(`register: handshake initiated for domain=${domain}`);
-
+    
     return new Response(JSON.stringify({ success: true, redirectUrl: finalOutboundHandshakeUrl }), {
       status: 200,
       headers,
@@ -102,4 +113,4 @@ export const POST: APIRoute = async ({ request }) => {
     console.error('register: unhandled error', error);
     return jsonError('Sign-in failed. Please try again.', 500);
   }
-};
+};   
