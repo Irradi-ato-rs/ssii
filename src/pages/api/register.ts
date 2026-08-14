@@ -1,10 +1,11 @@
 // src/pages/api/register.ts
-export const prerender = false;
+export const prerender = false; // CRITICAL: Must be false
 
 import type { APIRoute } from 'astro';
-// Fallback import, but we prioritize context.cloudflare.env
-import { env as globalEnv } from 'cloudflare:workers'; 
 import { getIdPConfig } from '../../config/tenants';
+
+// Remove global import if it causes issues, or keep as fallback
+// import { env as globalEnv } from 'cloudflare:workers'; 
 
 function parseEmailDomain(email: string): string | null {
   const at = email.lastIndexOf('@');
@@ -37,12 +38,12 @@ function jsonError(message: string, status: number): Response {
 }
 
 export const POST: APIRoute = async ({ request, cloudflare }) => {
-  // ✅ CRITICAL FIX: Use cloudflare.env from context. 
-  // Fallback to globalEnv only if context is missing (shouldn't happen in live Workers).
-  const env = cloudflare?.env || globalEnv;
+  // CRITICAL: Use cloudflare.env from context ONLY.
+  // The global import is failing in your environment.
+  const env = cloudflare?.env;
 
   if (!env) {
-    console.error('FATAL: Cloudflare environment bindings are undefined.');
+    console.error('FATAL: Cloudflare environment is undefined. Check wrangler.jsonc and prerender setting.');
     return jsonError('Server configuration error', 500);
   }
 
@@ -59,18 +60,17 @@ export const POST: APIRoute = async ({ request, cloudflare }) => {
       return jsonError('Invalid email address', 400);
     }
     
-    // ✅ Pass the validated 'env' object
+    // Pass the validated 'env' object
     const config = await getIdPConfig(env, email);
     if (!config) {
       return jsonError('Unable to start sign-in for this account.', 403);
     }
     
-    // Access secrets directly from the validated 'env'
     const clientId = env[config.clientIdEnv]?.trim();
     const clientSecret = env[config.clientSecretEnv]?.trim();
     
     if (!clientId || !clientSecret) {
-      console.error(`register: missing secret for domain=${domain}. Keys available: ${Object.keys(env).join(', ')}`);
+      console.error(`register: missing secret for domain=${domain}. Keys: ${Object.keys(env).join(', ')}`);
       return jsonError('Sign-in is temporarily unavailable.', 500);
     }
     
