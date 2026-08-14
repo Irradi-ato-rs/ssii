@@ -3,14 +3,12 @@ import { handle } from '@astrojs/cloudflare/handler';
 import { runScoringEngine, type PaddedStreamNode } from './lib/scoring-engine';
 import type { ExportedHandler } from '@cloudflare/workers-types';
 
-// Definition of environment types
 interface Env {
   VM_LIVE_POSTURE_CACHE: KVNamespace;
   INGESTION_SERVICE_SECRET: string;
-  // Add other bindings as needed
+  ASSETS: Fetcher;
 }
 
-// Define message payload type
 interface QueuePayload {
   paddedStream: PaddedStreamNode[];
   threatIntelVector: number[];
@@ -21,7 +19,7 @@ interface QueuePayload {
 export default {
   // 1. HTTP Handler (Astro App)
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    // Delegate all HTTP requests to the Astro app
+    // FIX: Do NOT pass manifest. Astro 6 handle() manages this internally.
     return handle(request, env, ctx);
   },
 
@@ -30,11 +28,9 @@ export default {
     for (const message of batch.messages) {
       try {
         const { paddedStream, threatIntelVector, tenantId } = message.body;
-
-        // Run heavy scoring logic here (Safe from HTTP timeouts)
+        
         const result = runScoringEngine(paddedStream, threatIntelVector);
 
-        // Write to KV
         if (env.VM_LIVE_POSTURE_CACHE && tenantId) {
           await env.VM_LIVE_POSTURE_CACHE.put(tenantId, JSON.stringify({
             ...result,
@@ -42,11 +38,10 @@ export default {
           }));
           console.log(`[SSII] ✅ CACHED DATA FOR TENANT: ${tenantId}`);
         }
-
-        message.ack(); // Mark as successful
+        message.ack();
       } catch (err) {
         console.error(`[SSII] ❌ Scoring failed: ${err}`);
-        message.retry(); // Retry on failure
+        message.retry();
       }
     }
   },
