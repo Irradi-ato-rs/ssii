@@ -1,8 +1,12 @@
 // src/pages/api/register.ts
-export const prerender = false; // CRITICAL: Must be false
+export const prerender = false;
 
 import type { APIRoute } from 'astro';
+// Astro 6 Standard: Global import for bindings / REQUIRED
+import { env } from 'cloudflare:workers'; 
 import { getIdPConfig } from '../../config/tenants';
+
+// --- Helper Functions ---
 
 function parseEmailDomain(email: string): string | null {
   const at = email.lastIndexOf('@');
@@ -34,15 +38,16 @@ function jsonError(message: string, status: number): Response {
   });
 }
 
-export const POST: APIRoute = async ({ request, cloudflare }) => {
-  // CRITICAL: Check if cloudflare context exists
-  if (!cloudflare || !cloudflare.env) {
-    console.error('FATAL: Cloudflare context missing. Route may be prerendered or wrangler.jsonc entrypoint is wrong.');
-    console.error('cloudflare object:', cloudflare);
+// --- API Route ---
+
+export const POST: APIRoute = async ({ request }) => {
+  // CRITICAL: Use global 'env' import. 
+  // The 'cloudflare' argument is null in your environment due to Astro 6 adapter issues.
+  
+  if (!env) {
+    console.error('FATAL: Global cloudflare:workers env is undefined.');
     return jsonError('Server configuration error (env undefined)', 500);
   }
-
-  const env = cloudflare.env;
 
   try {
     const formData = await request.formData();
@@ -57,11 +62,13 @@ export const POST: APIRoute = async ({ request, cloudflare }) => {
       return jsonError('Invalid email address', 400);
     }
     
+    // Pass the global 'env' object to your config loader
     const config = await getIdPConfig(env, email);
     if (!config) {
       return jsonError('Unable to start sign-in for this account.', 403);
     }
     
+    // Access secrets directly from global 'env'
     const clientId = env[config.clientIdEnv]?.trim();
     const clientSecret = env[config.clientSecretEnv]?.trim();
     
