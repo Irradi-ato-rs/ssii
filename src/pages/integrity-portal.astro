@@ -1,9 +1,10 @@
 ---
 // src/pages/integrity-portal.astro
 export const prerender = false;
+import { env } from 'cloudflare:workers';
+import { getIdPConfig } from '../config/tenants';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Footer from '../components/Footer.astro';
-import { env } from 'cloudflare:workers';
 
 // 1. ERROR INTERCEPTION
 const url = new URL(Astro.request.url);
