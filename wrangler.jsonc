@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "ssii",
-  "main": "./dist/_worker.js/index.js",  // CHECK MODE ./src/worker.ts
+  "main": "./dist/_worker.js/index.js",
   "compatibility_date": "2026-08-05",
   "compatibility_flags": [
     "nodejs_compat",
@@ -28,13 +28,10 @@
       "id": "2ce43a786c5c4f858bbb1bf2265ce31d"
     }
   ],
-  "queues": {
-    "consumers": [
-      {
-        "queue": "void-scoring-queue",
-        "max_batch_size": 1,
-        "max_retries": 3
-      }
-    ]
-  }
+  "services": [
+    {
+      "binding": "PRIVATE_GATEWAY",
+      "service": "void"
+    }
+  ]
 }   
