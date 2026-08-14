@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "ssii",
-  "main": "./dist/_worker.js/index.js",
+  "main": "./src/worker.ts",  // ✅ CHANGE THIS LINE
   "compatibility_date": "2026-08-05",
   "compatibility_flags": [
     "nodejs_compat",
@@ -33,8 +33,7 @@
       {
         "queue": "void-scoring-queue",
         "max_batch_size": 1,
-        "max_retries": 3,
-        "dead_letter_queue": "void-dlq" 
+        "max_retries": 3
       }
     ]
   }
