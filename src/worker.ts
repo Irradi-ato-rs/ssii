@@ -19,7 +19,7 @@ interface QueuePayload {
 export default {
   // 1. HTTP Handler (Astro App)
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    // FIX: Do NOT pass manifest. Astro 6 handle() manages this internally.
+    // CRITICAL: Do NOT pass manifest. Astro 6 handles this internally.
     return handle(request, env, ctx);
   },
 
