@@ -4,9 +4,6 @@ export const prerender = false; // CRITICAL: Must be false
 import type { APIRoute } from 'astro';
 import { getIdPConfig } from '../../config/tenants';
 
-// Remove global import if it causes issues, or keep as fallback
-// import { env as globalEnv } from 'cloudflare:workers'; 
-
 function parseEmailDomain(email: string): string | null {
   const at = email.lastIndexOf('@');
   if (at <= 0 || at === email.length - 1) return null;
@@ -38,14 +35,14 @@ function jsonError(message: string, status: number): Response {
 }
 
 export const POST: APIRoute = async ({ request, cloudflare }) => {
-  // CRITICAL: Use cloudflare.env from context ONLY.
-  // The global import is failing in your environment.
-  const env = cloudflare?.env;
-
-  if (!env) {
-    console.error('FATAL: Cloudflare environment is undefined. Check wrangler.jsonc and prerender setting.');
-    return jsonError('Server configuration error', 500);
+  // CRITICAL: Check if cloudflare context exists
+  if (!cloudflare || !cloudflare.env) {
+    console.error('FATAL: Cloudflare context missing. Route may be prerendered or wrangler.jsonc entrypoint is wrong.');
+    console.error('cloudflare object:', cloudflare);
+    return jsonError('Server configuration error (env undefined)', 500);
   }
+
+  const env = cloudflare.env;
 
   try {
     const formData = await request.formData();
@@ -60,7 +57,6 @@ export const POST: APIRoute = async ({ request, cloudflare }) => {
       return jsonError('Invalid email address', 400);
     }
     
-    // Pass the validated 'env' object
     const config = await getIdPConfig(env, email);
     if (!config) {
       return jsonError('Unable to start sign-in for this account.', 403);
