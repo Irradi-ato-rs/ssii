@@ -16,10 +16,6 @@
   },
   "kv_namespaces": [
     {
-      "binding": "VM_TENANT_DIRECTORY",
-      "id": "01d2aa05ebdf4a32b966bcd37d712bfe"
-    },
-    {
       "binding": "VM_LIVE_POSTURE_CACHE",
       "id": "b1bce78115ec487a914c6e7d3420dd6b",
     }
