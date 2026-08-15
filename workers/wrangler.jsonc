@@ -1,4 +1,4 @@
-// workers/wrangler.jsonc
+// /workers/wrangler.jsonc
 {
   "name": "ssii-queue-consumer",
   "main": "./ssii-consumer.ts",

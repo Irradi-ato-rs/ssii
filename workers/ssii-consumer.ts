@@ -1,5 +1,5 @@
 // workers/ssii-consumer.ts
-// MOVING src/pages/api/compute.ts
+// MIGRATING src/pages/api/compute.ts
 import { runScoringEngine, type PaddedStreamNode } from '../src/lib/scoring-engine';
 
 export interface Env {
