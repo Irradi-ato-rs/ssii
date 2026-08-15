@@ -6,7 +6,16 @@ export default defineConfig({
   site: 'https://ssii.fzoirm.com',
   output: 'server',
   adapter: cloudflare({
-    prerenderEnvironment: 'workerd', // CRITICAL FIX / from 'node'
+    configPath: "./wrangler.jsonc",
+    prerenderEnvironment: 'workerd',
+    auxiliaryWorkers: [
+      {
+        configPath: "./workers/wrangler.jsonc",
+        config: {
+          compatibility_flags: ["nodejs_compat"]
+        }
+      }
+    ]
   }),
   prerender: {
     default: false,
