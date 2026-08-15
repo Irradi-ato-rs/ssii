@@ -2,8 +2,7 @@
 import { defineConfig } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
 
-// CRITICAL: Only load auxiliary workers during 'dev', not 'build'
-// This prevents Miniflare conflicts and "Queue handler missing" errors during deployment
+// CRITICAL: Only load auxiliary workers in 'dev' mode
 const isDev = process.argv.includes('dev');
 
 export default defineConfig({
@@ -12,7 +11,6 @@ export default defineConfig({
   adapter: cloudflare({
     configPath: "./wrangler.jsonc",
     prerenderEnvironment: 'workerd',
-    // Only attach auxiliary workers in dev mode
     auxiliaryWorkers: isDev ? [
       {
         configPath: "./workers/wrangler.jsonc",

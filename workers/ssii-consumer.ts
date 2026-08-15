@@ -41,10 +41,10 @@ export default {
           console.log(`[SSII] ✅ Cached: ${tenantId}`);
         }
 
-        message.ack();
+        message.ack(); // Success
       } catch (err) {
         console.error(`[SSII] ❌ Error: ${err.message}`);
-        message.retry();
+        message.retry(); // Auto-retry
       }
     }
   }
