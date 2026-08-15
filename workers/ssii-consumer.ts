@@ -1,4 +1,4 @@
-// workers/ssii-consumer.ts
+// /workers/ssii-consumer.ts
 // MOVING src/pages/api/compute.ts
 import { runScoringEngine, type PaddedStreamNode } from '../src/lib/scoring-engine';
 
