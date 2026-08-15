@@ -86,7 +86,7 @@ $$
 └── wrangler.jsonc
 ```
 
-*(Note: an earlier `register.astro` UI page has been superseded — `login.astro` now submits directly to `api/register.ts`. See open items in project tracking for its final disposition.)*
+*(Note: an earlier `register.astro` UI page has been superseded — `login.astro` now submits directly to `api/register.ts`. See open items in project tracking for its final disposition. Project structure is being reconsidered and any changes should appear in the public repository immediately.)*
 
 ### Systemic Integrity Dashboard
 
