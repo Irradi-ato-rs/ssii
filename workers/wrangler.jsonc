@@ -1,10 +1,8 @@
-// workers/wrangler.jsonc
 {
   "name": "ssii-queue-consumer",
   "main": "./ssii-consumer.ts",
   "compatibility_date": "2026-08-15",
   "compatibility_flags": ["nodejs_compat"],
-  
   "queues": {
     "consumers": [
       {
@@ -17,7 +15,6 @@
       }
     ]
   },
-  
   "kv_namespaces": [
     {
       "binding": "VM_LIVE_POSTURE_CACHE",

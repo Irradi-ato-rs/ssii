@@ -14,7 +14,7 @@ export interface VoidMessage {
   timestamp: number;
 }
 
-// CRITICAL: Must be 'export default' with a 'queue' method
+// CRITICAL: Must be 'export default' with 'async queue'
 export default {
   async queue(batch: MessageBatch<VoidMessage>, env: Env): Promise<void> {
     console.log(`[SSII] Received batch of ${batch.messages.length} messages`);
@@ -23,10 +23,10 @@ export default {
       try {
         const { tenantId, paddedStream, threatIntelVector } = message.body;
 
-        // 1. Run Scoring Engine (Pure Compute)
+        // 1. Run Scoring Engine
         const result = runScoringEngine(paddedStream, threatIntelVector);
 
-        // 2. Write to KV (Sovereign State)
+        // 2. Write to KV
         if (env.VM_LIVE_POSTURE_CACHE && tenantId) {
           const cacheData = {
             metric_a_compliance: result.metric_a_compliance,
@@ -38,13 +38,13 @@ export default {
           };
           
           await env.VM_LIVE_POSTURE_CACHE.put(tenantId, JSON.stringify(cacheData));
-          console.log(`[SSII] ✅ Cached: ${tenantId} | Score B: ${result.metric_b_integrity}`);
+          console.log(`[SSII] ✅ Cached: ${tenantId}`);
         }
 
-        message.ack(); // Success: Remove from queue
+        message.ack();
       } catch (err) {
-        console.error(`[SSII] ❌ Error for ${message.body.tenantId}: ${err.message}`);
-        message.retry(); // Auto-retry up to 100 times
+        console.error(`[SSII] ❌ Error: ${err.message}`);
+        message.retry();
       }
     }
   }
