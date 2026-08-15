@@ -14,8 +14,11 @@ export interface VoidMessage {
   timestamp: number;
 }
 
+// CRITICAL: Must be 'export default' with a 'queue' method
 export default {
   async queue(batch: MessageBatch<VoidMessage>, env: Env): Promise<void> {
+    console.log(`[SSII] Received batch of ${batch.messages.length} messages`);
+    
     for (const message of batch.messages) {
       try {
         const { tenantId, paddedStream, threatIntelVector } = message.body;
@@ -38,10 +41,10 @@ export default {
           console.log(`[SSII] ✅ Cached: ${tenantId} | Score B: ${result.metric_b_integrity}`);
         }
 
-        message.ack(); // Success
+        message.ack(); // Success: Remove from queue
       } catch (err) {
         console.error(`[SSII] ❌ Error for ${message.body.tenantId}: ${err.message}`);
-        message.retry(); // Auto-retry
+        message.retry(); // Auto-retry up to 100 times
       }
     }
   }
