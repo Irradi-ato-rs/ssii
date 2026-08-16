@@ -14,14 +14,6 @@
   "observability": { 
     "enabled": true 
   },
-  "queues": {
-    "producers": [
-      {
-        "binding": "VOIDMETRIC_EVENTS",
-        "queue": "voidmetric-events"
-      }
-    ]
-  },
   "kv_namespaces": [
     {
       "binding": "VM_TENANT_DIRECTORY",
