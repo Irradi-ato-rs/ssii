@@ -8,7 +8,12 @@ export default defineConfig({
   adapter: cloudflare({
     configPath: "./wrangler.jsonc",
     prerenderEnvironment: 'workerd',
-    // auxiliaryWorkers removed: Queue handler is now bundled in src/worker.ts
+    // CRITICAL: Re-integrate the consumer worker here
+    auxiliaryWorkers: [
+      {
+        configPath: "./wrangler.consumer.jsonc",
+      }
+    ],
   }),
   prerender: {
     default: false,
