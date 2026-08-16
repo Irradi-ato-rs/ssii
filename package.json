@@ -14,7 +14,7 @@
     "check": "astro check && tsc --noEmit",
     "dev": "astro dev",
     "preview": "astro build && wrangler pages dev ./dist",
-    "deploy": "npx wrangler deploy --config workers/wrangler.jsonc && npx wrangler deploy --assets=./dist"
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
     "@astrojs/cloudflare": "12.6.12",
@@ -43,4 +43,4 @@
     "preview_image_url": "https://imagedelivery.net/wSMYJvS3Xw-n339CbDyDIA/f40a6577-eed5-4f3e-cef4-b5ef0a1be100/preview",
     "publish": true
   }
-}
+}   
