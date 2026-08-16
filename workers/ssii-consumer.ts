@@ -1,6 +1,7 @@
 // workers/ssii-consumer.ts
 // MIGRATING src/pages/api/compute.ts
 import { runScoringEngine, type PaddedStreamNode } from '../src/lib/scoring-engine';
+import type { MessageBatch, Message } from '@cloudflare/workers-types';
 
 export interface Env {
   VM_LIVE_POSTURE_CACHE: KVNamespace;
@@ -42,10 +43,10 @@ export default {
         }
 
         message.ack(); // Success
-      } catch (err) {
+      } catch (err: any) {
         console.error(`[SSII] ❌ Error: ${err.message}`);
         message.retry(); // Auto-retry
       }
     }
   }
-};   
+};
