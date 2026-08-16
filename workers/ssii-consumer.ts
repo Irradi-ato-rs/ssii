@@ -14,7 +14,6 @@ export interface VoidMessage {
   timestamp: number;
 }
 
-// CRITICAL: Must be 'export default' with 'async queue'
 export default {
   async queue(batch: MessageBatch<VoidMessage>, env: Env): Promise<void> {
     console.log(`[SSII] Received batch of ${batch.messages.length} messages`);
@@ -22,30 +21,28 @@ export default {
     for (const message of batch.messages) {
       try {
         const { tenantId, paddedStream, threatIntelVector } = message.body;
-
-        // 1. Run Scoring Engine
         const result = runScoringEngine(paddedStream, threatIntelVector);
 
-        // 2. Write to KV
         if (env.VM_LIVE_POSTURE_CACHE && tenantId) {
-          const cacheData = {
+          await env.VM_LIVE_POSTURE_CACHE.put(tenantId, JSON.stringify({
             metric_a_compliance: result.metric_a_compliance,
             metric_b_integrity: result.metric_b_integrity,
             status: result.status,
             theater_gap_delta: result.theater_gap_delta,
             spectral_analysis: result.spectral_analysis,
             computedAt: new Date().toISOString()
-          };
-          
-          await env.VM_LIVE_POSTURE_CACHE.put(tenantId, JSON.stringify(cacheData));
+          }));
           console.log(`[SSII] ✅ Cached: ${tenantId}`);
         }
-
-        message.ack(); // Success
+        message.ack();
       } catch (err) {
         console.error(`[SSII] ❌ Error: ${err.message}`);
-        message.retry(); // Auto-retry
+        message.retry();
       }
     }
+  },
+  // CRITICAL: Prevents "Invalid URL" on HTTP health checks
+  async fetch(): Promise<Response> {
+    return new Response("SSII Consumer Active", { status: 200 });
   }
 };   

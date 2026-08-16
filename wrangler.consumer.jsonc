@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "ssii-consumer",
+  "main": "./workers/ssii-consumer.ts",
+  "compatibility_date": "2026-08-16",
+  "compatibility_flags": ["nodejs_compat"],
+  "queues": {
+    "consumers": [
+      {
+        "queue": "voidmetric-events",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 3,
+        "dead_letter_queue": "voidmetric-dlq"
+      }
+    ]
+  },
+  "kv_namespaces": [
+    {
+      "binding": "VM_LIVE_POSTURE_CACHE",
+      "id": "b1bce78115ec487a914c6e7d3420dd6b"
+    }
+  ]
+}   

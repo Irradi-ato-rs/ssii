@@ -14,19 +14,14 @@
   "observability": { 
     "enabled": true 
   },
-  
   "queues": {
-    "consumers": [
+    "producers": [
       {
-        "queue": "voidmetric-events",
-        "max_batch_size": 10,
-        "max_batch_timeout": 5,
-        "max_retries": 3,
-        "dead_letter_queue": "voidmetric-dlq"
+        "binding": "VOIDMETRIC_EVENTS",
+        "queue": "voidmetric-events"
       }
     ]
   },
-
   "kv_namespaces": [
     {
       "binding": "VM_TENANT_DIRECTORY",
