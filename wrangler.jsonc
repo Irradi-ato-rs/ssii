@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "ssii",
-  "main": "./src/worker.ts",
+  "main": "./dist/_worker.js",
   "compatibility_date": "2026-08-16",
   "compatibility_flags": [
     "nodejs_compat",
