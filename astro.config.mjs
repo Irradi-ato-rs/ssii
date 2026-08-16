@@ -1,8 +1,6 @@
+// astro.config.mjs
 import { defineConfig } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
-
-// CRITICAL: Only load auxiliary workers in 'dev' mode
-const isDev = process.argv.includes('dev');
 
 export default defineConfig({
   site: 'https://ssii.fzoirm.com',
@@ -10,14 +8,7 @@ export default defineConfig({
   adapter: cloudflare({
     configPath: "./wrangler.jsonc",
     prerenderEnvironment: 'workerd',
-    auxiliaryWorkers: isDev ? [
-      {
-        configPath: "./workers/wrangler.jsonc",
-        config: {
-          compatibility_flags: ["nodejs_compat"]
-        }
-      }
-    ] : [], // Empty array for build/deploy
+    // auxiliaryWorkers removed: Queue handler is now bundled in src/worker.ts
   }),
   prerender: {
     default: false,
