@@ -153,7 +153,6 @@ try {
         <div class="mb-4">
           <label class="text-[9px] text-slate-500 uppercase font-bold block mb-1">Webhook URL</label>
           <code id="webhookCode" class="block w-full bg-[#020203] border border-slate-800 rounded p-2 text-[9px] text-emerald-400 break-all font-mono select-all">{webhookUrl}</code>
-          <!-- FIXED: Uses data-copy attribute instead of inline onclick -->
           <button type="button" data-copy={webhookUrl} class="copy-btn mt-1 text-[9px] text-blue-400 hover:text-blue-300 underline cursor-pointer">Copy URL</button>
         </div>
 
@@ -167,7 +166,6 @@ try {
           ) : (
             <code id="apiKeyCode" class="block w-full bg-[#020203] border border-slate-800 rounded p-2 text-[9px] text-emerald-400 break-all font-mono select-all">{apiKey}</code>
           )}
-          <!-- FIXED: Uses data-copy attribute instead of inline onclick -->
           <button type="button" data-copy={apiKey} class="copy-btn mt-1 text-[9px] text-blue-400 hover:text-blue-300 underline cursor-pointer">Copy Key</button>
         </div>
         
@@ -247,11 +245,10 @@ try {
     window.addEventListener('pageshow', (event) => { if (event.persisted) window.location.reload(); });
 
     document.addEventListener('DOMContentLoaded', () => {
-      // 1. Copy Button Logic (Replaces broken inline onclick)
+      // 1. Copy Button Logic
       const copyButtons = document.querySelectorAll('.copy-btn');
       copyButtons.forEach(btn => {
         btn.addEventListener('click', (e) => {
-          // Correctly reads the value from the data attribute
           const textToCopy = (e.target as HTMLElement).getAttribute('data-copy');
           if (textToCopy) {
             navigator.clipboard.writeText(textToCopy).then(() => {
@@ -308,7 +305,8 @@ try {
         const specResonance = document.getElementById('specResonance');
 
         try {
-          const response = await fetch('/api/compute', {
+          // FIXED: Updated endpoint from /api/compute to /api/sandbox
+          const response = await fetch('/api/sandbox', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
