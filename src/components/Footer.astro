@@ -1,10 +1,28 @@
 ---
 // src/components/Footer.astro
 const currentYear = new Date().getFullYear();
+
+// ACTUAL wallet addresses
+const donations = {
+  btc: "bc1q8z8ype30l5ztkmrsnj9lmap4kdd370wkstsvrj",
+  eth: "0x930Fa53551E641d47Cf0EcafDD230B2eBEa61DA2",
+  xlm: "GAZKN3ZL2DQ5DJT6QO6OHAT2QAQ5JMFQCK2IFXHISPR5KJVT7BPAJC4O"
+};
 ---
 
-<footer class="border-t border-slate-900 pt-8 text-[10px] text-slate-600 space-y-1 mt-12 w-full text-left font-mono">
-  <p>&#169;{currentYear} VoidMetric. Secure. No data stored. Ever.</p>
-  <!-- Replaced Up Tack with Diamond Operator for 100% browser compatibility -->
-  <p>Sovereign Systemic Integrity Intelligence ⟢</p>
+<footer class="border-t border-slate-900 pt-8 text-[10px] text-slate-600 mt-12 w-full text-left font-mono">
+  
+  <!-- Crypto Funding and Donations -->
+  <div class="space-y-1 mb-8">
+    <p class="font-bold text-slate-500">Fund VoidMetric:</p>
+    <p><span class="text-slate-400">BTC:</span> {donations.btc}</p>
+    <p><span class="text-slate-400">ETH:</span> {donations.eth}</p>
+    <p><span class="text-slate-400">XLM:</span> {donations.xlm}</p>
+  </div>
+
+  <!-- Copyright -->
+  <div class="space-y-1">
+    <p>&#169; {currentYear} VoidMetric. Secure. No data stored. Ever.</p>
+    <p>Sovereign Systemic Integrity Intelligence ⟢</p>
+  </div>
 </footer>   
