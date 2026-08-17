@@ -13,11 +13,12 @@ const donations = {
 <footer class="border-t border-slate-900 pt-8 text-[10px] text-slate-600 mt-12 w-full text-left font-mono">
   
   <!-- Crypto Funding and Donations -->
-  <div class="space-y-1 mb-8">
+  <!-- mt-8 separates from page content, mb-12 separates from copyright -->
+  <div class="space-y-1 mt-8 mb-12">
     <p class="font-bold text-slate-500">Fund VoidMetric:</p>
-    <p><span class="text-slate-400">BTC:</span> {donations.btc}</p>
-    <p><span class="text-slate-400">ETH:</span> {donations.eth}</p>
-    <p><span class="text-slate-400">XLM:</span> {donations.xlm}</p>
+    <p><span class="text-slate-400">BTC:</span> <code class="bg-slate-900 px-1 rounded">{donations.btc}</code></p>
+    <p><span class="text-slate-400">ETH:</span> <code class="bg-slate-900 px-1 rounded">{donations.eth}</code></p>
+    <p><span class="text-slate-400">XLM:</span> <code class="bg-slate-900 px-1 rounded">{donations.xlm}</code></p>
   </div>
 
   <!-- Copyright -->
