@@ -1,5 +1,5 @@
 // workers/ssii-consumer.ts
-// MIGRATING src/pages/api/compute.ts
+// ORIGINALLY src/pages/api/compute.ts
 import { runScoringEngine, type PaddedStreamNode } from '../src/lib/scoring-engine';
 
 export interface Env {
@@ -20,9 +20,21 @@ export default {
     
     for (const message of batch.messages) {
       try {
-        const { tenantId, paddedStream, threatIntelVector } = message.body;
-        const result = runScoringEngine(paddedStream, threatIntelVector);
+        const body = message.body;
+        
+        // 1. VALIDATION GUARD: Prevents crash on malformed manual test messages
+        if (!body.paddedStream || !Array.isArray(body.paddedStream)) {
+          console.warn(`[SSII] ⚠️ Invalid message format. Missing paddedStream. Acking to skip.`, body);
+          message.ack(); // Skip bad messages to prevent infinite retry loops
+          continue;
+        }
 
+        const { tenantId, paddedStream, threatIntelVector } = body;
+        
+        // 2. Execute Scoring Engine
+        const result = runScoringEngine(paddedStream, threatIntelVector || [0, 0, 0]);
+
+        // 3. Update KV Cache
         if (env.VM_LIVE_POSTURE_CACHE && tenantId) {
           await env.VM_LIVE_POSTURE_CACHE.put(tenantId, JSON.stringify({
             metric_a_compliance: result.metric_a_compliance,
@@ -34,10 +46,12 @@ export default {
           }));
           console.log(`[SSII] ✅ Cached: ${tenantId}`);
         }
+        
         message.ack();
       } catch (err) {
-        console.error(`[SSII] ❌ Error: ${err.message}`);
-        message.retry();
+        console.error(`[SSII] ❌ Critical Error: ${err.message}`, message.body);
+        // Retry only valid messages that failed due to transient errors
+        message.retry(); 
       }
     }
   },

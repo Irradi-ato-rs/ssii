@@ -3,16 +3,17 @@
   "name": "ssii",
   "main": "./dist/_worker.js/index.js",
   "compatibility_date": "2026-08-16",
-  "compatibility_flags": [
-    "nodejs_compat",
-    "nodejs_compat_populate_process_env"
-  ],
+  "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS"
   },
-  "observability": { 
-    "enabled": true 
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "invocation_logs": true,
+      "head_sampling_rate": 1
+    }
   },
   "kv_namespaces": [
     {
@@ -34,4 +35,4 @@
       "service": "void"
     }
   ]
-}   
+}

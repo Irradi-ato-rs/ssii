@@ -6,7 +6,7 @@ This GitHub [public repository](https://github.com/Irradi-ato-rs/ssii) houses no
 
 ## 1. Architectural Matrix Fabric
 
-VoidMetric operationalizes [Systemic Integrity Axiomatic 4 and Enablers 3](https://irradi.ato.rs/p/systemic-integrity-axiomatic-enablers.html), which serves as a cognitive catalyst in consulting engagements, aligning every stakeholder without requiring them to possess the formal notation to understand business system capabilities while uncovering value creators. It maps corporate (strategic velocity) security intelligence and risk as a static 4 × 3 continuous matrix crossing four **Axiomatic Domains (I)** against three **Technical Enablers (J)**:
+VoidMetric operationalizes [Systemic Integrity Axiomatic 4 and Enablers 3](https://irradi.ato.rs/p/systemic-integrity-axiomatic-enablers.html), which serves as a cognitive catalyst in consulting engagements, aligning every stakeholder without requiring them to possess the formal notation to understand business system capabilities while uncovering value creators. It maps corporate (strategic velocity) governance system, security intelligence and risk mitigation as a static 4 × 3 continuous matrix crossing four **Axiomatic Domains (I)** against three **Technical Enablers (J)**:
 
 | Axiomatic Domain (i) | Structures (j=0)         | Contents (j=1)            | Facilities (j=2)       |
 | --------------------- | ------------------------ | -------------------------- | ------------------------ |
