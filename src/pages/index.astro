@@ -2,13 +2,12 @@
 // src/pages/index.astro
 export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
-import Footer from '../components/Footer.astro'; 
+import Footer from '../components/Footer.astro';
 ---
 
 <BaseLayout title="VoidMetric | Sovereign Systemic Integrity Intelligence">
   <main class="w-full max-w-2xl mx-auto px-4 py-16 text-left text-slate-300 font-mono text-xs leading-relaxed selection:bg-slate-800">
-    
-    
+
     <header class="mb-12 space-y-2">
       <h1 class="text-xl font-bold tracking-tight text-white"><a href="https://fzoirm.com">VOIDMETRIC</a></h1>
       <p class="text-slate-400">Sovereign Systemic Integrity Intelligence</p>
@@ -28,17 +27,17 @@ import Footer from '../components/Footer.astro';
           <span class="text-slate-500 ml-2">— Live continuous controls dashboard for Metric A/B. Contains unique ingestion webhook URL.</span>
         </li>
         <li>
- <a href="/architecture" class="text-white underline underline-offset-4 hover:text-slate-300 nav-link">/architecture</a>
- <span class="text-slate-500 ml-2">— System blueprints, non-linear math specifications and stateless edge pipelines.</span>
- </li>
- <li>
- <a href="https://github.com/Irradi-ato-rs/ssii" target="_blank" class="text-white underline underline-offset-4 hover:text-slate-300 nav-link">/documentation</a>
- <span class="text-slate-500 ml-2">— This public repository contains the math, code and architecture, with the exception of protected properties.</span>
- </li>
- <li>
- <a href="" class="text-white underline underline-offset-4 hover:text-slate-300 nav-link">/onboarding</a>
- <span class="text-slate-500 ml-2">— Tenant provisioning parameters. Send an <a href="mailto:secur@ato.rs">e-mail</a>. Make a request, this is important, don't send any private information. A required system data will be requested/used for onboarding purposes only.</span>
- </li>
+          <a href="/architecture" class="text-white underline underline-offset-4 hover:text-slate-300 nav-link">/architecture</a>
+          <span class="text-slate-500 ml-2">— System blueprints, non-linear math specifications and stateless edge pipelines.</span>
+        </li>
+        <li>
+          <a href="https://github.com/Irradi-ato-rs/ssii" target="_blank" class="text-white underline underline-offset-4 hover:text-slate-300 nav-link">/documentation</a>
+          <span class="text-slate-500 ml-2">— This public repository contains the math, code and architecture, with the exception of protected properties.</span>
+        </li>
+        <li>
+          <a href="" class="text-white underline underline-offset-4 hover:text-slate-300 nav-link">/onboarding</a>
+          <span class="text-slate-500 ml-2">— Tenant provisioning parameters. Send an <a href="mailto:secur@ato.rs">e-mail</a>. Make a request, this is important, don't send any private information. A required system data will be requested/used for onboarding purposes only.</span>
+        </li>
       </ul>
     </section>
 
@@ -72,10 +71,10 @@ import Footer from '../components/Footer.astro';
       <!-- Manual Matrix Controls -->
       <div class="space-y-3 pt-4 border-t border-slate-900">
         <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Manual Matrix Controls</span>
-        
+
         <div class="space-y-2 max-w-md">
           <div class="flex justify-between items-center">
-            <span>Function (E1: Structures) :</span>
+            <span>Function (E1: Structures, Contents and Facilities) :</span>
             <div class="flex items-center gap-2">
               <input type="range" min="0" max="1" step="0.05" value="1" data-idx="0" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
               <span id="lbl-0" class="text-white min-w-[24px] text-right">1.0</span>
@@ -83,7 +82,7 @@ import Footer from '../components/Footer.astro';
           </div>
 
           <div class="flex justify-between items-center">
-            <span>Elements (E2: Contents)    :</span>
+            <span>Features (E2: Structures, Contents and Facilities) :</span>
             <div class="flex items-center gap-2">
               <input type="range" min="0" max="1" step="0.05" value="1" data-idx="1" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
               <span id="lbl-1" class="text-white min-w-[24px] text-right">1.0</span>
@@ -91,10 +90,18 @@ import Footer from '../components/Footer.astro';
           </div>
 
           <div class="flex justify-between items-center">
-            <span>Execution (E3: Facilities):</span>
+            <span>Elements (E3: Structures, Contents and Facilities) :</span>
             <div class="flex items-center gap-2">
               <input type="range" min="0" max="1" step="0.05" value="1" data-idx="2" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
               <span id="lbl-2" class="text-white min-w-[24px] text-right">1.0</span>
+            </div>
+          </div>
+
+          <div class="flex justify-between items-center">
+            <span>Execution (E4: Structures, Contents and Facilities) :</span>
+            <div class="flex items-center gap-2">
+              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="3" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
+              <span id="lbl-3" class="text-white min-w-[24px] text-right">1.0</span>
             </div>
           </div>
         </div>
@@ -107,7 +114,7 @@ import Footer from '../components/Footer.astro';
 
   <script>
     const apiEndpoint = `${window.location.origin}/api/v1/compute`;
-    
+
     let simMatrix = [
       [0.95, 0.95, 0.95],
       [0.95, 0.95, 0.95],
@@ -138,7 +145,7 @@ import Footer from '../components/Footer.astro';
 
       if (resA) resA.innerText = (data.metric_a_compliance * 100).toFixed(0) + '%';
       if (resB) resB.innerText = (data.metric_b_integrity * 100).toFixed(0) + '%';
-      
+
       if (statusText) {
         statusText.innerText = data.status;
         if (data.metric_b_integrity === 0 || data.status === "CRITICAL_RISK_SWITCH_TRIGGERED") {
@@ -152,7 +159,7 @@ import Footer from '../components/Footer.astro';
       }
     }
 
-    // Dynamic Catastrophic Injector 
+    // Dynamic Catastrophic Injector
     document.getElementById('injectBtn')?.addEventListener('click', () => {
       simMatrix = [
         [0.95, 0.95, 0.95], [0.95, 0.95, 0.95], [0.95, 0.95, 0.95], [0.95, 0.95, 0.95]
@@ -164,7 +171,7 @@ import Footer from '../components/Footer.astro';
 
       const domainNames = ["FUNCTION", "FEATURES", "ELEMENTS", "EXECUTION"];
       const enablerNames = ["STRUCTURES", "CONTENTS", "FACILITIES"];
-      
+
       const locationLine = document.getElementById('breachLocationLine');
       const locationText = document.getElementById('resBreach');
       if (locationLine && locationText) {
@@ -172,13 +179,15 @@ import Footer from '../components/Footer.astro';
         locationLine.classList.remove('hidden');
       }
 
-      // FIX: Check every single index before writing properties to avoid navigation thread crashes
+      // Update all 4 sliders to reflect the matrix
       const sliders = document.querySelectorAll('.sim-slider') as NodeListOf<HTMLInputElement>;
       sliders.forEach((slider) => {
         const idx = parseInt(slider.getAttribute('data-idx') || "0");
-        if (idx === 0) { slider.value = simMatrix[0][0].toString(); document.getElementById('lbl-0')!.innerText = simMatrix[0][0].toFixed(1); }
-        if (idx === 1) { slider.value = simMatrix[2][1].toString(); document.getElementById('lbl-1')!.innerText = simMatrix[2][1].toFixed(1); }
-        if (idx === 2) { slider.value = simMatrix[3][2].toString(); document.getElementById('lbl-2')!.innerText = simMatrix[3][2].toFixed(1); }
+        const col = idx === 3 ? 0 : idx; // Execution maps to col 0 (4×3 matrix)
+        const val = simMatrix[idx][col];
+        slider.value = val.toString();
+        const lbl = document.getElementById(`lbl-${idx}`);
+        if (lbl) lbl.innerText = val.toFixed(1);
       });
 
       dispatchSimulationPipeline();
@@ -204,12 +213,13 @@ import Footer from '../components/Footer.astro';
         const lbl = document.getElementById(`lbl-${idx}`);
         if (lbl) lbl.innerText = val.toFixed(1);
 
-        // FIX: Hardened boundaries using dynamic sub-array assignments
+        // Correct mapping: each slider controls its own row
         if (idx === 0) simMatrix[0][0] = val; // Function -> Structures
-        if (idx === 1) simMatrix[2][1] = val; // Elements -> Contents
-        if (idx === 2) simMatrix[3][2] = val; // Execution -> Facilities
+        if (idx === 1) simMatrix[1][1] = val; // Features -> Contents
+        if (idx === 2) simMatrix[2][2] = val; // Elements -> Facilities
+        if (idx === 3) simMatrix[3][0] = val; // Execution -> Structures
         dispatchSimulationPipeline();
       });
     });
   </script>
-</BaseLayout>
+</BaseLayout>   
