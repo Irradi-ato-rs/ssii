@@ -18,15 +18,5 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss()],
   },
-  prerender: {
-    default: false,
-  },
-  image: {
-    service: {
-      entrypoint: 'astro/assets/services/sharp',
-      config: {
-        allowBuild: () => true, 
-      }
-    }
-  }
+  compressHTML: true,
 });   

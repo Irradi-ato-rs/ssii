@@ -2,8 +2,11 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "ssii",
   "main": "./dist/_worker.js/index.js",
-  "compatibility_date": "2026-05-11",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_date": "2026-08-16",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "disable_nodejs_process_v2"
+  ],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS"
@@ -35,4 +38,4 @@
       "service": "void"
     }
   ]
-}
+}   
