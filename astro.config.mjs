@@ -1,6 +1,7 @@
 // astro.config.mjs
 import { defineConfig } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   site: 'https://ssii.fzoirm.com',
@@ -8,22 +9,14 @@ export default defineConfig({
   adapter: cloudflare({
     configPath: "./wrangler.jsonc",
     prerenderEnvironment: 'workerd',
-    // CRITICAL: Re-integrate the consumer worker here
     auxiliaryWorkers: [
       {
         configPath: "./wrangler.consumer.jsonc",
       }
     ],
   }),
-  prerender: {
-    default: false,
+  vite: {
+    plugins: [tailwindcss()],
   },
-  image: {
-    service: {
-      entrypoint: 'astro/assets/services/sharp',
-      config: {
-        allowBuild: () => true, 
-      }
-    }
-  }
+  compressHTML: true,
 });   
