@@ -2,7 +2,7 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "ssii",
   "main": "./dist/_worker.js/index.js",
-  "compatibility_date": "2026-08-16",
+  "compatibility_date": "2026-05-11",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "./dist",
