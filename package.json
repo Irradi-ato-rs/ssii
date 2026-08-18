@@ -17,12 +17,12 @@
     "deploy": "wrangler deploy"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "12.6.12",
-    "@astrojs/mdx": "4.3.13",
-    "@astrojs/rss": "4.0.14",
-    "@astrojs/sitemap": "3.6.1",
+    "@astrojs/cloudflare": "^14.2.1",
+    "@astrojs/mdx": "^7.0.5",
+    "@astrojs/rss": "^4.0.19",
+    "@astrojs/sitemap": "^3.7.3",
     "@tailwindcss/vite": "^4.3.3",
-    "astro": "5.16.9",
+    "astro": "^7.2.2",
     "jose": "^5.9.0",
     "uuid": "^10.0.0"
   },
@@ -42,5 +42,15 @@
     "preview_icon_url": "https://imagedelivery.net/wSMYJvS3Xw-n339CbDyDIA/394ca3c9-d351-4036-035a-9f6dfa26dd00/public",
     "preview_image_url": "https://imagedelivery.net/wSMYJvS3Xw-n339CbDyDIA/f40a6577-eed5-4f3e-cef4-b5ef0a1be100/preview",
     "publish": true
+  },
+  "allowScripts": {
+    "workerd@1.20260811.1": true,
+    "workerd@1.20260504.1": true,
+    "esbuild@0.28.1": true,
+    "esbuild@0.28.2": true,
+    "esbuild@0.27.3": true,
+    "sharp@0.35.2": true,
+    "sharp@0.35.3": true,
+    "sharp@0.34.5": true
   }
-}   
+}
