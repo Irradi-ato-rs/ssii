@@ -72,12 +72,12 @@ import Footer from '../components/Footer.astro';
       <div class="space-y-3 pt-4 border-t border-slate-900">
         <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Manual Matrix Controls</span>
 
-        <!-- FIX: Changed from max-w-lg to max-w-2xl to prevent text clipping/wrapping on desktop -->
         <div class="space-y-4 max-w-2xl">
           
           <!-- Row 1: Function -->
           <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-            <span class="text-slate-400">
+            <!-- sm:whitespace-nowrap guarantees desktop straight alignment -->
+            <span class="text-slate-400 sm:whitespace-nowrap">
               Function (E1: <span class="block sm:inline text-slate-500">Structures, Contents and Facilities</span>) :
             </span>
             <div class="flex items-center gap-2 justify-between sm:justify-end w-full sm:w-auto shrink-0">
@@ -88,7 +88,7 @@ import Footer from '../components/Footer.astro';
 
           <!-- Row 2: Features -->
           <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-            <span class="text-slate-400">
+            <span class="text-slate-400 sm:whitespace-nowrap">
               Features (E2: <span class="block sm:inline text-slate-500">Structures, Contents and Facilities</span>) :
             </span>
             <div class="flex items-center gap-2 justify-between sm:justify-end w-full sm:w-auto shrink-0">
@@ -99,7 +99,7 @@ import Footer from '../components/Footer.astro';
 
           <!-- Row 3: Elements -->
           <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-            <span class="text-slate-400">
+            <span class="text-slate-400 sm:whitespace-nowrap">
               Elements (E3: <span class="block sm:inline text-slate-500">Structures, Contents and Facilities</span>) :
             </span>
             <div class="flex items-center gap-2 justify-between sm:justify-end w-full sm:w-auto shrink-0">
@@ -110,7 +110,7 @@ import Footer from '../components/Footer.astro';
 
           <!-- Row 4: Execution -->
           <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-            <span class="text-slate-400">
+            <span class="text-slate-400 sm:whitespace-nowrap">
               Execution (E4: <span class="block sm:inline text-slate-500">Structures, Contents and Facilities</span>) :
             </span>
             <div class="flex items-center gap-2 justify-between sm:justify-end w-full sm:w-auto shrink-0">
