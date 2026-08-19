@@ -2,7 +2,6 @@
 // src/components/Footer.astro
 const currentYear = new Date().getFullYear();
 
-// ACTUAL wallet addresses
 const donations = {
   btc: "bc1q8z8ype30l5ztkmrsnj9lmap4kdd370wkstsvrj",
   eth: "0x930Fa53551E641d47Cf0EcafDD230B2eBEa61DA2",
@@ -10,15 +9,16 @@ const donations = {
 };
 ---
 
-<footer class="border-t border-slate-900 pt-8 text-[10px] text-slate-600 mt-12 w-full text-left font-mono">
+<!-- Text changed to white (text-white), labels to light gray (text-slate-400) -->
+<footer class="border-t border-slate-800 pt-8 text-[10px] text-white mt-12 w-full text-left font-mono bg-transparent">
   
-  <!-- Crypto Funding -->
-  <!-- mt-8 separates from page content, mb-12 separates from copyright -->
+  <!-- Crypto Funding and Donations -->
   <div class="space-y-1 mt-8 mb-12">
-    <p class="font-bold text-slate-500">Fund VoidMetric:</p>
-    <p><span class="text-slate-400">BTC:</span> <code class="bg-slate-900 px-1 rounded">{donations.btc}</code></p>
-    <p><span class="text-slate-400">ETH:</span> <code class="bg-slate-900 px-1 rounded">{donations.eth}</code></p>
-    <p><span class="text-slate-400">XLM:</span> <code class="bg-slate-900 px-1 rounded">{donations.xlm}</code></p>
+    <p class="font-bold text-slate-300">Fund VoidMetric:</p>
+    <!-- Labels slightly dimmer, addresses bright white -->
+    <p><span class="text-slate-400">BTC:</span> <code class="bg-slate-900/80 px-1 rounded text-white">{donations.btc}</code></p>
+    <p><span class="text-slate-400">ETH:</span> <code class="bg-slate-900/80 px-1 rounded text-white">{donations.eth}</code></p>
+    <p><span class="text-slate-400">XLM:</span> <code class="bg-slate-900/80 px-1 rounded text-white">{donations.xlm}</code></p>
   </div>
 
   <!-- Copyright -->
