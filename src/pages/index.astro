@@ -72,35 +72,43 @@ import Footer from '../components/Footer.astro';
       <div class="space-y-3 pt-4 border-t border-slate-900">
         <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Manual Matrix Controls</span>
 
-        <div class="space-y-2 max-w-lg">
-          <div class="flex justify-between items-center">
-            <span class="whitespace-nowrap">Function (E1: Structures, Contents and Facilities) :</span>
-            <div class="flex items-center gap-2 ml-3">
-              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="0" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
+        <div class="space-y-4 max-w-lg">
+          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+            <span class="text-slate-400">
+              Function (E1: <span class="block sm:inline text-slate-500">Structures, Contents and Facilities</span>) :
+            </span>
+            <div class="flex items-center gap-2 justify-between sm:justify-end w-full sm:w-auto shrink-0">
+              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="0" class="sim-slider w-full sm:w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
               <span id="lbl-0" class="text-white min-w-[24px] text-right">1.0</span>
             </div>
           </div>
 
-          <div class="flex justify-between items-center">
-            <span class="whitespace-nowrap">Features (E2: Structures, Contents and Facilities) :</span>
-            <div class="flex items-center gap-2 ml-3">
-              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="1" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
+          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+            <span class="text-slate-400">
+              Features (E2: <span class="block sm:inline text-slate-500">Structures, Contents and Facilities</span>) :
+            </span>
+            <div class="flex items-center gap-2 justify-between sm:justify-end w-full sm:w-auto shrink-0">
+              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="1" class="sim-slider w-full sm:w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
               <span id="lbl-1" class="text-white min-w-[24px] text-right">1.0</span>
             </div>
           </div>
 
-          <div class="flex justify-between items-center">
-            <span class="whitespace-nowrap">Elements (E3: Structures, Contents and Facilities) :</span>
-            <div class="flex items-center gap-2 ml-3">
-              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="2" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
+          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+            <span class="text-slate-400">
+              Elements (E3: <span class="block sm:inline text-slate-500">Structures, Contents and Facilities</span>) :
+            </span>
+            <div class="flex items-center gap-2 justify-between sm:justify-end w-full sm:w-auto shrink-0">
+              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="2" class="sim-slider w-full sm:w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
               <span id="lbl-2" class="text-white min-w-[24px] text-right">1.0</span>
             </div>
           </div>
 
-          <div class="flex justify-between items-center">
-            <span class="whitespace-nowrap">Execution (E4: Structures, Contents and Facilities) :</span>
-            <div class="flex items-center gap-2 ml-3">
-              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="3" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
+          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+            <span class="text-slate-400">
+              Execution (E4: <span class="block sm:inline text-slate-500">Structures, Contents and Facilities</span>) :
+            </span>
+            <div class="flex items-center gap-2 justify-between sm:justify-end w-full sm:w-auto shrink-0">
+              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="3" class="sim-slider w-full sm:w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
               <span id="lbl-3" class="text-white min-w-[24px] text-right">1.0</span>
             </div>
           </div>
