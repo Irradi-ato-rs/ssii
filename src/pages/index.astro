@@ -76,7 +76,8 @@ import Footer from '../components/Footer.astro';
           
           <!-- Row 1: Function -->
           <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center sm:gap-4 gap-1">
-            <span class="whitespace-nowrap! text-slate-400 text-sm">
+            <!-- No whitespace-nowrap on mobile; only nowrap at sm+ -->
+            <span class="text-slate-400 text-sm break-words sm:whitespace-nowrap!">
               Function (E1: Structures, Contents &amp; Facilities):
             </span>
             <div class="flex items-center gap-2 shrink-0">
@@ -87,7 +88,7 @@ import Footer from '../components/Footer.astro';
       
           <!-- Row 2: Features -->
           <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center sm:gap-4 gap-1">
-            <span class="whitespace-nowrap! text-slate-400 text-sm">
+            <span class="text-slate-400 text-sm break-words sm:whitespace-nowrap!">
               Features (E2: Structures, Contents &amp; Facilities):
             </span>
             <div class="flex items-center gap-2 shrink-0">
@@ -98,7 +99,7 @@ import Footer from '../components/Footer.astro';
       
           <!-- Row 3: Elements -->
           <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center sm:gap-4 gap-1">
-            <span class="whitespace-nowrap! text-slate-400 text-sm">
+            <span class="text-slate-400 text-sm break-words sm:whitespace-nowrap!">
               Elements (E3: Structures, Contents &amp; Facilities):
             </span>
             <div class="flex items-center gap-2 shrink-0">
@@ -109,7 +110,7 @@ import Footer from '../components/Footer.astro';
       
           <!-- Row 4: Execution -->
           <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center sm:gap-4 gap-1">
-            <span class="whitespace-nowrap! text-slate-400 text-sm">
+            <span class="text-slate-400 text-sm break-words sm:whitespace-nowrap!">
               Execution (E4: Structures, Contents &amp; Facilities):
             </span>
             <div class="flex items-center gap-2 shrink-0">
