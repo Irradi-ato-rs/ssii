@@ -68,59 +68,58 @@ import Footer from '../components/Footer.astro';
         <div id="breachLocationLine" class="hidden text-rose-500 font-bold font-mono">BREACH VECTOR ENFORCED    : <span id="resBreach">-</span></div>
       </div>
 
-      <!-- Manual Matrix Controls -->
-      <div class="space-y-3 pt-4 border-t border-slate-900">
-        <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Manual Matrix Controls</span>
-      
-        <div class="space-y-4 w-full max-w-2xl">
-          
-          <!-- Row 1: Function -->
-          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-baseline sm:gap-4">
-            <span class="text-slate-400 block sm:inline-block sm:w-auto whitespace-nowrap shrink-0">
-              Function (E1: <span class="text-slate-500">Structures, Contents and Facilities</span>) :
-            </span>
-            <div class="flex items-center gap-2 justify-between sm:justify-end w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
-              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="0" class="sim-slider w-full sm:w-28 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
-              <span id="lbl-0" class="text-white min-w-[24px] text-right">1.0</span>
-            </div>
-          </div>
-      
-          <!-- Row 2: Features -->
-          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-baseline sm:gap-4">
-            <span class="text-slate-400 block sm:inline-block sm:w-auto whitespace-nowrap shrink-0">
-              Features (E2: <span class="text-slate-500">Structures, Contents and Facilities</span>) :
-            </span>
-            <div class="flex items-center gap-2 justify-between sm:justify-end w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
-              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="1" class="sim-slider w-full sm:w-28 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
-              <span id="lbl-1" class="text-white min-w-[24px] text-right">1.0</span>
-            </div>
-          </div>
-      
-          <!-- Row 3: Elements -->
-          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-baseline sm:gap-4">
-            <span class="text-slate-400 block sm:inline-block sm:w-auto whitespace-nowrap shrink-0">
-              Elements (E3: <span class="text-slate-500">Structures, Contents and Facilities</span>) :
-            </span>
-            <div class="flex items-center gap-2 justify-between sm:justify-end w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
-              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="2" class="sim-slider w-full sm:w-28 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
-              <span id="lbl-2" class="text-white min-w-[24px] text-right">1.0</span>
-            </div>
-          </div>
-      
-          <!-- Row 4: Execution -->
-          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-baseline sm:gap-4">
-            <!-- Added shrink-0 to prevent flex from squeezing this span -->
-            <span class="text-slate-400 block sm:inline-block sm:w-auto whitespace-nowrap shrink-0">
-              Execution (E4: <span class="text-slate-500">Structures, Contents and Facilities</span>) :
-            </span>
-            <div class="flex items-center gap-2 justify-between sm:justify-end w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
-              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="3" class="sim-slider w-full sm:w-28 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
-              <span id="lbl-3" class="text-white min-w-[24px] text-right">1.0</span>
-            </div>
-          </div>
-      
-        </div>
-      </div>      
+<!-- Manual Matrix Controls -->
+<div class="space-y-3 pt-4 border-t border-slate-900">
+  <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Manual Matrix Controls</span>
+
+  <div class="space-y-4 w-full max-w-2xl">
+    
+    <!-- Row 1: Function -->
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center sm:gap-4 flex-nowrap">
+      <span class="text-slate-400 block sm:inline-block sm:w-auto whitespace-nowrap shrink-0">
+        Function (E1: <span class="text-slate-500">Structures, Contents and Facilities</span>) :
+      </span>
+      <div class="flex items-center gap-2 justify-between sm:justify-end w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
+        <input type="range" min="0" max="1" step="0.05" value="1" data-idx="0" class="sim-slider w-full sm:w-28 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
+        <span id="lbl-0" class="text-white min-w-[24px] text-right">1.0</span>
+      </div>
+    </div>
+
+    <!-- Row 2: Features -->
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center sm:gap-4 flex-nowrap">
+      <span class="text-slate-400 block sm:inline-block sm:w-auto whitespace-nowrap shrink-0">
+        Features (E2: <span class="text-slate-500">Structures, Contents and Facilities</span>) :
+      </span>
+      <div class="flex items-center gap-2 justify-between sm:justify-end w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
+        <input type="range" min="0" max="1" step="0.05" value="1" data-idx="1" class="sim-slider w-full sm:w-28 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
+        <span id="lbl-1" class="text-white min-w-[24px] text-right">1.0</span>
+      </div>
+    </div>
+
+    <!-- Row 3: Elements -->
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center sm:gap-4 flex-nowrap">
+      <span class="text-slate-400 block sm:inline-block sm:w-auto whitespace-nowrap shrink-0">
+        Elements (E3: <span class="text-slate-500">Structures, Contents and Facilities</span>) :
+      </span>
+      <div class="flex items-center gap-2 justify-between sm:justify-end w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
+        <input type="range" min="0" max="1" step="0.05" value="1" data-idx="2" class="sim-slider w-full sm:w-28 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
+        <span id="lbl-2" class="text-white min-w-[24px] text-right">1.0</span>
+      </div>
+    </div>
+
+    <!-- Row 4: Execution -->
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center sm:gap-4 flex-nowrap">
+      <span class="text-slate-400 block sm:inline-block sm:w-auto whitespace-nowrap shrink-0">
+        Execution (E4: <span class="text-slate-500">Structures, Contents and Facilities</span>) :
+      </span>
+      <div class="flex items-center gap-2 justify-between sm:justify-end w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
+        <input type="range" min="0" max="1" step="0.05" value="1" data-idx="3" class="sim-slider w-full sm:w-28 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
+        <span id="lbl-3" class="text-white min-w-[24px] text-right">1.0</span>
+      </div>
+    </div>
+
+  </div>
+</div>         
 
      </div>
     </section>
