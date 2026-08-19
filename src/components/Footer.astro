@@ -2,6 +2,7 @@
 // src/components/Footer.astro
 const currentYear = new Date().getFullYear();
 
+// ACTUAL wallet addresses
 const donations = {
   btc: "bc1q8z8ype30l5ztkmrsnj9lmap4kdd370wkstsvrj",
   eth: "0x930Fa53551E641d47Cf0EcafDD230B2eBEa61DA2",
@@ -9,18 +10,15 @@ const donations = {
 };
 ---
 
-<!-- Added bg-white, changed text to text-slate-900 for contrast -->
-<footer class="border-t border-slate-200 bg-white pt-8 text-[10px] text-slate-900 mt-12 w-full text-left font-mono">
+<footer class="border-t border-slate-900 pt-8 text-[10px] text-slate-600 mt-12 w-full text-left font-mono">
   
-  <!-- Crypto Funding and Donations -->
+  <!-- Crypto Funding -->
+  <!-- mt-8 separates from page content, mb-12 separates from copyright -->
   <div class="space-y-1 mt-8 mb-12">
-    <!-- Updated header to darker color -->
-    <p class="font-bold text-slate-800">Fund VoidMetric:</p>
-    
-    <!-- Updated labels to darker gray -->
-    <p><span class="text-slate-600">BTC:</span> <code class="bg-slate-200 px-1 rounded text-slate-900">{donations.btc}</code></p>
-    <p><span class="text-slate-600">ETH:</span> <code class="bg-slate-200 px-1 rounded text-slate-900">{donations.eth}</code></p>
-    <p><span class="text-slate-600">XLM:</span> <code class="bg-slate-200 px-1 rounded text-slate-900">{donations.xlm}</code></p>
+    <p class="font-bold text-slate-500">Fund VoidMetric:</p>
+    <p><span class="text-slate-400">BTC:</span> <code class="bg-slate-900 px-1 rounded">{donations.btc}</code></p>
+    <p><span class="text-slate-400">ETH:</span> <code class="bg-slate-900 px-1 rounded">{donations.eth}</code></p>
+    <p><span class="text-slate-400">XLM:</span> <code class="bg-slate-900 px-1 rounded">{donations.xlm}</code></p>
   </div>
 
   <!-- Copyright -->
