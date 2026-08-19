@@ -19,4 +19,18 @@
   a:hover {
     color: #94a3b8;
   }
+
+  /* Mobile Overrides: Center text & auto-width buttons */
+  @media (max-width: 639px) {
+    body {
+      text-align: center;
+    }
+
+    button {
+      width: auto;
+      display: inline-block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  }
 }   
