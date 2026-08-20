@@ -1,0 +1,44 @@
+name: OpenSSF Scorecard Analysis
+on:
+  schedule:
+    - cron: '30 4 * * 6'
+  push:
+    branches: [ "main" ]
+
+# Explicitly sets the token to read-only permissions for safety
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      # Still needed to upload the results privately to your internal GitHub Security tab
+      security-events: write
+
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: "Run analysis"
+        uses: ossf/scorecard-action@v2.4.1 # Double-check the latest version when deploying
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # Set to false to keep all findings 100% private to you and repository maintainers
+          publish_results: false
+
+      - name: "Upload artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: SARIF file
+          path: results.sarif
+          retention-days: 5
+
+      # Uploads results to your private GitHub Code Scanning dashboard
+      - name: "Upload to code-scanning"
+        uses: github/code-scanning-workflow-action@v2
+        with:
+          sarif_file: results.sarif
