@@ -50,11 +50,12 @@ $\text{SI}_{\text{raw}}$ is further adjusted by a **spectral chaos penalty**, de
 $$
 \text{ChaosPenalty} = \max\left(0,\ \lambda_{\max}(\mathbf{C}) - \frac{\text{trace}(\mathbf{C})}{n}\right)
 $$
+
 where $\mathbf{C}$ is the domain-covariance matrix and $n$ is the number of domains.
 
 $$
 \text{SI}_{\text{Live}} = \max(0.0001,\ \text{SI}_{\text{raw}} - \text{ChaosPenalty})
-$$   
+$$      
 
 > **Theorem 1 (The Risk Switch):** If any individual verification signal's confidence falls below a critical threshold (currently $< 0.05$), the breaker trips and $\text{SI}_{\text{Live}}$ is capped at a near-zero floor (currently $0.015$) regardless of every other signal's value. A single critical vulnerability cannot be diluted by high scores elsewhere in the matrix.
 
