@@ -1,6 +1,6 @@
 // workers/ssii-consumer.ts
 // Zero-persistence: pure computation + structured log. No KV, no D1.
-import { runScoringEngine, type PaddedStreamNode } from '../src/lib/scoring-engine';
+import { runScoringEngine, type PaddedStreamNode, type EngineParams } from '../src/lib/scoring-engine';
 
 export interface Env {
   // No KV namespaces. No D1. No Durable Objects.
@@ -13,6 +13,7 @@ export interface VoidMessage {
   threatIntelVector: number[];
   previousStream?: PaddedStreamNode[];
   previousThreatIntelVector?: number[];
+  hyperparams?: Partial<EngineParams>;
   timestamp: number;
 }
 
@@ -30,13 +31,20 @@ export default {
           continue;
         }
 
-        const { paddedStream, threatIntelVector, previousStream, previousThreatIntelVector } = body;
+        const {
+          paddedStream,
+          threatIntelVector,
+          previousStream,
+          previousThreatIntelVector,
+          hyperparams,
+        } = body;
 
         const result = runScoringEngine(
           paddedStream,
           threatIntelVector || [0, 0, 0],
           previousStream,
-          previousThreatIntelVector
+          previousThreatIntelVector,
+          hyperparams
         );
 
         console.log(`[SSII] ✅ Computed: ${body.tenantId}`, {
@@ -46,11 +54,12 @@ export default {
           status: result.status,
           wi: result.watermelon_index,
           hf: result.honest_failure_index,
+          params: hyperparams ? "custom" : "default",
         });
 
         message.ack();
       } catch (err) {
-        console.error(`[SSII] ❌ Critical Error: ${err.message}`, message.body);
+        console.error(`[SSII] ❌ Critical Error: ${(err as Error).message}`, message.body);
         message.retry();
       }
     }

@@ -1,16 +1,16 @@
 ---
 // src/pages/architecture.astro
-export const prerender = false; // High-speed global edge caching pass
+export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Footer from '../components/Footer.astro';
 ---
 
-<BaseLayout title="Architecture Specification | VoidMetric / iclassed">
+<BaseLayout title="Architecture Specification | VoidMetric">
   <main class="w-full max-w-2xl mx-auto px-4 py-16 text-left text-slate-300 font-mono text-xs leading-relaxed selection:bg-slate-800">
 
     <header class="mb-12 space-y-2">
       <h1 class="text-xl font-bold tracking-tight text-white"><a href="https://ssii.fzoirm.com">VOIDMETRIC</a> ARCHITECTURE</h1>
-      <p class="text-slate-400">The Decoupled Dual-Engine & Stateless Edge Pipeline Architecture</p>
+      <p class="text-slate-400">The Decoupled Dual-Metric &amp; Stateless Edge Pipeline Architecture</p>
       <p class="text-slate-500">Document ID: VM-ARCH-2026.08 // Classification: Open Core</p>
     </header>
 
@@ -23,19 +23,19 @@ import Footer from '../components/Footer.astro';
         <div>
           <span class="text-white font-bold">[PUBLIC_OPEN_CORE]</span>
           <p class="text-slate-500 mt-1 pl-4">
-            Houses the Astro UI layer, manual simulation sandboxes, and headless mathematical algorithms. Accessible to academic peers and client infrastructure architects for code auditing. Tenant identity records are not part of this boundary — see below.
+            Houses the Astro UI layer, manual simulation sandboxes, and headless mathematical algorithms (structure, formulas, constraints). Accessible to academic peers and client infrastructure architects for code auditing. Tenant identity records and per-tenant hyperparameters are not part of this boundary.
           </p>
         </div>
         <div>
           <span class="text-white font-bold">[PRIVATE_INGESTION_CORE]</span>
           <p class="text-slate-500 mt-1 pl-4">
-            In a limited fashion, isolated edge parsing worker handles raw enterprise IdP, SIEM and telemetry webhooks (Okta, Tenable, Sentinel et al). Transforms counts into matrix states via proprietary normalization keys, hiding stakeholders/clients infrastructure details.
+            Isolated edge worker handles raw enterprise IdP, SIEM, and telemetry webhooks (Okta, Tenable, Sentinel, et al.). Validates tokens, decrypts payloads, applies tenant-scoped normalization parameters ($f_{norm}$ hyperparameters: decay rate, drift volatility, sigmoid shape, priority coefficients, enabler weights, spectral scale, breaker thresholds), and transforms raw signals into the 4×3 matrix state. Per-tenant tuning keys are stored in a private KV namespace and never committed to the public repository.
           </p>
         </div>
         <div>
           <span class="text-white font-bold">[TENANT_DIRECTORY]</span>
           <p class="text-slate-500 mt-1 pl-4">
-            Customer domain-to-identity-provider records (tenant IDs, OIDC endpoints) are held exclusively in a private Cloudflare KV namespace, populated out-of-band during onboarding. Never committed to the public repository. The lookup logic that queries this data is open-core; the records themselves are not.
+            Customer domain-to-identity-provider records (tenant IDs, OIDC endpoints), per-tenant hyperparameters, and latest raw telemetry snapshots are held exclusively in a private Cloudflare KV namespace, populated out-of-band during onboarding. Never committed to the public repository. The lookup logic that queries this data is open-core; the records themselves are not.
           </p>
         </div>
       </div>
@@ -44,34 +44,48 @@ import Footer from '../components/Footer.astro';
     <section class="mb-12 space-y-4">
       <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— 2. STATELESS DATA EXTRACTION PIPELINE</h2>
       <p class="text-slate-400">
-        VoidMetric does not preserve database state for telemetry. Data metrics pass directly through serverless threads at the edge, mitigating data footprint exposures.
+        VoidMetric does not preserve database state for telemetry or computed metrics. Data passes directly through serverless threads at the edge, mitigating data footprint exposure.
       </p>
       <pre class="bg-slate-950 border border-slate-900 rounded-lg p-4 text-[11px] font-mono text-slate-400 overflow-x-auto leading-relaxed">
 [ Raw Inbound Telemetry Stream ]  &lt;-- Pushed via automated enterprise webhooks
                │
                ▼
  ┌───────────────────────────┐
- │  Private Ingestion Node   │  &lt;-- Validates token and decrypts payloads
- │     (Isolated Worker)     │
+ │  Private Ingestion Node   │  &lt;-- Validates token, decrypts payload,
+ │     (Void Worker)         │     applies tenant-scoped f_norm
  └─────────────┬─────────────┘
-               │ Executing proprietary f_norm normalization mappings
+               │  12-node paddedStream + hyperparams + threat vector
                ▼
  ┌───────────────────────────┐
- │  VoidMetric Math Engine   │  &lt;-- Invokes POST /api/compute
- │  (Stateless V8 Isolate)   │
+ │  Cloudflare Queue         │  &lt;-- "voidmetric-events"
+ └─────────────┬─────────────┘
+               │
+               ▼
+ ┌───────────────────────────┐
+ │  SSII Consumer            │  &lt;-- Pure compute, zero-persistence
+ │  (Stateless V8 Isolate)   │     runScoringEngine(stream, params)
  └──────┬─────────────┬──────┘
         │             │
         ▼             ▼
    [ METRIC A ]  [ METRIC B ]
-   Linear CapEx  Multiplicative Posture
-   (Compliance)  (The Risk Switch Engine)
+   Linear Additive  Multiplicative Core
+   (Strategic       (Operational
+    Posture)         Blueprint)
+        │             │
+        └──────┬──────┘
+               ▼
+        [ DIAGNOSTICS ]
+        WI · HF · Identity 1
+               │
+               ▼
+        [ Structured Log ]  &lt;-- Logpush → alerting
       </pre>
     </section>
 
     <section class="mb-12 space-y-4">
-      <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— 3. VERIFICATION FIELD CONSTRAINTS (4x3 MATRIX)</h2>
+      <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— 3. VERIFICATION FIELD CONSTRAINTS (4×3 MATRIX)</h2>
       <p class="text-slate-400">
-        Every log entry maps dynamically into specific coordinates inside our $4 \times 3$ verification fabric. The engine ensures that administrative checkmarks can never subsidize critical technical flaws.
+        Every log entry maps dynamically into specific coordinates inside the $4 \times 3$ verification fabric. The engine ensures that administrative checkmarks can never subsidize critical technical flaws.
       </p>
 
       <div class="space-y-4 text-[11px]">
@@ -84,30 +98,30 @@ import Footer from '../components/Footer.astro';
 
         <div class="grid grid-cols-4 border-b border-slate-900/40 pb-1.5">
           <div class="text-white font-bold">1. Function</div>
-          <div class="text-slate-500">Architecture Policy</div>
-          <div class="text-slate-500">Logic Flows / Rules</div>
+          <div class="text-slate-500">Architecture / Policy</div>
+          <div class="text-slate-500">Logic / Source Code</div>
           <div class="text-slate-500">Cloud Environments</div>
         </div>
 
         <div class="grid grid-cols-4 border-b border-slate-900/40 pb-1.5">
           <div class="text-white font-bold">2. Features</div>
-          <div class="text-slate-500">RBAC / IAM Schemas</div>
-          <div class="text-slate-500">Crypto Payloads</div>
-          <div class="text-slate-500">API Gateway Points</div>
+          <div class="text-slate-500">RBAC / Identity Gov</div>
+          <div class="text-slate-500">Crypto Parameters</div>
+          <div class="text-slate-500">API Gateways</div>
         </div>
 
         <div class="grid grid-cols-4 border-b border-slate-900/40 pb-1.5">
           <div class="text-white font-bold">3. Elements</div>
-          <div class="text-slate-500">Config Profiles</div>
-          <div class="text-slate-500">Data Asset Matrix</div>
+          <div class="text-slate-500">Configurations / Secrets</div>
+          <div class="text-slate-500">Data Assets / Payload</div>
           <div class="text-slate-500">Storage Buckets</div>
         </div>
 
         <div class="grid grid-cols-4 pb-1.5">
           <div class="text-white font-bold">4. Execution</div>
-          <div class="text-slate-500">Runtime Boundaries</div>
-          <div class="text-slate-500">Log/Telemetry Pipes</div>
-          <div class="text-slate-500">Compute Hardware</div>
+          <div class="text-slate-500">Runtime Environments</div>
+          <div class="text-slate-500">Log / Telemetry Pipelines</div>
+          <div class="text-slate-500">Compute Infrastructure</div>
         </div>
       </div>
     </section>
@@ -122,15 +136,14 @@ import Footer from '../components/Footer.astro';
           <span>Average Evaluation Latency:</span><span class="text-white">&lt; 1.0 Millisecond</span>
         </div>
         <div class="flex justify-between border-b border-slate-900 pb-1">
-          <span>Network Payload Footprint:</span><span class="text-white">~216 Bytes</span>
+          <span>Queue Message Size:</span><span class="text-white">~1.2 KB per scoring cycle</span>
         </div>
         <div class="flex justify-between">
-          <span>State Persistent Databases:</span><span class="text-white">0 Bytes for telemetry (control-plane exceptions noted above)</span>
+          <span>State Persistent Databases:</span><span class="text-white">0 Bytes for telemetry or metrics (control-plane exceptions noted above)</span>
         </div>
       </div>
     </section>
 
     <Footer />
-
   </main>
-</BaseLayout>
+</BaseLayout>   

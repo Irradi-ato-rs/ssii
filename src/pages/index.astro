@@ -11,7 +11,7 @@ import Footer from '../components/Footer.astro';
     <header class="mb-12 space-y-2">
       <h1 class="text-xl font-bold tracking-tight text-white"><a href="https://fzoirm.com">VOIDMETRIC</a></h1>
       <p class="text-slate-400">Sovereign Systemic Integrity Intelligence</p>
-      <p class="text-slate-500">Zero-Persistence. Edge-Native. Non-Linear Operational Validation Engine.</p>
+      <p class="text-slate-500">Zero-Persistence. Edge-Native. Deterministic and Non-Linear Operational Validation Engine.</p>
     </header>
 
     <!-- Navigation Directory -->
@@ -46,7 +46,7 @@ import Footer from '../components/Footer.astro';
       <div class="space-y-1">
         <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— LIVE MATHEMATICAL SIMULATOR</h2>
         <p class="text-slate-400">
-          Demonstrating the **Zero Property** (Risk Switch). Inject an exploit vector to test how Metric B collapses to zero while traditional additive metrics (Metric A) mask systemic failure.
+          Demonstrating the <strong>Risk Switch</strong> (Guarantee 1). Inject a critical failure to test how Metric B collapses while the additive compliance metric (Metric A) masks systemic failure.
         </p>
       </div>
 
@@ -58,182 +58,195 @@ import Footer from '../components/Footer.astro';
         <button id="resetBtn" class="text-slate-500 underline underline-offset-4 hover:text-slate-400 text-left cursor-pointer text-sm sm:text-base">
           [RESET_MATRIX]
         </button>
-      </div>   
+      </div>
 
       <!-- Raw Text Posture Outputs Board -->
       <div class="space-y-1.5 pt-2">
-        <div>METRIC A (COMPLIANCE EFFORT) : <span id="resA" class="text-white font-bold">100%</span></div>
-        <div>METRIC B (SYSTEMIC INTEGRITY) : <span id="resB" class="text-emerald-400 font-bold transition-colors">100%</span></div>
+        <div>METRIC A (COMPLIANCE)       : <span id="resA" class="text-white font-bold">95%</span></div>
+        <div>METRIC B (INTEGRITY)        : <span id="resB" class="text-emerald-400 font-bold transition-colors">95%</span></div>
+        <div>WATERMELON INDEX            : <span id="resWI" class="text-slate-100 font-bold">0%</span></div>
         <div>CORE OPERATIONAL STATUS     : <span id="resStatus" class="text-emerald-400 font-bold transition-colors font-mono">NOMINAL</span></div>
         <div id="breachLocationLine" class="hidden text-rose-500 font-bold font-mono">BREACH VECTOR ENFORCED    : <span id="resBreach">-</span></div>
       </div>
 
       <!-- Manual Matrix Controls -->
       <div class="space-y-3 pt-4 border-t border-slate-900">
-        <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Manual Matrix Controls</span>
-      
+        <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Manual Matrix Controls (per-domain)</span>
+
         <div class="space-y-4 w-full max-w-lg">
-          
+
           <!-- Row 1: Function -->
           <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center sm:gap-4 gap-1">
-            <!-- No whitespace-nowrap on mobile; only nowrap at sm+ -->
             <span class="text-slate-400 text-sm break-words sm:whitespace-nowrap!">
-              Function (E1: Structures, Contents &amp; Facilities)
+              Function (Structures, Contents &amp; Facilities)
             </span>
             <div class="flex items-center gap-2 shrink-0">
-              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="0" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
-              <span id="lbl-0" class="text-white min-w-[24px] text-right text-sm">1.0</span>
+              <input type="range" min="0" max="1" step="0.05" value="0.95" data-idx="0" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
+              <span id="lbl-0" class="text-white min-w-[24px] text-right text-sm">0.95</span>
             </div>
           </div>
-      
+
           <!-- Row 2: Features -->
           <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center sm:gap-4 gap-1">
             <span class="text-slate-400 text-sm break-words sm:whitespace-nowrap!">
-              Features (E2: Structures, Contents &amp; Facilities)
+              Features (Structures, Contents &amp; Facilities)
             </span>
             <div class="flex items-center gap-2 shrink-0">
-              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="1" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
-              <span id="lbl-1" class="text-white min-w-[24px] text-right text-sm">1.0</span>
+              <input type="range" min="0" max="1" step="0.05" value="0.95" data-idx="1" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
+              <span id="lbl-1" class="text-white min-w-[24px] text-right text-sm">0.95</span>
             </div>
           </div>
-      
+
           <!-- Row 3: Elements -->
           <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center sm:gap-4 gap-1">
             <span class="text-slate-400 text-sm break-words sm:whitespace-nowrap!">
-              Elements (E3: Structures, Contents &amp; Facilities)
+              Elements (Structures, Contents &amp; Facilities)
             </span>
             <div class="flex items-center gap-2 shrink-0">
-              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="2" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
-              <span id="lbl-2" class="text-white min-w-[24px] text-right text-sm">1.0</span>
+              <input type="range" min="0" max="1" step="0.05" value="0.95" data-idx="2" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
+              <span id="lbl-2" class="text-white min-w-[24px] text-right text-sm">0.95</span>
             </div>
           </div>
-      
+
           <!-- Row 4: Execution -->
           <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center sm:gap-4 gap-1">
             <span class="text-slate-400 text-sm break-words sm:whitespace-nowrap!">
-              Execution (E4: Structures, Contents &amp; Facilities)
+              Execution (Structures, Contents &amp; Facilities)
             </span>
             <div class="flex items-center gap-2 shrink-0">
-              <input type="range" min="0" max="1" step="0.05" value="1" data-idx="3" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
-              <span id="lbl-3" class="text-white min-w-[24px] text-right text-sm">1.0</span>
+              <input type="range" min="0" max="1" step="0.05" value="0.95" data-idx="3" class="sim-slider w-24 h-px bg-slate-800 appearance-none accent-white cursor-pointer" />
+              <span id="lbl-3" class="text-white min-w-[24px] text-right text-sm">0.95</span>
             </div>
           </div>
-      
-        </div>
 
+        </div>
       </div>
     </section>
 
     <Footer />
-
   </main>
 
   <script>
-    const apiEndpoint = `${window.location.origin}/api/v1/compute`;
+    const apiEndpoint = `${window.location.origin}/api/sandbox`;
 
+    const INITIAL = 0.95;
     let simMatrix = [
-      [0.95, 0.95, 0.95],
-      [0.95, 0.95, 0.95],
-      [0.95, 0.95, 0.95],
-      [0.95, 0.95, 0.95]
+      [INITIAL, INITIAL, INITIAL],
+      [INITIAL, INITIAL, INITIAL],
+      [INITIAL, INITIAL, INITIAL],
+      [INITIAL, INITIAL, INITIAL],
     ];
+
+    const domainNames = ['FUNCTION', 'FEATURES', 'ELEMENTS', 'EXECUTION'];
+    const enablerNames = ['STRUCTURES', 'CONTENTS', 'FACILITIES'];
+
+    function buildPaddedStream(matrix: number[][]): any[] {
+      const now = Math.floor(Date.now() / 1000);
+      const nodes = [];
+      for (let i = 0; i < 4; i++) {
+        for (let j = 0; j < 3; j++) {
+          nodes.push({
+            maskedValue: matrix[i][j],
+            row: i,
+            col: j,
+            lastTelemetryHeartbeat: now,
+          });
+        }
+      }
+      return nodes;
+    }
 
     async function dispatchSimulationPipeline() {
       try {
         const response = await fetch(apiEndpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ matrix: simMatrix })
+          body: JSON.stringify({
+            paddedStream: buildPaddedStream(simMatrix),
+            threatIntelVector: [0, 0, 0],
+          }),
         });
         if (!response.ok) throw new Error(`HTTP_FAULT: ${response.status}`);
         const data = await response.json();
         renderUiUpdate(data);
       } catch (err) {
-        console.error("Calculation transmission interrupted:", err);
+        console.error('Calculation transmission interrupted:', err);
       }
     }
 
     function renderUiUpdate(data: any) {
       const resA = document.getElementById('resA');
       const resB = document.getElementById('resB');
+      const resWI = document.getElementById('resWI');
       const statusText = document.getElementById('resStatus');
       const breachLine = document.getElementById('breachLocationLine');
 
       if (resA) resA.innerText = (data.metric_a_compliance * 100).toFixed(0) + '%';
       if (resB) resB.innerText = (data.metric_b_integrity * 100).toFixed(0) + '%';
+      if (resWI) resWI.innerText = (data.watermelon_index * 100).toFixed(0) + '%';
 
+      const critical = data.status === 'CRITICAL_RISK_SWITCH_TRIGGERED';
       if (statusText) {
-        statusText.innerText = data.status;
-        if (data.metric_b_integrity === 0 || data.status === "CRITICAL_RISK_SWITCH_TRIGGERED") {
-          statusText.className = "text-rose-500 font-bold font-mono";
-          if (resB) resB.className = "text-rose-500 font-bold";
-        } else {
-          statusText.className = "text-emerald-400 font-bold font-mono";
-          if (resB) resB.className = "text-emerald-400 font-bold";
-          if (breachLine) breachLine.classList.add('hidden');
-        }
+        statusText.innerText = data.status.replace(/_/g, ' ');
+        statusText.className = critical
+          ? 'text-rose-500 font-bold font-mono'
+          : 'text-emerald-400 font-bold font-mono';
       }
+      if (resB) resB.className = critical
+        ? 'text-rose-500 font-bold'
+        : 'text-emerald-400 font-bold';
+      if (resWI) resWI.className = (data.watermelon_index > 0.5)
+        ? 'text-rose-400 font-bold'
+        : 'text-slate-100 font-bold';
     }
 
-    // Dynamic Catastrophic Injector
+    // --- Inject: random cell → 0.02 (below BREAKER_THRESHOLD 0.05) ---
     document.getElementById('injectBtn')?.addEventListener('click', () => {
-      simMatrix = [
-        [0.95, 0.95, 0.95], [0.95, 0.95, 0.95], [0.95, 0.95, 0.95], [0.95, 0.95, 0.95]
-      ];
-
+      simMatrix = simMatrix.map(row => [...row]);
       const randomRow = Math.floor(Math.random() * 4);
       const randomCol = Math.floor(Math.random() * 3);
-      simMatrix[randomRow][randomCol] = 0.0;
-
-      const domainNames = ["FUNCTION", "FEATURES", "ELEMENTS", "EXECUTION"];
-      const enablerNames = ["STRUCTURES", "CONTENTS", "FACILITIES"];
+      simMatrix[randomRow][randomCol] = 0.02;
 
       const locationLine = document.getElementById('breachLocationLine');
       const locationText = document.getElementById('resBreach');
       if (locationLine && locationText) {
-        locationText.innerText = `${domainNames[randomRow]}_${enablerNames[randomCol]}`;
+        locationText.innerText = `${domainNames[randomRow]} × ${enablerNames[randomCol]} (0.02)`;
         locationLine.classList.remove('hidden');
       }
 
-      // Update all 4 sliders to reflect the matrix
-      const sliders = document.querySelectorAll('.sim-slider') as NodeListOf<HTMLInputElement>;
-      sliders.forEach((slider) => {
-        const idx = parseInt(slider.getAttribute('data-idx') || "0");
-        const col = idx === 3 ? 0 : idx; // Execution maps to col 0 (4×3 matrix)
-        const val = simMatrix[idx][col];
-        slider.value = val.toString();
-        const lbl = document.getElementById(`lbl-${idx}`);
-        if (lbl) lbl.innerText = val.toFixed(1);
-      });
+      // Update the affected row's slider to reflect the minimum in that row
+      const rowMin = Math.min(...simMatrix[randomRow]);
+      const slider = document.querySelector(`[data-idx="${randomRow}"]`) as HTMLInputElement;
+      if (slider) slider.value = rowMin.toString();
+      const lbl = document.getElementById(`lbl-${randomRow}`);
+      if (lbl) lbl.innerText = rowMin.toFixed(2);
 
       dispatchSimulationPipeline();
     });
 
+    // --- Reset ---
     document.getElementById('resetBtn')?.addEventListener('click', () => {
       simMatrix = [
-        [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]
+        [INITIAL, INITIAL, INITIAL],
+        [INITIAL, INITIAL, INITIAL],
+        [INITIAL, INITIAL, INITIAL],
+        [INITIAL, INITIAL, INITIAL],
       ];
-      document.querySelectorAll('.sim-slider').forEach((s: any, idx) => {
-        s.value = "1";
-        const lbl = document.getElementById(`lbl-${idx}`);
-        if (lbl) lbl.innerText = "1.0";
-      });
+      document.querySelectorAll('.sim-slider').forEach(s => { (s as HTMLInputElement).value = INITIAL.toString(); });
+      document.querySelectorAll('[id^="lbl-"]').forEach(l => { l.innerText = INITIAL.toFixed(2); });
       document.getElementById('breachLocationLine')?.classList.add('hidden');
       dispatchSimulationPipeline();
     });
 
+    // --- Sliders: each controls its full row (all 3 cells) ---
     document.querySelectorAll('.sim-slider').forEach(slider => {
       slider.addEventListener('input', (e: any) => {
         const idx = parseInt(e.target.getAttribute('data-idx'));
         const val = parseFloat(e.target.value);
+        simMatrix[idx] = [val, val, val];
         const lbl = document.getElementById(`lbl-${idx}`);
-        if (lbl) lbl.innerText = val.toFixed(1);
-
-        // Correct mapping: each slider controls its own row
-        if (idx === 0) simMatrix[0][0] = val; // Function -> Structures
-        if (idx === 1) simMatrix[1][1] = val; // Features -> Contents
-        if (idx === 2) simMatrix[2][2] = val; // Elements -> Facilities
-        if (idx === 3) simMatrix[3][0] = val; // Execution -> Structures
+        if (lbl) lbl.innerText = val.toFixed(2);
+        document.getElementById('breachLocationLine')?.classList.add('hidden');
         dispatchSimulationPipeline();
       });
     });
