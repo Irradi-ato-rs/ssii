@@ -64,29 +64,16 @@ Each $C_{i,j}$ is itself derived from raw telemetry through a temporal decay fun
 $SI_{\text{raw}}$ is further adjusted by a spectral chaos penalty, derived from the principal eigenvalue of the domain-covariance matrix, which detects correlated multi-domain degradation that a naive per-cell view would miss:
 
 $$
-<<<<<<< HEAD
-\text{ChaosPenalty} = \max\left(0,\ \lambda_{\max}(\mathbf{C}) - \frac{\text{trace}(\mathbf{C})}{n}\right)
-$$
-
-where $\mathbf{C}$ is the domain-covariance matrix and $n$ is the number of domains.
-
-$$
-\text{SI}_{\text{Live}} = \max(0.0001,\ \text{SI}_{\text{raw}} - \text{ChaosPenalty})
-$$      
-
-> **Theorem 1 (The Risk Switch):** If any individual verification signal's confidence falls below a critical threshold (currently $< 0.05$), the breaker trips and $\text{SI}_{\text{Live}}$ is capped at a near-zero floor (currently $0.015$) regardless of every other signal's value. A single critical vulnerability cannot be diluted by high scores elsewhere in the matrix.
-=======
 \text{ChaosPenalty} = \kappa\,\max\!\Bigl(0,\;\lambda_{\max}(C) - \frac{\text{trace}(C)}{n}\Bigr), \quad \kappa = 0.25
 $$
 
 where $C$ is the domain-covariance matrix and $n$ is the number of domains.
->>>>>>> e47d05d (feat: dual-math scoring engine, zero-persistence, full data flow to visual)
 
 $$
 SI_{\text{Live}} = \max\!\bigl(0.0001,\; SI_{\text{raw}} - \text{ChaosPenalty}\bigr)
 $$
 
-**Guarantee 1 (The Risk Switch):** If any individual verification signal's confidence falls below a critical threshold (currently $< 0.05$), the breaker trips and $SI_{\text{Live}}$ is capped at a near-zero floor (currently $0.015$) regardless of every other signal's value. A single critical vulnerability cannot be diluted by high scores elsewhere in the matrix.
+**Guarantee 1 (The Risk Switch):** If any individual verification signal's confidence falls below a critical threshold (currently $< 0.05$), the breaker trips and $SI_{\text{Live}}$ is capped at a near-zero floor (currently $0.015$) regardless of every other signal's value. A single critical vulnerability cannot be diluted by high scores elsewhere in the matrix.   
 
 ---
 
@@ -193,7 +180,7 @@ HF is not a substitute for reading Score_A and SI_Live individually. It is a con
 
 ## 4. Compute Pipeline & Output Schema
 
-Computation runs asynchronously via a Cloudflare Queue. The consumer receives a pre-normalized, blinded 32-node telemetry stream, executes the scoring engine in memory, and emits a structured log. **No metric data is persisted** — no KV, no D1, no Durable Objects. Results exist only in the log stream.
+Computation runs asynchronously via a Cloudflare Queue. The consumer receives a pre-normalized, blinded 12-node telemetry stream, executes the scoring engine in memory, and emits a structured log. **No metric data is persisted** — no KV, no D1, no Durable Objects. Results exist only in the log stream.
 
 ### Queue message shape:
 
