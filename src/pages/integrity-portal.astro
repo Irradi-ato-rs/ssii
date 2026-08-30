@@ -2,7 +2,7 @@
 // src/pages/integrity-portal.astro
 export const prerender = false;
 import { env } from 'cloudflare:workers';
-import { getIdPConfig } from '../config/tenants';
+import { runScoringEngine } from '../lib/scoring-engine';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Footer from '../components/Footer.astro';
 
@@ -26,13 +26,11 @@ let apiKey = "pending-generation";
 let apiKeyError = false;
 let errorMessage = "";
 
-// Handle Regenerate Action
 if (Astro.request.method === 'POST') {
   try {
     const randomBytes = new Uint8Array(32);
     crypto.getRandomValues(randomBytes);
     const newKey = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
-    
     if (env.VM_TENANT_DIRECTORY) {
       await env.VM_TENANT_DIRECTORY.put(`apikey:${tenantId}`, newKey);
       apiKey = newKey;
@@ -45,7 +43,6 @@ if (Astro.request.method === 'POST') {
     errorMessage = (err as Error).message;
   }
 } else {
-  // Fetch Existing Key
   try {
     if (env.VM_TENANT_DIRECTORY) {
       const storedKey = await env.VM_TENANT_DIRECTORY.get(`apikey:${tenantId}`);
@@ -70,23 +67,37 @@ if (Astro.request.method === 'POST') {
 
 const webhookUrl = `https://void.fzoirm.com/ingest/${tenantId}`;
 
-// 4. LIVE POSTURE
+// 4. LIVE POSTURE (sync compute — zero-persistence)
+// Reads current + previous frames from KV snapshot. Velocity available from 2nd cycle onward.
 let livePosture: any = null;
 try {
-  if (env.VM_LIVE_POSTURE_CACHE) {
-    const raw = await env.VM_LIVE_POSTURE_CACHE.get(tenantId);
-    if (raw) livePosture = JSON.parse(raw);
+  if (env.VM_TENANT_DIRECTORY) {
+    const stored = await env.VM_TENANT_DIRECTORY.get(`telemetry:${tenantId}`);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      // Support both new shape ({ current, previous }) and old flat shape
+      const current = parsed.current || parsed;
+      const previous = parsed.previous || null;
+
+      const result = runScoringEngine(
+        current.paddedStream,
+        current.threatIntelVector || [0, 0, 0],
+        previous ? previous.paddedStream : undefined,
+        previous ? previous.threatIntelVector : undefined
+      );
+      livePosture = { ...result, computedAt: new Date().toISOString() };
+    }
   }
 } catch (err) {
-  console.error('[VoidMetric Portal] Cache read failed:', err);
+  console.error('[VoidMetric Portal] Compute failed:', err);
 }
 ---
 
 <BaseLayout title="VoidMetric Controller // Sovereign Systemic Integrity Intelligence">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';" slot="head" />
-  
+
   <main class="w-full max-w-7xl mx-auto px-6 py-10 text-left text-slate-300 font-mono text-xs leading-relaxed">
-    
+
     <!-- Header -->
     <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 pb-6 border-b border-slate-800">
       <div>
@@ -94,7 +105,7 @@ try {
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
           <h1 class="text-xl font-black tracking-wider text-white"><a href="https://ssii.fzoirm.com">VOIDMETRIC</a> // Center of Excellence / dashboard</h1>
         </div>
-        <p class="text-slate-500 text-[10px] uppercase tracking-widest mt-1">Sovereign Systemic Integrity Intelligence Engine</p>
+        <p class="text-slate-500 text-[10px] uppercase tracking-widest mt-1">Security Intelligence and Risk Mitigation Engine</p>
       </div>
       <div class="text-left md:text-right text-xs space-y-1 mt-4 md:mt-0">
         <p class="text-slate-400">OPERATOR: <span class="font-bold text-white">{user.email}</span></p>
@@ -114,12 +125,17 @@ try {
           <h2 class="text-sm font-bold text-white uppercase tracking-wider">📡 Live Tenant Posture</h2>
           {livePosture && <span class="text-[9px] text-slate-500">Synced {livePosture.computedAt}</span>}
         </div>
-        
+
         {livePosture ? (
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div class="bg-[#020203] p-4 rounded border border-slate-900/50">
               <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Metric A // Compliance</p>
               <p class="text-2xl font-bold text-slate-100">{(livePosture.metric_a_compliance * 100).toFixed(1)}%</p>
+              {livePosture.metric_a_velocity !== null && livePosture.metric_a_velocity !== undefined && (
+                <p class={`text-[10px] mt-1 font-bold ${livePosture.metric_a_velocity > 0 ? 'text-emerald-400' : livePosture.metric_a_velocity < 0 ? 'text-red-400' : 'text-slate-500'}`}>
+                  Δ {(livePosture.metric_a_velocity > 0 ? '+' : '') + (livePosture.metric_a_velocity * 100).toFixed(2)}
+                </p>
+              )}
             </div>
             <div class="bg-[#020203] p-4 rounded border border-slate-900/50">
               <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Metric B // Integrity</p>
@@ -133,10 +149,20 @@ try {
                 {livePosture.status.replace(/_/g, ' ')}
               </p>
             </div>
+            <div class="bg-[#020203] p-4 rounded border border-slate-900/50">
+              <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Watermelon Index</p>
+              <p class={`text-2xl font-bold ${livePosture.watermelon_index > 0.5 ? 'text-rose-400' : 'text-slate-100'}`}>
+                {(livePosture.watermelon_index * 100).toFixed(1)}%
+              </p>
+            </div>
+            <div class="bg-[#020203] p-4 rounded border border-slate-900/50">
+              <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Honest Failure Index</p>
+              <p class="text-2xl font-bold text-slate-100">{(livePosture.honest_failure_index * 100).toFixed(1)}%</p>
+            </div>
           </div>
         ) : (
           <div class="flex items-center justify-center h-32 text-slate-500 text-[11px]">
-            No telemetry synced yet.
+            No telemetry available.
           </div>
         )}
       </div>
@@ -146,17 +172,15 @@ try {
         <h2 class="text-sm font-bold text-white uppercase tracking-wider mb-4">🔗 Configuration Setting</h2>
         <p class="text-slate-500 text-[10px] mb-4 leading-relaxed">
           1. Set the URL 👇 in Okta, Tenable, Sentinel or another supported platform to link it as the ingestion target.<br/>
-          2. Set the API Key 👇 along in your platform's <code>Authorization</code> header writing in the text field both <code>Beaver</code> and <code>API key</code> with a space.
+          2. Set the API Key 👇 along in your platform's <code>Authorization</code> header writing in the text field both <code>Bearer</code> and the API key with a space.
         </p>
-        
-        <!-- Webhook URL -->
+
         <div class="mb-4">
           <label class="text-[9px] text-slate-500 uppercase font-bold block mb-1">Webhook URL</label>
           <code id="webhookCode" class="block w-full bg-[#020203] border border-slate-800 rounded p-2 text-[9px] text-emerald-400 break-all font-mono select-all">{webhookUrl}</code>
           <button type="button" data-copy={webhookUrl} class="copy-btn mt-1 text-[9px] text-blue-400 hover:text-blue-300 underline cursor-pointer">Copy URL</button>
         </div>
 
-        <!-- API Key -->
         <div class="mb-4 flex-grow">
           <label class="text-[9px] text-slate-500 uppercase font-bold block mb-1">API Key (Bearer)</label>
           {apiKeyError ? (
@@ -168,8 +192,7 @@ try {
           )}
           <button type="button" data-copy={apiKey} class="copy-btn mt-1 text-[9px] text-blue-400 hover:text-blue-300 underline cursor-pointer">Copy Key</button>
         </div>
-        
-        <!-- Regenerate Form -->
+
         <form method="POST" class="w-full">
           <input type="hidden" name="action" value="regenerate_key" />
           <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 py-2 rounded text-[10px] uppercase font-bold transition">
@@ -183,7 +206,7 @@ try {
         <div class="flex items-center justify-between mb-6">
           <div>
             <h2 class="text-sm font-bold text-white uppercase tracking-wider">🧪 Computation Matrix</h2>
-            <p class="text-slate-500 text-[10px]">Synthetic 32-element stream test bench</p>
+            <p class="text-slate-500 text-[10px]">Synthetic 12-element stream test bench</p>
           </div>
           <div class="flex gap-3">
             <button id="testMathBtn" type="button" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded text-[10px] uppercase tracking-wide cursor-pointer transition">
@@ -195,10 +218,11 @@ try {
           </div>
         </div>
 
-        <div id="results" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t border-slate-900">
+        <div id="results" class="hidden grid grid-cols-2 md:grid-cols-5 gap-4 pt-6 border-t border-slate-900">
           <div class="bg-[#020203] p-4 rounded border border-slate-900/50">
             <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Metric A</p>
             <p id="resA" class="text-xl font-bold text-slate-100">-</p>
+            <p id="resAVel" class="text-[10px] font-bold mt-1">-</p>
           </div>
           <div class="bg-[#020203] p-4 rounded border border-slate-900/50">
             <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Metric B</p>
@@ -208,14 +232,20 @@ try {
             <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Status</p>
             <p id="resStatus" class="text-[11px] font-bold uppercase">-</p>
           </div>
-        </div>
-        
-        <!-- Theater Alarm -->
-        <div id="theaterAlarm" class="hidden mt-4 p-4 bg-rose-950/20 border border-rose-900/50 rounded text-rose-400 text-[11px]">
-          <p class="font-bold">// CRITICAL COMPLIANCE THEATER DELTA DETECTED</p>
+          <div class="bg-[#020203] p-4 rounded border border-slate-900/50">
+            <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Watermelon Index</p>
+            <p id="resWI" class="text-xl font-bold">-</p>
+          </div>
+          <div class="bg-[#020203] p-4 rounded border border-slate-900/50">
+            <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Honest Failure</p>
+            <p id="resHF" class="text-xl font-bold">-</p>
+          </div>
         </div>
 
-        <!-- Engineer Only: Spectral & Raw Stream -->
+        <div id="theaterAlarm" class="hidden mt-4 p-4 bg-rose-950/20 border border-rose-900/50 rounded text-rose-400 text-[11px]">
+          <p class="font-bold">// CRITICAL WATERMELON INDEX — COMPLIANCE DECEPTION DETECTED</p>
+        </div>
+
         { (user.role === 'engineer' || user.role === 'admin') && (
           <div id="engineerPanel" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4 pt-6 border-t border-slate-900">
             <div class="bg-[#020203] p-4 rounded border border-slate-900/50">
@@ -254,13 +284,8 @@ try {
             navigator.clipboard.writeText(textToCopy).then(() => {
               const originalText = (e.target as HTMLElement).innerText;
               (e.target as HTMLElement).innerText = "Copied!";
-              setTimeout(() => {
-                (e.target as HTMLElement).innerText = originalText;
-              }, 2000);
-            }).catch(err => {
-              console.error('Failed to copy: ', err);
-              alert('Failed to copy to clipboard');
-            });
+              setTimeout(() => { (e.target as HTMLElement).innerText = originalText; }, 2000);
+            }).catch(() => alert('Failed to copy to clipboard'));
           }
         });
       });
@@ -270,18 +295,23 @@ try {
       const injectZeroBtn = document.getElementById('injectZeroBtn');
       const resultsSection = document.getElementById('results');
       const engineerPanel = document.getElementById('engineerPanel');
-      
+
+      let lastStream: any[] = [];
+      let lastThreatVector: number[] = [0, 0, 0];
+
       function buildSyntheticStream(forceExploit: boolean) {
         const now = Math.floor(Date.now() / 1000);
         const nodes = [];
-        for (let i = 0; i < 32; i++) {
-          const isZeroTarget = forceExploit && i === 8;
-          nodes.push({
-            maskedValue: isZeroTarget ? 0.02 : 0.85 + Math.random() * 0.15,
-            evaluationWeight: 0.3,
-            capabilityPriority: 0.05,
-            lastTelemetryHeartbeat: now
-          });
+        for (let i = 0; i < 4; i++) {
+          for (let j = 0; j < 3; j++) {
+            const isZeroTarget = forceExploit && i === 2 && j === 2;
+            nodes.push({
+              maskedValue: isZeroTarget ? 0.02 : 0.85 + Math.random() * 0.15,
+              row: i,
+              col: j,
+              lastTelemetryHeartbeat: now,
+            });
+          }
         }
         return nodes;
       }
@@ -290,14 +320,17 @@ try {
         if (!resultsSection) return;
         resultsSection.classList.remove('hidden');
         resultsSection.classList.add('grid');
-        if(engineerPanel) {
-            engineerPanel.classList.remove('hidden');
-            engineerPanel.classList.add('grid');
+        if (engineerPanel) {
+          engineerPanel.classList.remove('hidden');
+          engineerPanel.classList.add('grid');
         }
 
         const resA = document.getElementById('resA');
+        const resAVel = document.getElementById('resAVel');
         const resB = document.getElementById('resB');
         const resStatus = document.getElementById('resStatus');
+        const resWI = document.getElementById('resWI');
+        const resHF = document.getElementById('resHF');
         const theaterAlarm = document.getElementById('theaterAlarm');
         const rawStreamLog = document.getElementById('rawStreamLog');
         const specChaos = document.getElementById('specChaos');
@@ -305,19 +338,36 @@ try {
         const specResonance = document.getElementById('specResonance');
 
         try {
-          // FIXED: Updated endpoint from /api/compute to /api/sandbox
+          const currentStream = buildSyntheticStream(forceExploit);
+
           const response = await fetch('/api/sandbox', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              paddedStream: buildSyntheticStream(forceExploit),
-              threatIntelVector: [0.0, 0.0, 0.0],
+              paddedStream: currentStream,
+              threatIntelVector: lastThreatVector,
+              previousStream: lastStream.length === 12 ? lastStream : undefined,
+              previousThreatIntelVector: lastStream.length === 12 ? lastThreatVector : undefined,
             }),
           });
           const data = await response.json();
           if (!response.ok) throw new Error(data.error);
 
+          // Store for next run's velocity
+          lastStream = currentStream;
+          lastThreatVector = [0, 0, 0];
+
           if (resA) resA.innerText = `${(data.metric_a_compliance * 100).toFixed(1)}%`;
+          if (resAVel) {
+            if (data.metric_a_velocity !== null && data.metric_a_velocity !== undefined) {
+              const v = data.metric_a_velocity;
+              resAVel.innerText = `Δ ${v > 0 ? '+' : ''}${(v * 100).toFixed(2)}`;
+              resAVel.className = `text-[10px] font-bold mt-1 ${v > 0 ? 'text-emerald-400' : v < 0 ? 'text-red-400' : 'text-slate-500'}`;
+            } else {
+              resAVel.innerText = 'Δ first cycle';
+              resAVel.className = 'text-[10px] font-bold mt-1 text-slate-600';
+            }
+          }
           if (resB) {
             resB.innerText = `${(data.metric_b_integrity * 100).toFixed(1)}%`;
             resB.className = data.metric_b_integrity < 0.2 ? 'text-xl font-bold text-red-500' : 'text-xl font-bold text-emerald-400';
@@ -326,16 +376,26 @@ try {
             const critical = data.status === 'CRITICAL_RISK_SWITCH_TRIGGERED';
             resStatus.innerText = data.status.replace(/_/g, ' ');
             resStatus.className = critical ? 'text-[11px] font-bold uppercase text-red-500' : 'text-[11px] font-bold uppercase text-emerald-400';
-            if (theaterAlarm) critical ? theaterAlarm.classList.remove('hidden') : theaterAlarm.classList.add('hidden');
           }
+          if (resWI) {
+            resWI.innerText = `${(data.watermelon_index * 100).toFixed(1)}%`;
+            resWI.className = data.watermelon_index > 0.5 ? 'text-xl font-bold text-rose-400' : 'text-xl font-bold text-slate-100';
+          }
+          if (resHF) resHF.innerText = `${(data.honest_failure_index * 100).toFixed(1)}%`;
+
+          if (theaterAlarm) {
+            const deceptive = (data.watermelon_index ?? 0) > 0.5;
+            deceptive ? theaterAlarm.classList.remove('hidden') : theaterAlarm.classList.add('hidden');
+          }
+
           if (data.spectral_analysis) {
             if (specChaos) specChaos.innerText = data.spectral_analysis.chaos_index_penalty.toFixed(4);
             if (specEigen) specEigen.innerText = data.spectral_analysis.principal_eigenvalue.toFixed(4);
             if (specResonance) {
-                specResonance.innerText = data.spectral_analysis.resonance_exploit_chain_detected ? 'VECTOR LINK DETECTED' : 'NONE';
-                specResonance.className = data.spectral_analysis.resonance_exploit_chain_detected ? 'text-red-400 font-bold' : 'text-slate-400';
+              specResonance.innerText = data.spectral_analysis.resonance_exploit_chain_detected ? 'VECTOR LINK DETECTED' : 'NONE';
+              specResonance.className = data.spectral_analysis.resonance_exploit_chain_detected ? 'text-red-400 font-bold' : 'text-slate-400';
             }
-            if(rawStreamLog) rawStreamLog.innerText = `[SANDBOX RUN — provenance: ${data.provenance || 'local'}]`;
+            if (rawStreamLog) rawStreamLog.innerText = `[SANDBOX RUN — provenance: ${data.provenance || 'local'}]`;
           }
         } catch (err) {
           if (rawStreamLog) rawStreamLog.innerText = `Error: ${(err as Error).message}`;

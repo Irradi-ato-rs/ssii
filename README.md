@@ -15,39 +15,56 @@ This GitHub [public repository](https://github.com/Irradi-ato-rs/ssii) houses no
 | **3. Elements**       | Configurations / Secrets | Data Assets / Payload       | Storage Buckets          |
 | **4. Execution**      | Runtime Environments     | Log / Telemetry Pipelines   | Compute Infrastructure   |
 
+Formula indices are 0-based; table labels are 1-based for readability.
+
 Input metrics are continuously streamed via automated edge scripts and normalized such that $C_{i,j} \in [0.0, 1.0]$.
 
 ---
 
 ## 2. The Dual-Math
 
-### Metric A: Continuous Maturity Matrix (Additive)
+### Metric A: Strategic Posture (Additive)
 
-Tracks cumulative administrative effort, organizational spend, and checkmark compliance over time via context-weighted summation:
+Tracks the organization's compliance posture as a context-weighted level, and its rate of change as a frozen-weight velocity.
+
+**Level:**
 
 $$
-\text{Score}_A = \frac{\sum_{i,j} C_{i,j} \cdot w_j(\vec{t}) \cdot \alpha_i}{\sum_{i,j} w_j(\vec{t}) \cdot \alpha_i}
+\text{Score}_A(t) = \sum_{i=0}^{3}\sum_{j=0}^{2} C_{i,j}(t)\cdot w_j(\vec{t})\cdot \alpha_i
 $$
 
-where $w_j(\vec{t})$ are enabler weights dynamically re-allocated in proportion to a live threat-intelligence vector $\vec{t}$, and $\alpha_i$ is each axiomatic domain's fixed priority coefficient.
+**Velocity (frozen-weight delta):**
+
+$$
+\Delta\text{Score}_A(t) = \text{Score}_A\bigl(t;\; w(\vec{t}-\Delta t)\bigr) - \text{Score}_A\bigl(t-\Delta t;\; w(\vec{t}-\Delta t)\bigr)
+$$
+
+Both computed on the same 4 × 3 matrix, same weights, same $\alpha$. $\Delta t$ = one scoring cycle. Input signal: raw $C_{i,j} \in [0,1]$ pre-decay.
+
+where $w_j(\vec{t})$ are enabler weights dynamically re-allocated in proportion to a live threat-intelligence vector $\vec{t}$, and $\alpha_i$ is each axiomatic domain's fixed priority coefficient ($\sum_i \alpha_i = 1$).
+
+$\Delta\text{Score}_A > 0$: improving. $\Delta\text{Score}_A < 0$: degrading. $\Delta\text{Score}_A \approx 0$: steady (ambiguous without Metric B context).
+
+---
 
 ### Metric B: The Operational Blueprint (Multiplicative Core, Spectral-Adjusted)
 
-An uncompromising series system built around a **Risk Switch**: row verification vectors are aggregated via a weighted geometric product per row, then combined harmonically across rows so that any single collapsed row dominates the aggregate rather than being diluted by strong rows elsewhere:
+An uncompromising series system built around a Risk Switch: row verification vectors are aggregated via a weighted geometric product per row, then combined harmonically across rows so that any single collapsed row dominates the aggregate rather than being diluted by strong rows elsewhere.
 
 $$
-V_i = \prod_{j=1}^{3} (C_{i,j})^{w_j}
+V_i = \prod_{j=0}^{2} \bigl(C_{i,j}\bigr)^{w_j}
 $$
 
 $$
-\text{SI}_{\text{raw}} = \left( \sum_{i=1}^{4} \frac{\alpha_i}{V_i} \right)^{-1}
+SI_{\text{raw}} = \left(\sum_{i=0}^{3} \alpha_i \, V_i^{-1}\right)^{-1}
 $$
 
 Each $C_{i,j}$ is itself derived from raw telemetry through a temporal decay function (older, unrefreshed signals drift toward zero confidence) and a sigmoid confidence transform before entering the matrix.
 
-$\text{SI}_{\text{raw}}$ is further adjusted by a **spectral chaos penalty**, derived from the principal eigenvalue of the domain-covariance matrix, which detects correlated multi-domain degradation that a naive per-cell view would miss:
+$SI_{\text{raw}}$ is further adjusted by a spectral chaos penalty, derived from the principal eigenvalue of the domain-covariance matrix, which detects correlated multi-domain degradation that a naive per-cell view would miss:
 
 $$
+<<<<<<< HEAD
 \text{ChaosPenalty} = \max\left(0,\ \lambda_{\max}(\mathbf{C}) - \frac{\text{trace}(\mathbf{C})}{n}\right)
 $$
 
@@ -58,36 +75,95 @@ $$
 $$      
 
 > **Theorem 1 (The Risk Switch):** If any individual verification signal's confidence falls below a critical threshold (currently $< 0.05$), the breaker trips and $\text{SI}_{\text{Live}}$ is capped at a near-zero floor (currently $0.015$) regardless of every other signal's value. A single critical vulnerability cannot be diluted by high scores elsewhere in the matrix.
+=======
+\text{ChaosPenalty} = \kappa\,\max\!\Bigl(0,\;\lambda_{\max}(C) - \frac{\text{trace}(C)}{n}\Bigr), \quad \kappa = 0.25
+$$
 
-*(Earlier revisions of this document described Theorem 1 as forcing an exact $\text{SI}_{\text{Live}} = 0.0$. The shipped engine uses a threshold-triggered near-zero floor instead of an exact zero — chosen for numerical stability, since a true zero inside the log-domain row aggregation is undefined. The practical guarantee is unchanged: no combination of strong signals elsewhere can mask one critical failure.)*
+where $C$ is the domain-covariance matrix and $n$ is the number of domains.
+>>>>>>> e47d05d (feat: dual-math scoring engine, zero-persistence, full data flow to visual)
+
+$$
+SI_{\text{Live}} = \max\!\bigl(0.0001,\; SI_{\text{raw}} - \text{ChaosPenalty}\bigr)
+$$
+
+**Guarantee 1 (The Risk Switch):** If any individual verification signal's confidence falls below a critical threshold (currently $< 0.05$), the breaker trips and $SI_{\text{Live}}$ is capped at a near-zero floor (currently $0.015$) regardless of every other signal's value. A single critical vulnerability cannot be diluted by high scores elsewhere in the matrix.
+
+---
+
+## Diagnostics
+
+**Watermelon Index (Primary Diagnostic)**
+
+A deception detector that measures the divergence between administrative compliance and operational integrity. It peaks when the rind is green and the flesh is red — the case where checkmark compliance is masking a collapsed operational blueprint. It is zero when the two metrics agree in either direction.
+
+$$
+\boxed{\text{WI}(t) = \text{Score}_A(t)\cdot\bigl(1 - SI_{\text{Live}}(t)\bigr)}
+$$
+
+WI is intentionally one-sided. It is a deception detector, not a severity ranker. The honest-failure case (both metrics low) is not deceptive — it is visible in the constituent metrics and caught by the Risk Switch. Flagging it here would dilute the diagnostic's purpose.
+
+Under the Risk Switch floor ($SI_{\text{Live}} \approx 0.015$), $1 - SI_{\text{Live}} \approx 1$, so $\text{WI} \approx \text{Score}_A$. The diagnostic passes through rather than collapsing.
+
+**Honest Failure Index (Companion Diagnostic)**
+
+The companion to the Watermelon Index. Where WI detects deception (compliance high, integrity low), HF detects honest failure (both low, visible, not masked). Together they tile the degraded space: any point where $SI_{\text{Live}} < 1$ is either watermelon or honest failure, never both.
+
+$$
+\boxed{\text{HF}(t) = \bigl(1 - \text{Score}_A(t)\bigr)\cdot\bigl(1 - SI_{\text{Live}}(t)\bigr)}
+$$
+
+**Identity 1 (Complementary Tiling):** For all $t$,
+
+$$
+\text{WI}(t) + \text{HF}(t) = 1 - SI_{\text{Live}}(t)
+$$
+
+This identity provides a free check for unit testing: assert $\left|\text{WI} + \text{HF} - (1 - SI_{\text{Live}})\right| < \varepsilon$ on every cycle.
+
+HF is not a substitute for reading Score_A and SI_Live individually. It is a convenience aggregate for the consulting narrative — the number that answers "how bad is it, honestly?" when the answer is "bad, and no one is being fooled by it."
+
+---
+
+## Joint Reading
+
+| WI | HF | Diagnosis |
+|:---:|:---:|---|
+| High | Low | Watermelon — compliance masking failure |
+| Low | High | Honest failure — both degraded, visible |
+| Low | Low | Healthy — aligned |
 
 ---
 
 ## 3. Governance System & Capabilities Blueprint — Project File Directory
 
 ```
-├── .github/workflows/    <-- CI Automation pipeline validations // planned
+├── .github/workflows/          <-- CI Automation pipeline validations // planned
 ├── src/
 │   ├── components/
 │   │   └── Footer.astro
 │   ├── config/
-│   │   └── tenants.ts    <-- Generic, auditable KV lookup logic. Actual tenant records
-│   │                         (domains, tenant IDs, endpoints) are never committed here —
-│   │                         they live in the private VM_TENANT_DIRECTORY KV namespace.
+│   │   └── tenants.ts          <-- Generic, auditable KV lookup logic. Actual tenant records
+│   │                               (domains, tenant IDs, endpoints) are never committed here —
+│   │                               they live in the private VM_TENANT_DIRECTORY KV namespace.
 │   ├── layouts/
 │   │   └── BaseLayout.astro
-│   ├── middleware.ts      <-- Session verification, role resolution (VoidMetric-controlled allow-list only)
+│   ├── lib/
+│   │   └── scoring-engine.ts   <-- Pure computation. No I/O, no side effects, zero-persistence.
+│   │                               Liftable into a separate authoritative Worker unchanged.
+│   ├── middleware.ts            <-- Session verification, role resolution (VoidMetric-controlled allow-list only)
 │   └── pages/
 │       ├── api/
-│       │   ├── compute.ts        <-- Core headless V3.0 serverless math endpoint (authenticated)
-│       │   ├── register.ts       <-- OIDC handshake initiation (PKCE + nonce)
+│       │   ├── register.ts      <-- OIDC handshake initiation (PKCE + nonce)
 │       │   └── auth/
-│       │       ├── callback.ts   <-- Token exchange, JWT verification
-│       │       └── signout.ts    <-- RP-Initiated Logout
+│       │       ├── callback.ts  <-- Token exchange, JWT verification
+│       │       └── signout.ts   <-- RP-Initiated Logout
 │       ├── architecture.astro
 │       ├── index.astro
 │       ├── integrity-portal.astro
 │       └── login.astro
+├── workers/
+│   └── ssii-consumer.ts        <-- Queue consumer. Zero-persistence: pure compute + structured log.
+│                                   No KV, no D1, no Durable Objects. Results are ephemeral.
 ├── astro.config.mjs
 └── wrangler.jsonc
 ```
@@ -115,33 +191,33 @@ $$
 
 ---
 
-## 4. API Endpoints & Verification
+## 4. Compute Pipeline & Output Schema
 
-### Compute Interface (`POST /api/compute`)
+Computation runs asynchronously via a Cloudflare Queue. The consumer receives a pre-normalized, blinded 32-node telemetry stream, executes the scoring engine in memory, and emits a structured log. **No metric data is persisted** — no KV, no D1, no Durable Objects. Results exist only in the log stream.
 
-**Requires an authenticated session** (a valid VoidMetric SSO session cookie). This endpoint does not accept anonymous requests.
-
-Accepts a pre-normalized, blinded 32-node telemetry stream and returns compliance/integrity metric outputs. `row_validations` and `spectral_analysis` are included only when the authenticated session's role is `engineer` or `admin`.
-
-#### Request shape:
+### Queue message shape:
 
 ```json
 {
+  "type": "signal_update",
+  "tenantId": "acme-corp",
   "paddedStream": [
-    { "maskedValue": 0.95, "evaluationWeight": 0.4, "capabilityPriority": 0.50, "lastTelemetryHeartbeat": 1754899200 }
+    { "maskedValue": 0.95, "row": 0, "col": 0, "lastTelemetryHeartbeat": 1754899200 }
   ],
-  "threatIntelVector": [0.0, 0.0, 0.0]
+  "threatIntelVector": [0.0, 0.0, 0.0],
+  "timestamp": 1754899200
 }
 ```
 
-#### Example response (engineer/admin session):
+### Structured log output (per message):
 
 ```json
 {
   "metric_a_compliance": 0.8438,
   "metric_b_integrity": 0.0150,
   "status": "CRITICAL_RISK_SWITCH_TRIGGERED",
-  "theater_gap_delta": 0.8288,
+  "watermelon_index": 0.8288,
+  "honest_failure_index": 0.0150,
   "row_validations": [0.9331, 0.9164, 0.0000, 0.9167],
   "spectral_analysis": {
     "chaos_index_penalty": 0.03211,
@@ -151,22 +227,11 @@ Accepts a pre-normalized, blinded 32-node telemetry stream and returns complianc
 }
 ```
 
-#### Example response (executive session):
-
-```json
-{
-  "metric_a_compliance": 0.8438,
-  "metric_b_integrity": 0.0150,
-  "status": "CRITICAL_RISK_SWITCH_TRIGGERED",
-  "theater_gap_delta": 0.8288
-}
-```
-
 ---
 
 ## 5. Security & Operational Boundaries
 
-This endpoint requires an authenticated VoidMetric session and handles **pre-normalized, blinded telemetry nodes only** — it never receives a raw SIEM finding or credential directly.
+The compute pipeline processes **pre-normalized, blinded telemetry nodes only** — it never receives a raw SIEM finding or credential directly.
 
 ### Compliance Isolation of Identity and Ingestion
 
