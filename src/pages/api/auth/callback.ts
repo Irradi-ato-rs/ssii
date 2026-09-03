@@ -2,7 +2,7 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers'; // REQUIRED for Astro 6
+import { env } from 'cloudflare:workers';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { getIdPConfigByDomain } from '../../../config/tenants';
 
@@ -27,6 +27,18 @@ function getJwks(jwksUri: string) {
   return jwks;
 }
 
+async function resolveRole(sub: string, env: any): Promise<string> {
+  try {
+    const record = await env.VM_TENANT_DIRECTORY?.get(`roles:${sub}`);
+    if (!record) return 'operator';
+    const { role } = JSON.parse(record);
+    const allowed = (env.PRIVATE_ROLE_ALLOWLIST || '').split(',').map((r: string) => r.trim());
+    return allowed.includes(role) ? role : 'operator';
+  } catch {
+    return 'operator';
+  }
+}
+
 function errorRedirect(code: string): Response {
   const headers = new Headers();
   headers.set('Location', `/login?error=${encodeURIComponent(code)}`);
@@ -38,7 +50,7 @@ function clearFlowCookies(headers: Headers) {
   headers.append('Set-Cookie', 'pkce_verifier=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
 }
 
-export const GET: APIRoute = async ({ request, cookies }) => { // Removed 'locals'
+export const GET: APIRoute = async ({ request, cookies }) => {
   try {
     const requestUrl = new URL(request.url);
     const code = requestUrl.searchParams.get('code');
@@ -84,16 +96,16 @@ export const GET: APIRoute = async ({ request, cookies }) => { // Removed 'local
       return errorRedirect('invalid_state');
     }
 
-    // 4. Get tenant config from KV (PASS env)
-    const config = await getIdPConfigByDomain(env, domain); // Changed
+    // 4. Get tenant config from KV
+    const config = await getIdPConfigByDomain(env, domain);
     if (!config) {
       console.error(`[VoidMetric Auth] No IdP config for domain=${domain}`);
       return errorRedirect('tenant_access_denied');
     }
 
-    // 5. Access secrets from imported env (NOT locals.runtime)
-    const clientId = env[config.clientIdEnv]?.trim(); // Changed
-    const clientSecret = env[config.clientSecretEnv]?.trim(); // Changed
+    // 5. Access secrets from imported env
+    const clientId = env[config.clientIdEnv]?.trim();
+    const clientSecret = env[config.clientSecretEnv]?.trim();
 
     if (!clientId || !clientSecret) {
       console.error(`[VoidMetric Auth] Missing secret for domain=${domain}`);
@@ -162,14 +174,16 @@ export const GET: APIRoute = async ({ request, cookies }) => { // Removed 'local
     const JWKS = getJwks(config.jwksUri);
 
     let exp: number | undefined;
+    let payload: any;
     try {
-      const { payload } = await jwtVerify(idToken, JWKS, {
+      const verified = await jwtVerify(idToken, JWKS, {
         issuer: config.issuer,
         audience: clientId,
         algorithms: ['RS256', 'RS384', 'RS512'],
         clockTolerance: '60s',
         ...(stateNonce ? { nonce: stateNonce } : {}),
       });
+      payload = verified.payload;
       exp = payload.exp;
     } catch (verifyErr) {
       console.error('[VoidMetric Auth] ID token verification failed:', verifyErr);
@@ -184,12 +198,16 @@ export const GET: APIRoute = async ({ request, cookies }) => { // Removed 'local
       ? Math.max(MIN_MAX_AGE, exp - nowSeconds)
       : DEFAULT_MAX_AGE;
 
-    // 9. Set session cookies, clear flow cookies, redirect
+    // 9. Resolve role, set session cookies, redirect by role
+    const role = await resolveRole(payload.sub, env);
+
     const headers = new Headers();
     clearFlowCookies(headers);
     headers.append('Set-Cookie', `aim_session_token=${idToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${sessionMaxAge}`);
     headers.append('Set-Cookie', `auth_domain=${domain}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${sessionMaxAge}`);
-    headers.append('Location', '/integrity-portal');
+
+    const target = (role === 'governance' || role === 'admin') ? '/governance' : '/integrity-portal';
+    headers.append('Location', target);
 
     return new Response(null, { status: 302, headers });
   } catch (err) {
