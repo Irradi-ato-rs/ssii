@@ -1,5 +1,5 @@
 // src/middleware.ts
-import type { APIContext } from 'astro';
+import type { APIContext, MiddlewareNext } from 'astro';   
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { env } from 'cloudflare:workers';
 import { getIdPConfigByDomain } from './config/tenants';
@@ -15,7 +15,7 @@ function getJwks(jwksUri: string) {
   return jwks;
 }
 
-export async function onRequest(context: APIContext) {
+export async function onRequest(context: APIContext, next: MiddlewareNext) {
   const url = new URL(context.url);
   const pathParts = url.pathname.split('/').filter(Boolean);
 
@@ -121,7 +121,7 @@ export async function onRequest(context: APIContext) {
     }
   }
 
-  return context.next();
+  return next();
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────

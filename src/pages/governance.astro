@@ -7,7 +7,7 @@ import Footer from '../components/Footer.astro';
 
 // Auth gate
 if (!Astro.locals.user) {
-  return Astro.redirect('/login?error=unauthenticated_session_gateway');
+  Astro.redirect('/login?error=unauthenticated_session_gateway');
 }
 const user = Astro.locals.user;
 
