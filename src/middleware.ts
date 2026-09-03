@@ -127,21 +127,24 @@ export async function onRequest(context: APIContext, next: MiddlewareNext) {
             ? await env.VM_TENANT_DIRECTORY.get(`portal:${requestedTenantId}`)
             : null;
 
-          if (portalRecord) {
-            const { owner } = JSON.parse(portalRecord);
-            if (owner !== user.sub) {
-              return new Response('403 — Access denied', { status: 403 });
-            }
+          if (!portalRecord) {
+            return new Response('404 — Tenant not found', { status: 404 });
+          }
+
+          const { owner } = JSON.parse(portalRecord);
+          if (owner !== user.sub) {
+            return new Response('403 — Access denied', { status: 403 });
           }
 
           context.locals.user = user;
           context.locals.tenantId = requestedTenantId;
-          context.locals.portalRecord = portalRecord ? JSON.parse(portalRecord) : null;
+          context.locals.portalRecord = JSON.parse(portalRecord);
         }
       } catch {
         return context.redirect('/login?error=expired_session');
       }
     }
+    // No session → self-serve path, let the page handle API-key auth
   }
 
   return next();
@@ -150,14 +153,11 @@ export async function onRequest(context: APIContext, next: MiddlewareNext) {
 // ─── HELPERS ──────────────────────────────────────────────────────────────
 
 async function resolveRole(sub: string, env: any): Promise<string> {
-  console.log('[resolveRole] sub =', JSON.stringify(sub));
   try {
     const record = await env.VM_TENANT_DIRECTORY?.get(`roles:${sub}`);
-    console.log('[resolveRole] record =', record);
     if (!record) return 'operator';
     const { role } = JSON.parse(record);
     const allowed = (env.PRIVATE_ROLE_ALLOWLIST || '').split(',').map((r: string) => r.trim());
-    console.log('[resolveRole] allowed =', allowed, '→ match =', allowed.includes(role));
     return allowed.includes(role) ? role : 'operator';
   } catch {
     return 'operator';
