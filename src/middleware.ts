@@ -19,8 +19,13 @@ export async function onRequest(context: APIContext, next: MiddlewareNext) {
   const url = new URL(context.url);
   const pathParts = url.pathname.split('/').filter(Boolean);
 
+  // Skip static assets
+  if (url.pathname.startsWith('/_astro') || url.pathname === '/favicon.ico' || url.pathname.includes('.')) {
+    return next();
+  }
+
   // ─── PUBLIC ROUTES (no auth) ───
-  const publicPaths = ['login', 'api/auth', 'api/register', 'portal'];
+  const publicPaths = ['login', 'api/auth', 'api/register', 'portal', 'architecture', 'onboarding', 'integrity-portal', 'documentation'];
   const isPublic = url.pathname === '/' || publicPaths.some(p => pathParts[0] === p || url.pathname.startsWith(`/${p}`));
 
   // ─── OIDC SESSION VERIFICATION ───
@@ -39,7 +44,6 @@ export async function onRequest(context: APIContext, next: MiddlewareNext) {
     }
 
     try {
-      // Resolve tenant IdP config
       const config = await getIdPConfigByDomain(env, authDomain);
       if (!config) {
         if (pathParts[0] === 'api') {
@@ -51,7 +55,6 @@ export async function onRequest(context: APIContext, next: MiddlewareNext) {
         return context.redirect('/login?error=expired_session');
       }
 
-      // Verify IdP JWT against JWKS
       const clientId = env[config.clientIdEnv]?.trim();
       const JWKS = getJwks(config.jwksUri);
 
@@ -74,13 +77,13 @@ export async function onRequest(context: APIContext, next: MiddlewareNext) {
         return context.redirect('/login?error=expired_session');
       }
 
-      // Resolve role from VoidMetric-controlled allow-list
       const role = await resolveRole(payload.sub, env);
       context.locals.user = {
         sub: payload.sub,
         email: payload.preferred_username || payload.email || '',
         tenant: authDomain,
         role,
+        rawClaimsPayload: payload,
       };
     } catch {
       if (pathParts[0] === 'api') {
@@ -94,14 +97,11 @@ export async function onRequest(context: APIContext, next: MiddlewareNext) {
   }
 
   // ─── PORTAL TENANT OWNERSHIP CHECK (enterprise path only) ───
-  // Only fires when an OIDC session exists. Self-serve (API-key) requests
-  // have no session, so this block is skipped and the page handles its own auth.
   if (pathParts[0] === 'portal' && pathParts.length === 2) {
     const requestedTenantId = pathParts[1];
     const sessionToken = context.cookies.get('aim_session_token')?.value;
     const authDomain = context.cookies.get('auth_domain')?.value;
 
-    // Only enforce ownership if a session exists (self-serve has no session)
     if (sessionToken && authDomain) {
       try {
         const config = await getIdPConfigByDomain(env, authDomain);
@@ -120,6 +120,7 @@ export async function onRequest(context: APIContext, next: MiddlewareNext) {
             email: verified.payload.preferred_username || verified.payload.email || '',
             tenant: authDomain,
             role: await resolveRole(verified.payload.sub, env),
+            rawClaimsPayload: verified.payload,
           };
 
           const portalRecord = env.VM_TENANT_DIRECTORY
@@ -138,11 +139,9 @@ export async function onRequest(context: APIContext, next: MiddlewareNext) {
           context.locals.portalRecord = portalRecord ? JSON.parse(portalRecord) : null;
         }
       } catch {
-        // Session invalid on a portal route — deny
         return context.redirect('/login?error=expired_session');
       }
     }
-    // No session → self-serve path, let the page handle API-key auth
   }
 
   return next();
