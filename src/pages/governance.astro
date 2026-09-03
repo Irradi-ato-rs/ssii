@@ -1,0 +1,216 @@
+// src/pages/governance.astro
+// Governance/admin exclusive: hyperparameter tuning console.
+export const prerender = false;
+import { env } from 'cloudflare:workers';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Footer from '../components/Footer.astro';
+
+// Auth gate
+if (!Astro.locals.user) {
+  return Astro.redirect('/login?error=unauthenticated_session_gateway');
+}
+const user = Astro.locals.user;
+
+// Role gate
+if (user.role !== 'governance' && user.role !== 'admin') {
+  return new Response('403 Forbidden', { status: 403 });
+}
+---
+
+<BaseLayout title="Governance | VoidMetric Tuning Console">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';" slot="head" />
+
+  <main class="w-full max-w-4xl mx-auto px-4 py-12 text-left text-slate-300 font-mono text-xs leading-relaxed">
+
+    <header class="mb-10 space-y-2">
+      <h1 class="text-lg font-bold tracking-tight text-white">GOVERNANCE // TUNING CONSOLE</h1>
+      <p class="text-slate-500">Hyperparameter editor &amp; test. Changes are not live until committed.</p>
+      <p class="text-slate-600 text-[10px]">OPERATOR: {user.email} // ROLE: {user.role.toUpperCase()}</p>
+    </header>
+
+    <!-- Tenant Selector -->
+    <section class="mb-8 space-y-2">
+      <label class="text-slate-500 uppercase font-bold text-[10px] block">Tenant ID</label>
+      <input id="tenantId" type="text" placeholder="acme-corp"
+        class="w-full max-w-xs bg-[#020203] border border-slate-800 rounded p-2 text-white text-sm" />
+    </section>
+
+    <!-- Parameter Editor -->
+    <section class="mb-8 space-y-4">
+      <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— CANDIDATE PARAMETERS</h2>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div>
+          <label class="text-slate-500 text-[10px] block mb-1">priorityAlpha (4 values, sum=1)</label>
+          <input id="p-alpha" type="text" value="0.50, 0.30, 0.15, 0.05"
+            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+        </div>
+        <div>
+          <label class="text-slate-500 text-[10px] block mb-1">baseEnablerWeights (3 values)</label>
+          <input id="p-weights" type="text" value="0.4, 0.3, 0.3"
+            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+        </div>
+        <div>
+          <label class="text-slate-500 text-[10px] block mb-1">decayRate</label>
+          <input id="p-decay" type="number" step="0.001" value="0.005"
+            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+        </div>
+        <div>
+          <label class="text-slate-500 text-[10px] block mb-1">driftVolatility</label>
+          <input id="p-drift" type="number" step="0.005" value="0.04"
+            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+        </div>
+        <div>
+          <label class="text-slate-500 text-[10px] block mb-1">sigmoidSteepness</label>
+          <input id="p-steep" type="number" step="0.5" value="10.0"
+            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+        </div>
+        <div>
+          <label class="text-slate-500 text-[10px] block mb-1">sigmoidMidpoint</label>
+          <input id="p-mid" type="number" step="0.05" value="0.5"
+            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+        </div>
+        <div>
+          <label class="text-slate-500 text-[10px] block mb-1">chaosScale (κ)</label>
+          <input id="p-kappa" type="number" step="0.05" value="0.25"
+            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+        </div>
+        <div>
+          <label class="text-slate-500 text-[10px] block mb-1">statusThreshold</label>
+          <input id="p-status" type="number" step="0.05" value="0.20"
+            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+        </div>
+        <div>
+          <label class="text-slate-500 text-[10px] block mb-1">breakerThreshold</label>
+          <input id="p-breaker" type="number" step="0.01" value="0.05"
+            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+        </div>
+        <div>
+          <label class="text-slate-500 text-[10px] block mb-1">breakerFloor</label>
+          <input id="p-floor" type="number" step="0.005" value="0.015"
+            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Actions -->
+    <section class="mb-8 flex gap-4">
+      <button id="loadBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer">
+        Load Current
+      </button>
+      <button id="testBtn" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer">
+        Test Against Snapshot
+      </button>
+      <button id="commitBtn" class="bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer">
+        Commit to KV
+      </button>
+    </section>
+
+    <!-- Results -->
+    <section id="results" class="hidden space-y-4 pt-6 border-t border-slate-900">
+      <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">— RESULTS (Baseline vs Candidate)</h2>
+      <div id="resultsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </section>
+
+    <Footer />
+  </main>
+
+  <script>
+    function collectParams(): any {
+      const parseArr = (s: string, n: number): number[] =>
+        s.split(',').map(v => parseFloat(v.trim())).slice(0, n);
+
+      return {
+        priorityAlpha: parseArr(document.getElementById('p-alpha').value, 4),
+        baseEnablerWeights: parseArr(document.getElementById('p-weights').value, 3),
+        decayRate: parseFloat(document.getElementById('p-decay').value),
+        driftVolatility: parseFloat(document.getElementById('p-drift').value),
+        sigmoidSteepness: parseFloat(document.getElementById('p-steep').value),
+        sigmoidMidpoint: parseFloat(document.getElementById('p-mid').value),
+        chaosScale: parseFloat(document.getElementById('p-kappa').value),
+        statusThreshold: parseFloat(document.getElementById('p-status').value),
+        breakerThreshold: parseFloat(document.getElementById('p-breaker').value),
+        breakerFloor: parseFloat(document.getElementById('p-floor').value),
+        siLiveFloor: 0.0001,
+      };
+    }
+
+    function setParams(p: any) {
+      if (!p) return;
+      document.getElementById('p-alpha').value = (p.priorityAlpha || [0.5,0.3,0.15,0.05]).join(', ');
+      document.getElementById('p-weights').value = (p.baseEnablerWeights || [0.4,0.3,0.3]).join(', ');
+      document.getElementById('p-decay').value = p.decayRate ?? 0.005;
+      document.getElementById('p-drift').value = p.driftVolatility ?? 0.04;
+      document.getElementById('p-steep').value = p.sigmoidSteepness ?? 10.0;
+      document.getElementById('p-mid').value = p.sigmoidMidpoint ?? 0.5;
+      document.getElementById('p-kappa').value = p.chaosScale ?? 0.25;
+      document.getElementById('p-status').value = p.statusThreshold ?? 0.20;
+      document.getElementById('p-breaker').value = p.breakerThreshold ?? 0.05;
+      document.getElementById('p-floor').value = p.breakerFloor ?? 0.015;
+    }
+
+    function renderResult(label: string, r: any) {
+      return `
+        <div class="bg-[#020203] p-4 rounded border border-slate-900/50">
+          <p class="text-[10px] text-slate-500 uppercase font-bold mb-2">${label}</p>
+          <div class="space-y-1 text-[11px]">
+            <div class="flex justify-between"><span>Metric A:</span><span class="text-white font-bold">${(r.metric_a_compliance * 100).toFixed(1)}%</span></div>
+            <div class="flex justify-between"><span>Metric B:</span><span class="${r.metric_b_integrity < 0.2 ? 'text-red-400' : 'text-emerald-400'} font-bold">${(r.metric_b_integrity * 100).toFixed(1)}%</span></div>
+            <div class="flex justify-between"><span>Velocity:</span><span class="text-white">${r.metric_a_velocity !== null ? (r.metric_a_velocity > 0 ? '+' : '') + (r.metric_a_velocity * 100).toFixed(2) : 'n/a'}</span></div>
+            <div class="flex justify-between"><span>WI:</span><span class="${r.watermelon_index > 0.5 ? 'text-rose-400' : 'text-white'} font-bold">${(r.watermelon_index * 100).toFixed(1)}%</span></div>
+            <div class="flex justify-between"><span>HF:</span><span class="text-white">${(r.honest_failure_index * 100).toFixed(1)}%</span></div>
+            <div class="flex justify-between"><span>Status:</span><span class="${r.status === 'CRITICAL_RISK_SWITCH_TRIGGERED' ? 'text-red-400' : 'text-emerald-400'} font-bold">${r.status.replace(/_/g, ' ')}</span></div>
+            <div class="flex justify-between"><span>Chaos:</span><span class="text-white">${r.spectral_analysis.chaos_index_penalty.toFixed(4)}</span></div>
+            <div class="flex justify-between"><span>λ_max:</span><span class="text-white">${r.spectral_analysis.principal_eigenvalue.toFixed(4)}</span></div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function callGovernance(action: string) {
+      const tenantId = document.getElementById('tenantId').value.trim();
+      if (!tenantId) { alert('Enter a tenant ID'); return; }
+
+      const candidateParams = collectParams();
+
+      const res = await fetch('/api/governance/sandbox', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, candidateParams, action }),
+      });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error); return; }
+
+      const grid = document.getElementById('resultsGrid');
+      grid.innerHTML = renderResult('BASELINE (current params)', data.baseline)
+        + renderResult('CANDIDATE (test params)', data.test);
+
+      document.getElementById('results').classList.remove('hidden');
+
+      if (action === 'commit') {
+        alert(`Committed to KV for ${tenantId}. Next ingest uses new params.`);
+      }
+    }
+
+    document.getElementById('loadBtn')?.addEventListener('click', async () => {
+      const tenantId = document.getElementById('tenantId').value.trim();
+      if (!tenantId) { alert('Enter a tenant ID'); return; }
+      const res = await fetch('/api/governance/sandbox', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, candidateParams: null, action: 'load' }),
+      });
+      const data = await res.json();
+      if (data.currentParams && data.currentParams !== 'defaults') {
+        setParams(data.currentParams);
+      }
+    });
+
+    document.getElementById('testBtn')?.addEventListener('click', () => callGovernance('test'));
+    document.getElementById('commitBtn')?.addEventListener('click', () => {
+      if (confirm('Commit these params to KV? Next ingest for this tenant will use them.')) {
+        callGovernance('commit');
+      }
+    });
+  </script>
+</BaseLayout>   

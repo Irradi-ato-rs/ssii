@@ -1,9 +1,9 @@
 // workers/ssii-consumer.ts
-// Zero-persistence: pure computation + structured log. No KV, no D1.
+// Zero-persistence: pure computation + structured log + posture cache.
 import { runScoringEngine, type PaddedStreamNode, type EngineParams } from '../src/lib/scoring-engine';
 
 export interface Env {
-  // No KV namespaces. No D1. No Durable Objects.
+  VM_LIVE_POSTURE_CACHE: KVNamespace;
 }
 
 export interface VoidMessage {
@@ -47,6 +47,13 @@ export default {
           hyperparams
         );
 
+        // Write posture cache (TTL 24h)
+        await env.VM_LIVE_POSTURE_CACHE.put(
+          `posture:${body.tenantId}`,
+          JSON.stringify({ ...result, timestamp: body.timestamp }),
+          { expirationTtl: 86400 }
+        );
+
         console.log(`[SSII] ✅ Computed: ${body.tenantId}`, {
           metric_a: result.metric_a_compliance,
           metric_a_velocity: result.metric_a_velocity,
@@ -67,4 +74,4 @@ export default {
   async fetch(): Promise<Response> {
     return new Response("SSII Consumer Active", { status: 200 });
   }
-};   
+};
