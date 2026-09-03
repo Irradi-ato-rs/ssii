@@ -18,6 +18,9 @@
       "head_sampling_rate": 1
     }
   },
+  "vars": {
+    "PRIVATE_ROLE_ALLOWLIST": "governance,admin,executive,engineer,operator"
+  },
   "kv_namespaces": [
     {
       "binding": "VM_TENANT_DIRECTORY",
