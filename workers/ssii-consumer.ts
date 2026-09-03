@@ -9,9 +9,9 @@ export interface Env {
 export interface VoidMessage {
   type: 'signal_update';
   tenantId: string;
-  paddedStream: PaddedStreamNode[];
+  paddedStream: PaddedStreamNode[] | PaddedStreamNode[][];
   threatIntelVector: number[];
-  previousStream?: PaddedStreamNode[];
+  previousStream?: PaddedStreamNode[] | PaddedStreamNode[][];
   previousThreatIntelVector?: number[];
   hyperparams?: Partial<EngineParams>;
   timestamp: number;
@@ -40,9 +40,9 @@ export default {
         } = body;
 
         const result = runScoringEngine(
-          paddedStream,
+          paddedStream as PaddedStreamNode[] | PaddedStreamNode[][],
           threatIntelVector || [0, 0, 0],
-          previousStream,
+          previousStream as PaddedStreamNode[] | PaddedStreamNode[][] | undefined,
           previousThreatIntelVector,
           hyperparams
         );
@@ -74,4 +74,4 @@ export default {
   async fetch(): Promise<Response> {
     return new Response("SSII Consumer Active", { status: 200 });
   }
-};
+};   

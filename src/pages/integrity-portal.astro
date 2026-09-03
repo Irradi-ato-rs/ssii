@@ -28,6 +28,10 @@ let errorMessage = "";
 
 if (Astro.request.method === 'POST') {
   try {
+    const form = await Astro.request.formData();
+    if (form.get('action') !== 'regenerate_key') {
+      return Astro.redirect('/integrity-portal');
+    }
     const randomBytes = new Uint8Array(32);
     crypto.getRandomValues(randomBytes);
     const newKey = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -68,22 +72,27 @@ if (Astro.request.method === 'POST') {
 const webhookUrl = `https://void.fzoirm.com/ingest/${tenantId}`;
 
 // 4. LIVE POSTURE (sync compute — zero-persistence)
-// Reads current + previous frames from KV snapshot. Velocity available from 2nd cycle onward.
 let livePosture: any = null;
 try {
   if (env.VM_TENANT_DIRECTORY) {
     const stored = await env.VM_TENANT_DIRECTORY.get(`telemetry:${tenantId}`);
     if (stored) {
       const parsed = JSON.parse(stored);
-      // Support both new shape ({ current, previous }) and old flat shape
       const current = parsed.current || parsed;
       const previous = parsed.previous || null;
+
+      let tenantHyperparams = null;
+      try {
+        const hpRaw = await env.VM_TENANT_DIRECTORY.get(`hyperparams:${tenantId}`);
+        if (hpRaw) tenantHyperparams = JSON.parse(hpRaw);
+      } catch (_) {}
 
       const result = runScoringEngine(
         current.paddedStream,
         current.threatIntelVector || [0, 0, 0],
         previous ? previous.paddedStream : undefined,
-        previous ? previous.threatIntelVector : undefined
+        previous ? previous.threatIntelVector : undefined,
+        tenantHyperparams || undefined
       );
       livePosture = { ...result, computedAt: new Date().toISOString() };
     }
@@ -246,7 +255,7 @@ try {
           <p class="font-bold">// CRITICAL WATERMELON INDEX — COMPLIANCE DECEPTION DETECTED</p>
         </div>
 
-        { (user.role === 'engineer' || user.role === 'admin') && (
+        { (user.role === 'engineer' || user.role === 'admin' || user.role === 'governance' || user.role === 'executive') && (
           <div id="engineerPanel" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4 pt-6 border-t border-slate-900">
             <div class="bg-[#020203] p-4 rounded border border-slate-900/50">
               <p class="text-[10px] text-slate-500 uppercase font-bold mb-3">Spectral Analytics</p>
@@ -353,7 +362,6 @@ try {
           const data = await response.json();
           if (!response.ok) throw new Error(data.error);
 
-          // Store for next run's velocity
           lastStream = currentStream;
           lastThreatVector = [0, 0, 0];
 
