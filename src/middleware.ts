@@ -25,7 +25,7 @@ export async function onRequest(context: APIContext, next: MiddlewareNext) {
   }
 
   // ─── PUBLIC ROUTES (no auth) ───
-  const publicPaths = ['login', 'api/auth', 'api/register', 'portal', 'architecture', 'onboarding', 'integrity-portal', 'documentation'];
+  const publicPaths = ['login', 'api/auth', 'api/register', 'portal', 'architecture', 'onboarding', 'documentation'];
   const isPublic = url.pathname === '/' || publicPaths.some(p => pathParts[0] === p || url.pathname.startsWith(`/${p}`));
 
   // ─── OIDC SESSION VERIFICATION ───
@@ -150,8 +150,10 @@ export async function onRequest(context: APIContext, next: MiddlewareNext) {
 // ─── HELPERS ──────────────────────────────────────────────────────────────
 
 async function resolveRole(sub: string, env: any): Promise<string> {
+  console.log('[resolveRole] sub =', JSON.stringify(sub));
   try {
     const record = await env.VM_TENANT_DIRECTORY?.get(`roles:${sub}`);
+    console.log('[resolveRole] record =', record);
     if (!record) return 'operator';
     const { role } = JSON.parse(record);
     const allowed = (env.PRIVATE_ROLE_ALLOWLIST || '').split(',').map((r: string) => r.trim());
