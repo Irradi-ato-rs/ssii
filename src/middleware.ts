@@ -157,6 +157,7 @@ async function resolveRole(sub: string, env: any): Promise<string> {
     if (!record) return 'operator';
     const { role } = JSON.parse(record);
     const allowed = (env.PRIVATE_ROLE_ALLOWLIST || '').split(',').map((r: string) => r.trim());
+    console.log('[resolveRole] allowed =', allowed, '→ match =', allowed.includes(role));
     return allowed.includes(role) ? role : 'operator';
   } catch {
     return 'operator';
