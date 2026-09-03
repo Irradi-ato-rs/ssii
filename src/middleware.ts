@@ -2,7 +2,7 @@
 import type { APIContext } from 'astro';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { env } from 'cloudflare:workers';
-import { getIdPConfigByDomain } from '../config/tenants';
+import { getIdPConfigByDomain } from './config/tenants';
 
 // Module-level JWKS cache (per-isolate)
 const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
