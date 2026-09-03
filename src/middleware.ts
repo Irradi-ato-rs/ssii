@@ -1,5 +1,5 @@
 // src/middleware.ts
-import type { APIContext, MiddlewareNext } from 'astro';   
+import type { APIContext, MiddlewareNext } from 'astro';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { env } from 'cloudflare:workers';
 import { getIdPConfigByDomain } from './config/tenants';
@@ -21,7 +21,7 @@ export async function onRequest(context: APIContext, next: MiddlewareNext) {
 
   // ─── PUBLIC ROUTES (no auth) ───
   const publicPaths = ['login', 'api/auth', 'api/register', 'portal'];
-  const isPublic = publicPaths.some(p => pathParts[0] === p || url.pathname.startsWith(`/${p}`));
+  const isPublic = url.pathname === '/' || publicPaths.some(p => pathParts[0] === p || url.pathname.startsWith(`/${p}`));
 
   // ─── OIDC SESSION VERIFICATION ───
   if (!isPublic) {
@@ -96,29 +96,53 @@ export async function onRequest(context: APIContext, next: MiddlewareNext) {
   // ─── PORTAL TENANT OWNERSHIP CHECK (enterprise path only) ───
   // Only fires when an OIDC session exists. Self-serve (API-key) requests
   // have no session, so this block is skipped and the page handles its own auth.
-  if (pathParts[0] === 'portal' && pathParts.length === 2 && context.locals.user) {
+  if (pathParts[0] === 'portal' && pathParts.length === 2) {
     const requestedTenantId = pathParts[1];
-    const user = context.locals.user;
+    const sessionToken = context.cookies.get('aim_session_token')?.value;
+    const authDomain = context.cookies.get('auth_domain')?.value;
 
-    try {
-      const portalRecord = env.VM_TENANT_DIRECTORY
-        ? await env.VM_TENANT_DIRECTORY.get(`portal:${requestedTenantId}`)
-        : null;
+    // Only enforce ownership if a session exists (self-serve has no session)
+    if (sessionToken && authDomain) {
+      try {
+        const config = await getIdPConfigByDomain(env, authDomain);
+        if (config) {
+          const clientId = env[config.clientIdEnv]?.trim();
+          const JWKS = getJwks(config.jwksUri);
+          const verified = await jwtVerify(sessionToken, JWKS, {
+            issuer: config.issuer,
+            audience: clientId,
+            algorithms: ['RS256', 'RS384', 'RS512'],
+            clockTolerance: '60s',
+          });
 
-      if (!portalRecord) {
-        return new Response('404 — Tenant not found', { status: 404 });
+          const user = {
+            sub: verified.payload.sub,
+            email: verified.payload.preferred_username || verified.payload.email || '',
+            tenant: authDomain,
+            role: await resolveRole(verified.payload.sub, env),
+          };
+
+          const portalRecord = env.VM_TENANT_DIRECTORY
+            ? await env.VM_TENANT_DIRECTORY.get(`portal:${requestedTenantId}`)
+            : null;
+
+          if (portalRecord) {
+            const { owner } = JSON.parse(portalRecord);
+            if (owner !== user.sub) {
+              return new Response('403 — Access denied', { status: 403 });
+            }
+          }
+
+          context.locals.user = user;
+          context.locals.tenantId = requestedTenantId;
+          context.locals.portalRecord = portalRecord ? JSON.parse(portalRecord) : null;
+        }
+      } catch {
+        // Session invalid on a portal route — deny
+        return context.redirect('/login?error=expired_session');
       }
-
-      const { owner } = JSON.parse(portalRecord);
-      if (owner !== user.sub) {
-        return new Response('403 — Access denied', { status: 403 });
-      }
-
-      context.locals.tenantId = requestedTenantId;
-      context.locals.portalRecord = JSON.parse(portalRecord);
-    } catch {
-      return new Response('500 — Portal lookup failed', { status: 500 });
     }
+    // No session → self-serve path, let the page handle API-key auth
   }
 
   return next();
