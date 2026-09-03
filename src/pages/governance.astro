@@ -15,7 +15,7 @@ const user = Astro.locals.user;
 if (user.role !== 'governance' && user.role !== 'admin') {
   return new Response('403 Forbidden', { status: 403 });
 }
----
+---   
 
 <BaseLayout title="Governance | VoidMetric Tuning Console">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';" slot="head" />
