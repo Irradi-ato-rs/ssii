@@ -8,7 +8,7 @@ import Footer from '../components/Footer.astro';
 // Auth gate
 if (!Astro.locals.user) {
   return Astro.redirect('/login?error=unauthenticated_session_gateway');
-}   
+}
 const user = Astro.locals.user;
 
 // Role gate
@@ -41,6 +41,11 @@ if (user.role !== 'governance' && user.role !== 'admin') {
 
       <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div>
+          <label class="text-slate-500 text-[10px] block mb-1">blockCount (N x 4x3)</label>
+          <input id="p-blocks" type="number" step="1" min="1" value="1"
+            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+        </div>
+        <div>
           <label class="text-slate-500 text-[10px] block mb-1">priorityAlpha (4 values, sum=1)</label>
           <input id="p-alpha" type="text" value="0.50, 0.30, 0.15, 0.05"
             class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
@@ -71,7 +76,7 @@ if (user.role !== 'governance' && user.role !== 'admin') {
             class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
         </div>
         <div>
-          <label class="text-slate-500 text-[10px] block mb-1">chaosScale (κ)</label>
+          <label class="text-slate-500 text-[10px] block mb-1">chaosScale (kappa)</label>
           <input id="p-kappa" type="number" step="0.05" value="0.25"
             class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
         </div>
@@ -121,6 +126,7 @@ if (user.role !== 'governance' && user.role !== 'admin') {
         s.split(',').map(v => parseFloat(v.trim())).slice(0, n);
 
       return {
+        blockCount: parseInt(document.getElementById('p-blocks').value, 10) || 1,
         priorityAlpha: parseArr(document.getElementById('p-alpha').value, 4),
         baseEnablerWeights: parseArr(document.getElementById('p-weights').value, 3),
         decayRate: parseFloat(document.getElementById('p-decay').value),
@@ -137,6 +143,7 @@ if (user.role !== 'governance' && user.role !== 'admin') {
 
     function setParams(p: any) {
       if (!p) return;
+      document.getElementById('p-blocks').value = p.blockCount ?? 1;
       document.getElementById('p-alpha').value = (p.priorityAlpha || [0.5,0.3,0.15,0.05]).join(', ');
       document.getElementById('p-weights').value = (p.baseEnablerWeights || [0.4,0.3,0.3]).join(', ');
       document.getElementById('p-decay').value = p.decayRate ?? 0.005;
@@ -161,7 +168,7 @@ if (user.role !== 'governance' && user.role !== 'admin') {
             <div class="flex justify-between"><span>HF:</span><span class="text-white">${(r.honest_failure_index * 100).toFixed(1)}%</span></div>
             <div class="flex justify-between"><span>Status:</span><span class="${r.status === 'CRITICAL_RISK_SWITCH_TRIGGERED' ? 'text-red-400' : 'text-emerald-400'} font-bold">${r.status.replace(/_/g, ' ')}</span></div>
             <div class="flex justify-between"><span>Chaos:</span><span class="text-white">${r.spectral_analysis.chaos_index_penalty.toFixed(4)}</span></div>
-            <div class="flex justify-between"><span>λ_max:</span><span class="text-white">${r.spectral_analysis.principal_eigenvalue.toFixed(4)}</span></div>
+            <div class="flex justify-between"><span>max:</span><span class="text-white">${r.spectral_analysis.principal_eigenvalue.toFixed(4)}</span></div>
           </div>
         </div>
       `;
