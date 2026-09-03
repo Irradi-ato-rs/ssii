@@ -1,135 +1,154 @@
 // src/middleware.ts
-import { defineMiddleware } from 'astro:middleware';
-import { env } from 'cloudflare:workers';
-import { jwtVerify, createRemoteJWKSet } from 'jose';
-import { getIdPConfigByDomain } from './config/tenants';
+import type { APIContext } from 'astro';
 
-// --- Helper: JWKS Cache ---
-const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
-function getJwks(jwksUri: string) {
-  let jwks = jwksCache.get(jwksUri);
-  if (!jwks) {
-    jwks = createRemoteJWKSet(new URL(jwksUri));
-    jwksCache.set(jwksUri, jwks);
-  }
-  return jwks;
-}
+export async function middleware(context: APIContext) {
+  const url = new URL(context.url);
+  const pathParts = url.pathname.split('/').filter(Boolean);
 
-// --- Helper: Parse Domain ---
-function parseEmailDomain(email: string): string {
-  const at = email.lastIndexOf('@');
-  if (at <= 0 || at === email.length - 1) return '';
-  return email.slice(at + 1).toLowerCase().trim();
-}
+  // ─── PUBLIC ROUTES (no auth) ───
+  const publicPaths = ['login', 'api/auth', 'api/register'];
+  const isPublic = publicPaths.some(p => pathParts[0] === p || url.pathname.startsWith(`/${p}`));
 
-// --- Helper: Hybrid Role Resolution (Claims + Allowlist) ---
-function resolveRole(
-  email: string,
-  roleAllowlistRaw: string | undefined,
-  idpClaims: any
-): 'governance' | 'admin' | 'executive' | 'engineer' {
-  
-  // 1. PRIORITY: Check IDP Claims (Entra ID / Okta Groups/Roles)
-  // Adjust claim keys ('roles', 'groups', 'extension_role') based on your IdP config
-  const roles = idpClaims?.roles || idpClaims?.groups || idpClaims?.extension_role || [];
-  
-  if (Array.isArray(roles)) {
-    // Map specific IdP group names to VoidMetric roles
-    if (roles.some((r: string) => r.includes('Governance') || r === 'void-governance')) return 'governance';
-    if (roles.some((r: string) => r.includes('Admin') || r === 'void-admin')) return 'admin';
-    if (roles.some((r: string) => r.includes('Executive') || r === 'void-executive')) return 'executive';
-    if (roles.some((r: string) => r.includes('Engineer') || r === 'void-engineer')) return 'engineer';
-  }
+  // ─── OIDC SESSION VERIFICATION ───
+  if (!isPublic) {
+    const sessionToken = context.cookies.get('voidmetric_session')?.value;
 
-  // 2. FALLBACK: Manual Allowlist (if no valid claim found)
-  const normalizedEmail = email.toLowerCase();
-  if (roleAllowlistRaw) {
-    try {
-      const allowlist = JSON.parse(roleAllowlistRaw) as Record<string, string[]>;
-      for (const role of ['governance', 'admin', 'executive', 'engineer'] as const) {
-        if (allowlist[role]?.some((e) => e.toLowerCase() === normalizedEmail)) {
-          return role;
-        }
+    if (!sessionToken) {
+      if (pathParts[0] === 'api') {
+        return new Response(JSON.stringify({ error: 'unauthenticated' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
+      return context.redirect(`/login?error=unauthenticated_session_gateway`);
+    }
+
+    try {
+      const env = (context as any).env;
+      const decoded = await verifySessionToken(sessionToken, env.PRIVATE_SESSION_SECRET);
+      if (!decoded) {
+        if (pathParts[0] === 'api') {
+          return new Response(JSON.stringify({ error: 'invalid_session' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        return context.redirect(`/login?error=expired_session`);
+      }
+
+      // Resolve role from VoidMetric-controlled allow-list
+      const role = await resolveRole(decoded.sub, env);
+      context.locals.user = {
+        sub: decoded.sub,
+        email: decoded.email,
+        tenant: decoded.tenant,
+        role,
+      };
     } catch {
-      console.error('[VoidMetric Guard] Malformed PRIVATE_ROLE_ALLOWLIST');
+      if (pathParts[0] === 'api') {
+        return new Response(JSON.stringify({ error: 'session_error' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return context.redirect(`/login?error=session_error`);
     }
   }
 
-  // 3. DEFAULT
-  return 'engineer';
+  // ─── PORTAL TENANT OWNERSHIP CHECK ───
+  // /portal/:tenantId — adapter operator page
+  if (pathParts[0] === 'portal' && pathParts.length === 2) {
+    const requestedTenantId = pathParts[1];
+    const user = context.locals.user;
+
+    if (!user) {
+      return context.redirect(`/login?error=unauthenticated_session_gateway`);
+    }
+
+    // Check ownership: portal:{tenantId}.owner must match user.sub
+    try {
+      const env = (context as any).env || (await (context as any).getEnv?.());
+      const portalRecord = env?.VM_TENANT_DIRECTORY
+        ? await env.VM_TENANT_DIRECTORY.get(`portal:${requestedTenantId}`)
+        : null;
+
+      if (!portalRecord) {
+        return new Response('404 — Tenant not found', { status: 404 });
+      }
+
+      const { owner } = JSON.parse(portalRecord);
+      if (owner !== user.sub) {
+        return new Response('403 — Access denied', { status: 403 });
+      }
+
+      // Attach tenantId to locals for the page
+      context.locals.tenantId = requestedTenantId;
+      context.locals.portalRecord = JSON.parse(portalRecord);
+    } catch {
+      return new Response('500 — Portal lookup failed', { status: 500 });
+    }
+  }
+
+  return context.next();
 }
 
-// --- Middleware Logic ---
-export const onRequest = defineMiddleware(async (context, next) => {
-  const { request, locals, cookies } = context;
-  const url = new URL(request.url);
+// ─── HELPERS ──────────────────────────────────────────────────────────────
 
-  let cleanPath = url.pathname;
-  if (cleanPath.length > 1 && cleanPath.endsWith('/')) {
-    cleanPath = cleanPath.slice(0, -1);
-  }
+async function verifySessionToken(
+  token: string,
+  secret: string
+): Promise<{ sub: string; email: string; tenant: string } | null> {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
 
-  // Skip static assets
-  if (url.pathname.startsWith('/_astro') || url.pathname === '/favicon.ico' || url.pathname.includes('.')) {
-    return next();
-  }
+  const [header, payload, signature] = parts;
+  const dataToVerify = `${header}.${payload}`;
 
-  // Public & API Routes
-  const publicRoutes = ['/', '/login', '/architecture', '/onboarding'];
-  const explicitApiRoutes = ['/api/register', '/api/auth/callback', '/api/auth/signout'];
-  if (explicitApiRoutes.includes(url.pathname) || publicRoutes.includes(cleanPath)) {
-    return next();
-  }
-
-  // Session Validation
-  const sessionToken = cookies.get('aim_session_token');
-  if (!sessionToken?.value) {
-    locals.user = null;
-    return context.redirect('/login?error=unauthenticated_session_gateway');
-  }
-
+  // Verify HMAC-SHA256 signature
   try {
-    const tokenChunks = sessionToken.value.split('.');
-    if (tokenChunks.length !== 3) throw new Error('Malformed token');
+    const key = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify']
+    );
 
-    const rawEnvelopePayload = JSON.parse(atob(tokenChunks[1]));
-    const validatedEmail = (rawEnvelopePayload.email || '') as string;
-    if (!validatedEmail) throw new Error('missing_email_claim');
+    const sigBytes = Uint8Array.from(
+      atob(signature.replace(/-/g, '+').replace(/_/g, '/')),
+      (c) => c.charCodeAt(0)
+    );
 
-    const domain = parseEmailDomain(validatedEmail);
-    
-    // Pass env to KV lookup
-    const config = await getIdPConfigByDomain(env, domain);
-    if (!config) throw new Error('unauthorized_domain');
+    const valid = await crypto.subtle.verify(
+      'HMAC',
+      key,
+      sigBytes,
+      new TextEncoder().encode(dataToVerify)
+    );
 
-    // Access secrets from imported env
-    const resolvedAudienceId = env[config.clientIdEnv]?.trim();
-    if (!resolvedAudienceId) throw new Error('configuration_fault');
-
-    const JWKS = getJwks(config.jwksUri);
-    const { payload } = await jwtVerify(sessionToken.value, JWKS, {
-      issuer: config.issuer,
-      audience: resolvedAudienceId,
-      algorithms: ['RS256', 'RS384', 'RS512'],
-      clockTolerance: '30s',
-    });
-
-    // Hybrid Role Resolution
-    const evaluatedRole = resolveRole(validatedEmail, env.PRIVATE_ROLE_ALLOWLIST, payload);
-
-    locals.user = {
-      email: validatedEmail,
-      role: evaluatedRole,
-      tenant: domain,
-      rawClaimsPayload: payload,
-    };
-
-    return next();
-  } catch (err) {
-    console.error('[VoidMetric Guard Loop Exception]:', (err as Error).message);
-    cookies.delete('aim_session_token', { path: '/' });
-    locals.user = null;
-    return context.redirect('/login?error=session_invalidated_by_middleware');
+    if (!valid) return null;
+  } catch {
+    return null;
   }
-});   
+
+  // Decode payload
+  try {
+    const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    if (decoded.exp && decoded.exp < Date.now() / 1000) return null;
+    return { sub: decoded.sub, email: decoded.email, tenant: decoded.tenant };
+  } catch {
+    return null;
+  }
+}
+
+async function resolveRole(sub: string, env: any): Promise<string> {
+  try {
+    const record = await env.VM_TENANT_DIRECTORY?.get(`roles:${sub}`);
+    if (!record) return 'operator';
+    const { role } = JSON.parse(record);
+    const allowed = (env.PRIVATE_ROLE_ALLOWLIST || '').split(',').map((r: string) => r.trim());
+    return allowed.includes(role) ? role : 'operator';
+  } catch {
+    return 'operator';
+  }
+}
