@@ -1,7 +1,7 @@
 // src/middleware.ts
 import type { APIContext } from 'astro';
 
-export async function middleware(context: APIContext) {
+export async function onRequest(context: APIContext) {
   const url = new URL(context.url);
   const pathParts = url.pathname.split('/').filter(Boolean);
 
