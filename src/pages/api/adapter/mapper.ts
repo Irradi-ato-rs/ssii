@@ -69,7 +69,19 @@ export const POST: APIContext['POST'] = async ({ request, locals, env }) => {
       if (vErr) {
         return new Response(JSON.stringify({ error: vErr }), { status: 400 });
       }
+
+      const previousRaw = await env.VM_TENANT_DIRECTORY.get(`adapter:${tenantId}`);
       await env.VM_TENANT_DIRECTORY.put(`adapter:${tenantId}`, JSON.stringify(adapterConfig));
+
+      console.log(`[GOV-AUDIT] adapter commit`, {
+        tenantId,
+        actor: locals.user.email,
+        role: locals.user.role,
+        previous: previousRaw ? JSON.parse(previousRaw) : null,
+        committed: adapterConfig,
+        timestamp: new Date().toISOString(),
+      });
+
       return new Response(
         JSON.stringify({ committed: true, tenantId }),
         { headers: { 'Content-Type': 'application/json' } }
@@ -78,9 +90,10 @@ export const POST: APIContext['POST'] = async ({ request, locals, env }) => {
 
     return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), { status: 400 });
   } catch (err) {
+    console.error(`[GOV-ADAPTER] Internal error:`, err);
     return new Response(
-      JSON.stringify({ error: (err as Error).message }),
+      JSON.stringify({ error: 'Internal server error' }),
       { status: 500 }
     );
   }
-};
+};   

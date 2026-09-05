@@ -1,6 +1,5 @@
----   
 // src/pages/governance.astro
-// Governance/admin exclusive: hyperparameter tuning console.
+// Governance/admin exclusive: hyperparameter tuning, adapter mapping, notification config.
 export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Footer from '../components/Footer.astro';
@@ -15,148 +14,412 @@ const user = Astro.locals.user;
 if (user.role !== 'governance' && user.role !== 'admin') {
   return new Response('403 Forbidden', { status: 403 });
 }
----   
+---
 
-<BaseLayout title="VoidMetric | Governance Tuning Console">
+<BaseLayout title="VoidMetric | Governance System">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';" slot="head" />
 
   <main class="w-full max-w-4xl mx-auto px-4 py-12 text-left text-slate-300 font-mono text-xs leading-relaxed">
 
     <header class="mb-10 space-y-2">
-      <h1 class="text-lg font-bold tracking-tight text-white"><a href="https://ssii.fzoirm.com">VOIDMETRIC</a> // Governance / console</h1>
-      <p class="text-slate-500">Hyperparameter editor, tuning &amp; testing. Changes are not live until committed.</p>
+      <h1 class="text-lg font-bold tracking-tight text-white"><a href="https://ssii.fzoirm.com">VOIDMETRIC</a> // Governance System / console</h1>
+      <p class="text-slate-500">Hyperparameter editor, adapter mapping, notification config, tuning &amp; testing. Changes are not live until committed.</p>
       <p class="text-slate-600 text-[10px]">OPERATOR: {user.email} // ROLE: {user.role.toUpperCase()}</p>
     </header>
 
-    <!-- Tenant Selector -->
+    <!-- Tenant Selector (shared) -->
     <section class="mb-8 space-y-2">
       <label class="text-slate-500 uppercase font-bold text-[10px] block">Tenant ID</label>
-      <input id="tenantId" type="text" placeholder="irradiators-ltd"
+      <input id="tenantId" type="text" placeholder="irradiators-limited"
         class="w-full max-w-xs bg-[#020203] border border-slate-800 rounded p-2 text-white text-sm" />
     </section>
 
-    <!-- Parameter Editor -->
-    <section class="mb-8 space-y-4">
-      <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">- CANDIDATE PARAMETERS</h2>
-
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <div>
-          <label class="text-slate-500 text-[10px] block mb-1">blockCount (N x 4x3)</label>
-          <input id="p-blocks" type="number" step="1" min="1" value="1"
-            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
-        </div>
-        <div>
-          <label class="text-slate-500 text-[10px] block mb-1">priorityAlpha (4 values, sum=1)</label>
-          <input id="p-alpha" type="text" value="0.50, 0.30, 0.15, 0.05"
-            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
-        </div>
-        <div>
-          <label class="text-slate-500 text-[10px] block mb-1">baseEnablerWeights (3 values)</label>
-          <input id="p-weights" type="text" value="0.4, 0.3, 0.3"
-            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
-        </div>
-        <div>
-          <label class="text-slate-500 text-[10px] block mb-1">decayRate</label>
-          <input id="p-decay" type="number" step="0.001" value="0.005"
-            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
-        </div>
-        <div>
-          <label class="text-slate-500 text-[10px] block mb-1">driftVolatility</label>
-          <input id="p-drift" type="number" step="0.005" value="0.04"
-            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
-        </div>
-        <div>
-          <label class="text-slate-500 text-[10px] block mb-1">sigmoidSteepness</label>
-          <input id="p-steep" type="number" step="0.5" value="10.0"
-            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
-        </div>
-        <div>
-          <label class="text-slate-500 text-[10px] block mb-1">sigmoidMidpoint</label>
-          <input id="p-mid" type="number" step="0.05" value="0.5"
-            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
-        </div>
-        <div>
-          <label class="text-slate-500 text-[10px] block mb-1">chaosScale (kappa)</label>
-          <input id="p-kappa" type="number" step="0.05" value="0.25"
-            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
-        </div>
-        <div>
-          <label class="text-slate-500 text-[10px] block mb-1">statusThreshold</label>
-          <input id="p-status" type="number" step="0.05" value="0.20"
-            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
-        </div>
-        <div>
-          <label class="text-slate-500 text-[10px] block mb-1">breakerThreshold</label>
-          <input id="p-breaker" type="number" step="0.01" value="0.05"
-            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
-        </div>
-        <div>
-          <label class="text-slate-500 text-[10px] block mb-1">breakerFloor</label>
-          <input id="p-floor" type="number" step="0.005" value="0.015"
-            class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
-        </div>
-      </div>
-    </section>
-
-    <!-- Actions -->
-    <section class="mb-8 flex gap-4">
-      <button id="loadBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer">
-        Load Current
+    <!-- Tab Switcher -->
+    <section class="mb-8 flex gap-2 border-b border-slate-800 pb-3">
+      <button id="tab-hyperparams" class="px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer transition bg-blue-600 text-white">
+        Hyperparameters
       </button>
-      <button id="testBtn" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer">
-        Test Against Snapshot
+      <button id="tab-adapters" class="px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer transition bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-200">
+        Adapters
       </button>
-      <button id="commitBtn" class="bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer">
-        Commit to KV
+      <button id="tab-notify" class="px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer transition bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-200">
+        Notifications
       </button>
     </section>
 
-    <!-- Results -->
-    <section id="results" class="hidden space-y-4 pt-6 border-t border-slate-900">
-      <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">- RESULTS (Baseline vs Candidate)</h2>
-      <div id="resultsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-    </section>
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- TAB: HYPERPARAMETERS                                                -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="panel-hyperparams">
+
+      <section class="mb-8 space-y-4">
+        <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">- CANDIDATE PARAMETERS</h2>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">blockCount (N x 4x3)</label>
+            <input id="p-blocks" type="number" step="1" min="1" max="720" value="1"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">priorityAlpha (4 values, sum=1)</label>
+            <input id="p-alpha" type="text" value="0.50, 0.30, 0.15, 0.05"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">baseEnablerWeights (3 values)</label>
+            <input id="p-weights" type="text" value="0.4, 0.3, 0.3"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">decayRate</label>
+            <input id="p-decay" type="number" step="0.001" value="0.005"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">driftVolatility</label>
+            <input id="p-drift" type="number" step="0.005" value="0.04"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">sigmoidSteepness</label>
+            <input id="p-steep" type="number" step="0.5" value="10.0"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">sigmoidMidpoint</label>
+            <input id="p-mid" type="number" step="0.05" value="0.5"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">chaosScale (kappa)</label>
+            <input id="p-kappa" type="number" step="0.05" value="0.25"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">statusThreshold</label>
+            <input id="p-status" type="number" step="0.05" value="0.20"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">breakerThreshold</label>
+            <input id="p-breaker" type="number" step="0.01" value="0.05"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">breakerFloor</label>
+            <input id="p-floor" type="number" step="0.005" value="0.015"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+          </div>
+        </div>
+      </section>
+
+      <section class="mb-8 flex gap-4">
+        <button id="hpLoadBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer">
+          Load Current
+        </button>
+        <button id="hpTestBtn" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer">
+          Test Against Snapshot
+        </button>
+        <button id="hpCommitBtn" class="bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer">
+          Commit to KV
+        </button>
+      </section>
+
+      <section id="hpResults" class="hidden space-y-4 pt-6 border-t border-slate-800">
+        <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">- RESULTS (Baseline vs Candidate)</h2>
+        <div id="hpResultsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+      </section>
+
+    </div><!-- /panel-hyperparams -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- TAB: ADAPTERS                                                       -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="panel-adapters" class="hidden">
+
+      <section class="mb-8 space-y-4">
+        <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">- ADAPTER CONFIGURATION</h2>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">Platform Label</label>
+            <input id="ad-platform" type="text" placeholder="okta"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">Payload Type</label>
+            <select id="ad-istype" class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]">
+              <option value="single">Single object</option>
+              <option value="array">Array of objects</option>
+              <option value="wrapper">Wrapper (array inside field)</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="ad-wrapper-field-wrap" class="hidden">
+          <label class="text-slate-500 text-[10px] block mb-1">Array Item Field</label>
+          <input id="ad-arrayfield" type="text" placeholder="events"
+            class="w-full max-w-xs bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+        </div>
+
+        <div>
+          <label class="text-slate-500 text-[10px] block mb-1">Paste Raw Payload (JSON)</label>
+          <textarea id="ad-raw" rows="10"
+            class="w-full bg-[#020203] border border-slate-800 rounded p-3 text-white text-[10px] font-mono"
+            placeholder='{"eventType": "user.authentication.failure", "riskScore": 72, ...}'></textarea>
+        </div>
+
+        <button id="adParseBtn" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer">
+          Parse Payload
+        </button>
+      </section>
+
+      <section id="adFieldTree" class="hidden mb-8 space-y-2">
+        <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">- FIELD TREE (click to auto-fill)</h2>
+        <div id="adFieldTreeList" class="space-y-1 max-h-[200px] overflow-y-auto bg-[#020203] border border-slate-900 rounded p-3"></div>
+      </section>
+
+      <section id="adMapping" class="hidden mb-8 space-y-4">
+        <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">- FIELD MAPPING</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">severity ← field</label>
+            <input id="ad-sev-field" type="text" placeholder="riskScore"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">severity scale (divisor)</label>
+            <input id="ad-sev-scale" type="number" step="1" value="100"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">severity default (0–1)</label>
+            <input id="ad-sev-default" type="number" step="0.1" value="0.5"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">category ← field</label>
+            <input id="ad-cat-field" type="text" placeholder="eventType"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">status ← field</label>
+            <input id="ad-st-field" type="text" placeholder="outcome.result"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">timestamp ← field</label>
+            <input id="ad-ts-field" type="text" placeholder="published"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">timestamp format</label>
+            <select id="ad-ts-fmt" class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]">
+              <option value="iso">ISO 8601</option>
+              <option value="epoch">Epoch seconds</option>
+              <option value="epoch_ms">Epoch milliseconds</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">entity ← field</label>
+            <input id="ad-ent-field" type="text" placeholder="actor.id"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+          </div>
+        </div>
+      </section>
+
+      <section id="adValueMappings" class="hidden mb-8 space-y-4">
+        <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">- VALUE MAPPINGS</h2>
+
+        <div>
+          <p class="text-slate-400 text-[10px] mb-2">CATEGORY (raw value → Category)</p>
+          <div id="adCatMappings" class="space-y-1"></div>
+          <button id="adAddCatBtn" class="text-[9px] text-blue-400 hover:text-blue-300 underline cursor-pointer mt-1">+ Add category mapping</button>
+          <div class="mt-2">
+            <label class="text-slate-500 text-[10px] block mb-1">Default category</label>
+            <select id="adCatDefault" class="bg-[#020203] border border-slate-800 rounded p-1 text-white text-[10px] w-40">
+              <option value="identity">identity</option>
+              <option value="access">access</option>
+              <option value="admin">admin</option>
+              <option value="policy">policy</option>
+              <option value="governance">governance</option>
+              <option value="compliance">compliance</option>
+              <option value="physical">physical</option>
+              <option value="facilities">facilities</option>
+              <option value="vulnerability">vulnerability</option>
+              <option value="network">network</option>
+              <option value="endpoint">endpoint</option>
+              <option value="cloud">cloud</option>
+              <option value="data">data</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-slate-400 text-[10px] mb-2">STATUS (raw value → Status)</p>
+          <div id="adStMappings" class="space-y-1"></div>
+          <button id="adAddStBtn" class="text-[9px] text-blue-400 hover:text-blue-300 underline cursor-pointer mt-1">+ Add status mapping</button>
+          <div class="mt-2">
+            <label class="text-slate-500 text-[10px] block mb-1">Default status</label>
+            <select id="adStDefault" class="bg-[#020203] border border-slate-800 rounded p-1 text-white text-[10px] w-40">
+              <option value="detected">detected</option>
+              <option value="open">open</option>
+              <option value="resolved">resolved</option>
+              <option value="suppressed">suppressed</option>
+              <option value="success">success</option>
+              <option value="failure">failure</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="mb-8 flex gap-4">
+        <button id="adLoadBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer">
+          Load Current
+        </button>
+        <button id="adTestBtn" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer">
+          Test Against Payload
+        </button>
+        <button id="adCommitBtn" class="bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer">
+          Commit to KV
+        </button>
+      </section>
+
+      <section id="adResults" class="hidden space-y-4 pt-6 border-t border-slate-800">
+        <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">- TEST RESULTS</h2>
+        <div id="adResultsBody" class="space-y-3"></div>
+      </section>
+
+    </div><!-- /panel-adapters -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- TAB: NOTIFICATIONS                                                  -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="panel-notify" class="hidden">
+
+      <section class="mb-8 space-y-4">
+        <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">- NOTIFICATION TARGETS</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">PagerDuty Routing Key</label>
+            <input id="nt-pd-key" type="password" placeholder="rk-xxxxxxxxxxxxxxxx"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+            <p class="text-slate-600 text-[9px] mt-1">Leave blank to disable PagerDuty paging.</p>
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">Slack Webhook URL</label>
+            <input id="nt-slack-url" type="password" placeholder="https://hooks.slack.com/services/..."
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+            <p class="text-slate-600 text-[9px] mt-1">Leave blank to disable Slack notifications.</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">Cooldown (seconds)</label>
+            <input id="nt-cooldown" type="number" step="60" min="60" max="86400" value="3600"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+            <p class="text-slate-600 text-[9px] mt-1">Suppress non-escalated alerts within this window. Default: 3600 (1h).</p>
+          </div>
+          <div>
+            <label class="text-slate-500 text-[10px] block mb-1">Escalate After (consecutive CRITICAL)</label>
+            <input id="nt-escalate" type="number" step="1" min="2" max="24" value="3"
+              class="w-full bg-[#020203] border border-slate-800 rounded p-2 text-white text-[11px]" />
+            <p class="text-slate-600 text-[9px] mt-1">Page regardless of cooldown after this many consecutive CRITICAL cycles. Default: 3.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="mb-8 flex gap-4">
+        <button id="ntLoadBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer">
+          Load Current
+        </button>
+        <button id="ntTestBtn" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer">
+          Send Test Alert
+        </button>
+        <button id="ntCommitBtn" class="bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer">
+          Commit to KV
+        </button>
+      </section>
+
+      <section id="ntResults" class="hidden space-y-4 pt-6 border-t border-slate-800">
+        <h2 class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">- TEST RESULTS</h2>
+        <div id="ntResultsBody" class="space-y-3"></div>
+      </section>
+
+    </div><!-- /panel-notify -->
 
     <Footer />
   </main>
 
   <script>
+    // ─── TAB SWITCHING ─────────────────────────────────────────────────────
+    const tabHp = document.getElementById('tab-hyperparams');
+    const tabAd = document.getElementById('tab-adapters');
+    const tabNt = document.getElementById('tab-notify');
+    const panelHp = document.getElementById('panel-hyperparams');
+    const panelAd = document.getElementById('panel-adapters');
+    const panelNt = document.getElementById('panel-notify');
+
+    const TAB_ACTIVE = 'px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer transition bg-blue-600 text-white';
+    const TAB_INACTIVE = 'px-4 py-2 rounded text-[10px] uppercase font-bold cursor-pointer transition bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-200';
+
+    function switchTab(which: string) {
+      panelHp!.classList.toggle('hidden', which !== 'hyperparams');
+      panelAd!.classList.toggle('hidden', which !== 'adapters');
+      panelNt!.classList.toggle('hidden', which !== 'notify');
+      tabHp!.className = which === 'hyperparams' ? TAB_ACTIVE : TAB_INACTIVE;
+      tabAd!.className = which === 'adapters' ? TAB_ACTIVE : TAB_INACTIVE;
+      tabNt!.className = which === 'notify' ? TAB_ACTIVE : TAB_INACTIVE;
+    }
+    tabHp?.addEventListener('click', () => switchTab('hyperparams'));
+    tabAd?.addEventListener('click', () => switchTab('adapters'));
+    tabNt?.addEventListener('click', () => switchTab('notify'));
+
+    // ─── SHARED ────────────────────────────────────────────────────────────
+    function getTenantId(): string {
+      const id = document.getElementById('tenantId')!.value.trim();
+      if (!id) { alert('Enter a tenant ID'); }
+      return id;
+    }
+
+    // ─── HYPERPARAMETERS ───────────────────────────────────────────────────
     function collectParams(): any {
       const parseArr = (s: string, n: number): number[] =>
         s.split(',').map(v => parseFloat(v.trim())).slice(0, n);
 
       return {
-        blockCount: parseInt(document.getElementById('p-blocks').value, 10) || 1,
-        priorityAlpha: parseArr(document.getElementById('p-alpha').value, 4),
-        baseEnablerWeights: parseArr(document.getElementById('p-weights').value, 3),
-        decayRate: parseFloat(document.getElementById('p-decay').value),
-        driftVolatility: parseFloat(document.getElementById('p-drift').value),
-        sigmoidSteepness: parseFloat(document.getElementById('p-steep').value),
-        sigmoidMidpoint: parseFloat(document.getElementById('p-mid').value),
-        chaosScale: parseFloat(document.getElementById('p-kappa').value),
-        statusThreshold: parseFloat(document.getElementById('p-status').value),
-        breakerThreshold: parseFloat(document.getElementById('p-breaker').value),
-        breakerFloor: parseFloat(document.getElementById('p-floor').value),
-        siLiveFloor: 0.0001,
+        blockCount: parseInt(document.getElementById('p-blocks')!.value, 10) || 1,
+        priorityAlpha: parseArr(document.getElementById('p-alpha')!.value, 4),
+        baseEnablerWeights: parseArr(document.getElementById('p-weights')!.value, 3),
+        decayRate: parseFloat(document.getElementById('p-decay')!.value),
+        driftVolatility: parseFloat(document.getElementById('p-drift')!.value),
+        sigmoidSteepness: parseFloat(document.getElementById('p-steep')!.value),
+        sigmoidMidpoint: parseFloat(document.getElementById('p-mid')!.value),
+        chaosScale: parseFloat(document.getElementById('p-kappa')!.value),
+        statusThreshold: parseFloat(document.getElementById('p-status')!.value),
+        breakerThreshold: parseFloat(document.getElementById('p-breaker')!.value),
+        breakerFloor: parseFloat(document.getElementById('p-floor')!.value),
       };
     }
 
     function setParams(p: any) {
       if (!p) return;
-      document.getElementById('p-blocks').value = p.blockCount ?? 1;
-      document.getElementById('p-alpha').value = (p.priorityAlpha || [0.5,0.3,0.15,0.05]).join(', ');
-      document.getElementById('p-weights').value = (p.baseEnablerWeights || [0.4,0.3,0.3]).join(', ');
-      document.getElementById('p-decay').value = p.decayRate ?? 0.005;
-      document.getElementById('p-drift').value = p.driftVolatility ?? 0.04;
-      document.getElementById('p-steep').value = p.sigmoidSteepness ?? 10.0;
-      document.getElementById('p-mid').value = p.sigmoidMidpoint ?? 0.5;
-      document.getElementById('p-kappa').value = p.chaosScale ?? 0.25;
-      document.getElementById('p-status').value = p.statusThreshold ?? 0.20;
-      document.getElementById('p-breaker').value = p.breakerThreshold ?? 0.05;
-      document.getElementById('p-floor').value = p.breakerFloor ?? 0.015;
+      document.getElementById('p-blocks')!.value = p.blockCount ?? 1;
+      document.getElementById('p-alpha')!.value = (p.priorityAlpha || [0.5,0.3,0.15,0.05]).join(', ');
+      document.getElementById('p-weights')!.value = (p.baseEnablerWeights || [0.4,0.3,0.3]).join(', ');
+      document.getElementById('p-decay')!.value = p.decayRate ?? 0.005;
+      document.getElementById('p-drift')!.value = p.driftVolatility ?? 0.04;
+      document.getElementById('p-steep')!.value = p.sigmoidSteepness ?? 10.0;
+      document.getElementById('p-mid')!.value = p.sigmoidMidpoint ?? 0.5;
+      document.getElementById('p-kappa')!.value = p.chaosScale ?? 0.25;
+      document.getElementById('p-status')!.value = p.statusThreshold ?? 0.20;
+      document.getElementById('p-breaker')!.value = p.breakerThreshold ?? 0.05;
+      document.getElementById('p-floor')!.value = p.breakerFloor ?? 0.015;
     }
 
-    function renderResult(label: string, r: any) {
+    function renderResult(label: string, r: any): string {
       return `
         <div class="bg-[#020203] p-4 rounded border border-slate-900/50">
           <p class="text-[10px] text-slate-500 uppercase font-bold mb-2">${label}</p>
@@ -168,15 +431,15 @@ if (user.role !== 'governance' && user.role !== 'admin') {
             <div class="flex justify-between"><span>HF:</span><span class="text-white">${(r.honest_failure_index * 100).toFixed(1)}%</span></div>
             <div class="flex justify-between"><span>Status:</span><span class="${r.status === 'CRITICAL_RISK_SWITCH_TRIGGERED' ? 'text-red-400' : 'text-emerald-400'} font-bold">${r.status.replace(/_/g, ' ')}</span></div>
             <div class="flex justify-between"><span>Chaos:</span><span class="text-white">${r.spectral_analysis.chaos_index_penalty.toFixed(4)}</span></div>
-            <div class="flex justify-between"><span>max:</span><span class="text-white">${r.spectral_analysis.principal_eigenvalue.toFixed(4)}</span></div>
+            <div class="flex justify-between"><span>λmax:</span><span class="text-white">${r.spectral_analysis.principal_eigenvalue.toFixed(4)}</span></div>
           </div>
         </div>
       `;
     }
 
     async function callGovernance(action: string) {
-      const tenantId = document.getElementById('tenantId').value.trim();
-      if (!tenantId) { alert('Enter a tenant ID'); return; }
+      const tenantId = getTenantId();
+      if (!tenantId) return;
 
       const candidateParams = collectParams();
 
@@ -188,20 +451,20 @@ if (user.role !== 'governance' && user.role !== 'admin') {
       const data = await res.json();
       if (!res.ok) { alert(data.error); return; }
 
-      const grid = document.getElementById('resultsGrid');
+      const grid = document.getElementById('hpResultsGrid')!;
       grid.innerHTML = renderResult('BASELINE (current params)', data.baseline)
-        + renderResult('CANDIDATE (test params)', data.test);
+        + (data.test ? renderResult('CANDIDATE (test params)', data.test) : '');
 
-      document.getElementById('results').classList.remove('hidden');
+      document.getElementById('hpResults')!.classList.remove('hidden');
 
       if (action === 'commit') {
         alert(`Committed to KV for ${tenantId}. Next ingest uses new params.`);
       }
     }
 
-    document.getElementById('loadBtn')?.addEventListener('click', async () => {
-      const tenantId = document.getElementById('tenantId').value.trim();
-      if (!tenantId) { alert('Enter a tenant ID'); return; }
+    document.getElementById('hpLoadBtn')?.addEventListener('click', async () => {
+      const tenantId = getTenantId();
+      if (!tenantId) return;
       const res = await fetch('/api/governance/sandbox', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -213,10 +476,437 @@ if (user.role !== 'governance' && user.role !== 'admin') {
       }
     });
 
-    document.getElementById('testBtn')?.addEventListener('click', () => callGovernance('test'));
-    document.getElementById('commitBtn')?.addEventListener('click', () => {
+    document.getElementById('hpTestBtn')?.addEventListener('click', () => callGovernance('test'));
+    document.getElementById('hpCommitBtn')?.addEventListener('click', () => {
       if (confirm('Commit these params to KV? Next ingest for this tenant will use them.')) {
         callGovernance('commit');
+      }
+    });
+
+    // ─── ADAPTERS ──────────────────────────────────────────────────────────
+    let parsedPayload: any = null;
+
+    document.getElementById('ad-istype')?.addEventListener('change', (e) => {
+      const val = (e.target as HTMLSelectElement).value;
+      document.getElementById('ad-wrapper-field-wrap')!.classList.toggle('hidden', val !== 'wrapper');
+    });
+
+    document.getElementById('adParseBtn')?.addEventListener('click', () => {
+      const raw = document.getElementById('ad-raw')!.value.trim();
+      if (!raw) { alert('Paste a JSON payload first'); return; }
+      try {
+        parsedPayload = JSON.parse(raw);
+      } catch (err) {
+        alert(`Invalid JSON: ${(err as Error).message}`);
+        return;
+      }
+
+      const item = extractFirstItem(parsedPayload);
+      const fieldPaths: string[] = [];
+      flattenObject(item, '', fieldPaths);
+
+      const tree = document.getElementById('adFieldTreeList')!;
+      tree.innerHTML = fieldPaths
+        .filter(p => p !== '')
+        .map(p => {
+          const val = resolvePath(item, p);
+          const display = typeof val === 'object' ? '[object]' : JSON.stringify(val);
+          return `<div class="flex justify-between items-center cursor-pointer hover:bg-slate-900 rounded px-2 py-1" data-path="${p}">
+            <span class="text-slate-300">${p}</span>
+            <span class="text-slate-600 truncate ml-2 max-w-[200px]">${display}</span>
+          </div>`;
+        }).join('');
+
+      tree.querySelectorAll('[data-path]').forEach(el => {
+        el.addEventListener('click', () => {
+          const path = el.getAttribute('data-path')!;
+          const lower = path.toLowerCase();
+          if (lower.includes('score') || lower.includes('severity') || lower.includes('cvss') || lower.includes('risk')) {
+            document.getElementById('ad-sev-field')!.value = path;
+          } else if (lower.includes('type') || lower.includes('class') || lower.includes('category') || lower.includes('source')) {
+            document.getElementById('ad-cat-field')!.value = path;
+          } else if (lower.includes('status') || lower.includes('result') || lower.includes('state') || lower.includes('outcome')) {
+            document.getElementById('ad-st-field')!.value = path;
+          } else if (lower.includes('time') || lower.includes('date') || lower.includes('stamp') || lower.includes('published') || lower.includes('seen')) {
+            document.getElementById('ad-ts-field')!.value = path;
+          } else if (lower.includes('id') || lower.includes('name') || lower.includes('host') || lower.includes('fqdn') || lower.includes('ip') || lower.includes('user') || lower.includes('entity') || lower.includes('actor') || lower.includes('asset')) {
+            document.getElementById('ad-ent-field')!.value = path;
+          }
+          document.getElementById('adMapping')!.classList.remove('hidden');
+          document.getElementById('adValueMappings')!.classList.remove('hidden');
+          populateValueMappings(item);
+        });
+      });
+
+      document.getElementById('adFieldTree')!.classList.remove('hidden');
+      document.getElementById('adMapping')!.classList.remove('hidden');
+      document.getElementById('adValueMappings')!.classList.remove('hidden');
+    });
+
+    function extractFirstItem(payload: any): any {
+      const type = document.getElementById('ad-istype')!.value;
+      if (type === 'array') return Array.isArray(payload) ? payload[0] : payload;
+      if (type === 'wrapper') {
+        const field = document.getElementById('ad-arrayfield')!.value.trim();
+        if (field && payload[field]) return Array.isArray(payload[field]) ? payload[field][0] : payload[field];
+        return payload;
+      }
+      return payload;
+    }
+
+    function flattenObject(obj: any, prefix: string, out: string[]) {
+      if (obj === null || obj === undefined) return;
+      if (typeof obj !== 'object' || Array.isArray(obj)) {
+        if (prefix) out.push(prefix);
+        return;
+      }
+      for (const key of Object.keys(obj)) {
+        const path = prefix ? `${prefix}.${key}` : key;
+        if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+          flattenObject(obj[key], path, out);
+        } else {
+          out.push(path);
+        }
+      }
+    }
+
+    function resolvePath(obj: any, path: string): any {
+      return path.split('.').reduce((cur: any, key: string) => cur?.[key], obj);
+    }
+
+    function populateValueMappings(item: any) {
+      const catField = document.getElementById('ad-cat-field')!.value.trim();
+      if (catField) {
+        const val = resolvePath(item, catField);
+        if (val && typeof val === 'string') {
+          clearContainer('adCatMappings');
+          addMappingRow('adCatMappings', val, 'identity');
+        }
+      }
+      const stField = document.getElementById('ad-st-field')!.value.trim();
+      if (stField) {
+        const val = resolvePath(item, stField);
+        if (val && typeof val === 'string') {
+          clearContainer('adStMappings');
+          addMappingRow('adStMappings', val, 'detected');
+        }
+      }
+    }
+
+    function clearContainer(id: string) {
+      document.getElementById(id)!.innerHTML = '';
+    }
+
+    function addMappingRow(containerId: string, value: string, defaultTarget: string) {
+      const container = document.getElementById(containerId)!;
+      const isCat = containerId === 'adCatMappings';
+      const options = isCat
+        ? ['identity','access','admin','policy','governance','compliance','physical','facilities','vulnerability','network','endpoint','cloud','data']
+        : ['open','detected','resolved','suppressed','success','failure'];
+
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-2';
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = value;
+      input.className = 'mapping-key bg-[#020203] border border-slate-800 rounded p-1 text-white text-[10px] w-40';
+
+      const arrow = document.createElement('span');
+      arrow.className = 'text-slate-600';
+      arrow.textContent = '→';
+
+      const select = document.createElement('select');
+      select.className = 'mapping-val bg-[#020203] border border-slate-800 rounded p-1 text-white text-[10px] w-32';
+      for (const o of options) {
+        const opt = document.createElement('option');
+        opt.value = o;
+        opt.textContent = o;
+        if (o === defaultTarget) opt.selected = true;
+        select.appendChild(opt);
+      }
+
+      const btn = document.createElement('button');
+      btn.className = 'text-rose-500 text-[9px] cursor-pointer';
+      btn.textContent = '×';
+      btn.addEventListener('click', () => row.remove());
+
+      row.appendChild(input);
+      row.appendChild(arrow);
+      row.appendChild(select);
+      row.appendChild(btn);
+      container.appendChild(row);
+    }
+
+    document.getElementById('adAddCatBtn')?.addEventListener('click', () => addMappingRow('adCatMappings', '', 'identity'));
+    document.getElementById('adAddStBtn')?.addEventListener('click', () => addMappingRow('adStMappings', '', 'detected'));
+
+    function collectAdapterConfig(): any {
+      const istype = document.getElementById('ad-istype')!.value;
+      const catRows = document.querySelectorAll('#adCatMappings .mapping-key, #adCatMappings .mapping-val');
+      const stRows = document.querySelectorAll('#adStMappings .mapping-key, #adStMappings .mapping-val');
+
+      const categoryMapping: Record<string, string> = {};
+      for (let i = 0; i < catRows.length; i += 2) {
+        const k = (catRows[i] as HTMLInputElement).value.trim();
+        const v = (catRows[i + 1] as HTMLSelectElement).value;
+        if (k) categoryMapping[k] = v;
+      }
+
+      const statusMapping: Record<string, string> = {};
+      for (let i = 0; i < stRows.length; i += 2) {
+        const k = (stRows[i] as HTMLInputElement).value.trim();
+        const v = (stRows[i + 1] as HTMLSelectElement).value;
+        if (k) statusMapping[k] = v;
+      }
+
+      return {
+        platform: document.getElementById('ad-platform')!.value.trim() || 'unknown',
+        isArray: istype === 'array',
+        arrayItemField: istype === 'wrapper' ? document.getElementById('ad-arrayfield')!.value.trim() : undefined,
+        severity: {
+          field: document.getElementById('ad-sev-field')!.value.trim(),
+          scale: parseFloat(document.getElementById('ad-sev-scale')!.value) || 100,
+          default: parseFloat(document.getElementById('ad-sev-default')!.value) || 0.5,
+        },
+        category: {
+          field: document.getElementById('ad-cat-field')!.value.trim(),
+          mapping: categoryMapping,
+          default: document.getElementById('adCatDefault')!.value,
+        },
+        status: {
+          field: document.getElementById('ad-st-field')!.value.trim(),
+          mapping: statusMapping,
+          default: document.getElementById('adStDefault')!.value,
+        },
+        timestamp: {
+          field: document.getElementById('ad-ts-field')!.value.trim(),
+          format: document.getElementById('ad-ts-fmt')!.value,
+        },
+        entity: {
+          field: document.getElementById('ad-ent-field')!.value.trim(),
+          default: 'unknown',
+        },
+      };
+    }
+
+    function setAdapterConfig(cfg: any) {
+      if (!cfg) return;
+      document.getElementById('ad-platform')!.value = cfg.platform ?? '';
+      document.getElementById('ad-istype')!.value = cfg.isArray ? 'array' : (cfg.arrayItemField ? 'wrapper' : 'single');
+      document.getElementById('ad-wrapper-field-wrap')!.classList.toggle('hidden', !cfg.arrayItemField);
+      if (cfg.arrayItemField) document.getElementById('ad-arrayfield')!.value = cfg.arrayItemField;
+      document.getElementById('ad-sev-field')!.value = cfg.severity?.field ?? '';
+      document.getElementById('ad-sev-scale')!.value = cfg.severity?.scale ?? 100;
+      document.getElementById('ad-sev-default')!.value = cfg.severity?.default ?? 0.5;
+      document.getElementById('ad-cat-field')!.value = cfg.category?.field ?? '';
+      document.getElementById('ad-st-field')!.value = cfg.status?.field ?? '';
+      document.getElementById('ad-ts-field')!.value = cfg.timestamp?.field ?? '';
+      document.getElementById('ad-ts-fmt')!.value = cfg.timestamp?.format ?? 'iso';
+      document.getElementById('ad-ent-field')!.value = cfg.entity?.field ?? '';
+      document.getElementById('adCatDefault')!.value = cfg.category?.default ?? 'identity';
+      document.getElementById('adStDefault')!.value = cfg.status?.default ?? 'detected';
+
+      clearContainer('adCatMappings');
+      clearContainer('adStMappings');
+      if (cfg.category?.mapping) {
+        for (const [k, v] of Object.entries(cfg.category.mapping)) {
+          addMappingRow('adCatMappings', k, v as string);
+        }
+      }
+      if (cfg.status?.mapping) {
+        for (const [k, v] of Object.entries(cfg.status.mapping)) {
+          addMappingRow('adStMappings', k, v as string);
+        }
+      }
+
+      document.getElementById('adMapping')!.classList.remove('hidden');
+      document.getElementById('adValueMappings')!.classList.remove('hidden');
+    }
+
+    async function callAdapter(action: string) {
+      const tenantId = getTenantId();
+      if (!tenantId) return;
+
+      const adapterConfig = collectAdapterConfig();
+
+      if (!adapterConfig.severity.field || !adapterConfig.category.field || !adapterConfig.status.field || !adapterConfig.timestamp.field) {
+        alert('Map all required fields: severity, category, status, timestamp');
+        return;
+      }
+
+      const body: any = { tenantId, adapterConfig, action };
+      if (action === 'test') {
+        const raw = document.getElementById('ad-raw')!.value.trim();
+        if (!raw) { alert('Paste a payload to test against'); return; }
+        try {
+          body.rawPayload = JSON.parse(raw);
+        } catch (err) {
+          alert(`Invalid JSON: ${(err as Error).message}`);
+          return;
+        }
+      }
+
+      const res = await fetch('/api/adapter/mapper', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error); return; }
+
+      const results = document.getElementById('adResults')!;
+      const body2 = document.getElementById('adResultsBody')!;
+
+      if (action === 'test') {
+        let html = '';
+        if (data.events) {
+          html += `<div class="bg-[#020203] p-3 rounded border border-slate-900/50">
+            <p class="text-[10px] text-slate-500 uppercase font-bold mb-2">CanonicalEvent(s)</p>
+            <pre class="text-[10px] text-slate-300 overflow-x-auto">${JSON.stringify(data.events, null, 2)}</pre>
+          </div>`;
+        }
+        if (data.matrix) {
+          const rows: Record<number, { col0: number; col1: number; col2: number }> = {};
+          for (const n of data.matrix) {
+            if (!rows[n.row]) rows[n.row] = { col0: 0.5, col1: 0.5, col2: 0.5 };
+            const colKey = `col${n.col}` as 'col0' | 'col1' | 'col2';
+            rows[n.row][colKey] = n.maskedValue;
+          }
+          html += `<div class="bg-[#020203] p-3 rounded border border-slate-900/50">
+            <p class="text-[10px] text-slate-500 uppercase font-bold mb-2">4×3 Matrix Preview</p>
+            <table class="w-full text-[10px]">
+              <thead><tr class="text-slate-500"><th class="text-left">Row</th><th>Col 0 (Detection)</th><th>Col 1 (Response)</th><th>Col 2 (Prevention)</th></tr></thead>
+              <tbody>
+                ${[0,1,2,3].map(i => {
+                  const r = rows[i] || { col0: 0.5, col1: 0.5, col2: 0.5 };
+                  const cls = (v: number) => v < 0.3 ? 'text-red-400' : v > 0.7 ? 'text-emerald-400' : 'text-slate-200';
+                  return `<tr class="border-t border-slate-900">
+                    <td class="text-slate-400 py-1">Row ${i}</td>
+                    <td class="text-center ${cls(r.col0)}">${r.col0.toFixed(3)}</td>
+                    <td class="text-center ${cls(r.col1)}">${r.col1.toFixed(3)}</td>
+                    <td class="text-center ${cls(r.col2)}">${r.col2.toFixed(3)}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>`;
+        }
+        body2.innerHTML = html;
+        results.classList.remove('hidden');
+      }
+
+      if (action === 'commit') {
+        alert(`Adapter committed to KV for ${tenantId}. Next ingest will normalize via this config.`);
+      }
+    }
+
+    document.getElementById('adLoadBtn')?.addEventListener('click', async () => {
+      const tenantId = getTenantId();
+      if (!tenantId) return;
+      const res = await fetch('/api/adapter/mapper', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, action: 'load' }),
+      });
+      const data = await res.json();
+      if (data.adapterConfig) {
+        setAdapterConfig(data.adapterConfig);
+      } else {
+        alert('No adapter config for this tenant yet.');
+      }
+    });
+
+    document.getElementById('adTestBtn')?.addEventListener('click', () => callAdapter('test'));
+    document.getElementById('adCommitBtn')?.addEventListener('click', () => {
+      if (confirm('Commit adapter to KV? Next ingest for this tenant will use this mapping.')) {
+        callAdapter('commit');
+      }
+    });
+
+    // ─── NOTIFICATIONS ─────────────────────────────────────────────────────
+    function collectNotifyConfig(): any {
+      const cfg: any = {};
+      const pd = document.getElementById('nt-pd-key')!.value.trim();
+      const slack = document.getElementById('nt-slack-url')!.value.trim();
+      const cooldown = parseInt(document.getElementById('nt-cooldown')!.value, 10);
+      const escalate = parseInt(document.getElementById('nt-escalate')!.value, 10);
+
+      if (pd) cfg.pagerduty_routing_key = pd;
+      if (slack) cfg.slack_webhook_url = slack;
+      if (cooldown && cooldown >= 60) cfg.cooldown_seconds = cooldown;
+      if (escalate && escalate >= 2) cfg.escalate_after = escalate;
+
+      return cfg;
+    }
+
+    function setNotifyConfig(cfg: any) {
+      if (!cfg) return;
+      document.getElementById('nt-pd-key')!.value = cfg.pagerduty_routing_key ?? '';
+      document.getElementById('nt-slack-url')!.value = cfg.slack_webhook_url ?? '';
+      document.getElementById('nt-cooldown')!.value = cfg.cooldown_seconds ?? 3600;
+      document.getElementById('nt-escalate')!.value = cfg.escalate_after ?? 3;
+    }
+
+    async function callNotify(action: string) {
+      const tenantId = getTenantId();
+      if (!tenantId) return;
+
+      const notifyConfig = collectNotifyConfig();
+
+      if (action !== 'load' && !notifyConfig.pagerduty_routing_key && !notifyConfig.slack_webhook_url) {
+        alert('Configure at least one notification target (PagerDuty or Slack).');
+        return;
+      }
+
+      const res = await fetch('/api/governance/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, notifyConfig, action }),
+      });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error); return; }
+
+      if (action === 'test') {
+        const results = document.getElementById('ntResults')!;
+        const body = document.getElementById('ntResultsBody')!;
+        let html = '';
+        for (const [target, r] of Object.entries(data.results || {})) {
+          const ok = (r as any).ok;
+          html += `<div class="flex items-center gap-3 p-3 rounded border ${ok ? 'border-emerald-900/50 bg-emerald-950/20' : 'border-red-900/50 bg-red-950/20'}">
+            <span class="${ok ? 'text-emerald-400' : 'text-red-400'} font-bold text-[10px] uppercase">${target}</span>
+            <span class="text-slate-300 text-[10px]">${(r as any).detail}</span>
+          </div>`;
+        }
+        body.innerHTML = html;
+        results.classList.remove('hidden');
+      }
+
+      if (action === 'commit') {
+        alert(`Notification config committed to KV for ${tenantId}. Dispatcher will use these targets on next cycle.`);
+      }
+    }
+
+    document.getElementById('ntLoadBtn')?.addEventListener('click', async () => {
+      const tenantId = getTenantId();
+      if (!tenantId) return;
+      const res = await fetch('/api/governance/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, action: 'load' }),
+      });
+      const data = await res.json();
+      if (data.notifyConfig) {
+        setNotifyConfig(data.notifyConfig);
+      } else {
+        alert('No notification config for this tenant yet.');
+      }
+    });
+
+    document.getElementById('ntTestBtn')?.addEventListener('click', () => callNotify('test'));
+    document.getElementById('ntCommitBtn')?.addEventListener('click', () => {
+      if (confirm('Commit notification config to KV? Dispatcher will page/notify using these targets.')) {
+        callNotify('commit');
       }
     });
   </script>

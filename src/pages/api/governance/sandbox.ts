@@ -6,6 +6,53 @@ import { runScoringEngine, type PaddedStreamNode, type EngineParams } from '../.
 
 export const prerender = false;
 
+const WRITABLE_FIELDS = new Set([
+  'blockCount', 'priorityAlpha', 'baseEnablerWeights',
+  'decayRate', 'driftVolatility', 'sigmoidSteepness',
+  'sigmoidMidpoint', 'chaosScale', 'statusThreshold',
+  'breakerThreshold', 'breakerFloor',
+]);
+
+function validateCandidateParams(p: any): string | null {
+  if (typeof p !== 'object' || p === null) return 'candidateParams must be an object';
+
+  for (const key of Object.keys(p)) {
+    if (!WRITABLE_FIELDS.has(key)) {
+      return `Field '${key}' is not writable. Allowed: ${[...WRITABLE_FIELDS].join(', ')}`;
+    }
+  }
+
+  if (p.breakerThreshold !== undefined) {
+    if (typeof p.breakerThreshold !== 'number' || p.breakerThreshold < 0.01 || p.breakerThreshold > 0.2)
+      return 'breakerThreshold must be in [0.01, 0.2]';
+  }
+  if (p.statusThreshold !== undefined) {
+    if (typeof p.statusThreshold !== 'number' || p.statusThreshold < 0.1 || p.statusThreshold > 0.5)
+      return 'statusThreshold must be in [0.1, 0.5]';
+  }
+  if (p.breakerThreshold !== undefined && p.statusThreshold !== undefined) {
+    if (p.breakerThreshold >= p.statusThreshold)
+      return 'breakerThreshold must be < statusThreshold (breaker must fire before status flips)';
+  }
+  if (p.priorityAlpha !== undefined) {
+    if (!Array.isArray(p.priorityAlpha) || p.priorityAlpha.length !== 4)
+      return 'priorityAlpha must be an array of 4 values';
+    const sum = p.priorityAlpha.reduce((a: number, b: number) => a + b, 0);
+    if (Math.abs(sum - 1.0) > 0.01)
+      return `priorityAlpha must sum to 1.0 (got ${sum.toFixed(4)})`;
+  }
+  if (p.baseEnablerWeights !== undefined) {
+    if (!Array.isArray(p.baseEnablerWeights) || p.baseEnablerWeights.length !== 3)
+      return 'baseEnablerWeights must be an array of 3 values';
+  }
+  if (p.blockCount !== undefined) {
+    if (!Number.isInteger(p.blockCount) || p.blockCount < 1 || p.blockCount > 720)
+      return 'blockCount must be an integer in [1, 720]';
+  }
+
+  return null;
+}
+
 export const POST: APIContext['POST'] = async ({ request, locals, env }) => {
   if (!locals.user) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
@@ -17,9 +64,18 @@ export const POST: APIContext['POST'] = async ({ request, locals, env }) => {
   try {
     const { tenantId, candidateParams, action } = await request.json();
 
-    if (!tenantId) {
+    if (!tenantId || typeof tenantId !== 'string') {
       return new Response(JSON.stringify({ error: 'Missing tenantId' }), { status: 400 });
     }
+
+    // ─── TENANT SCOPING ─────────────────────────────────────────────────────
+    if (locals.user.role === 'admin' && locals.user.tenant !== tenantId) {
+      return new Response(
+        JSON.stringify({ error: `Tenant ${tenantId} is outside your scope` }),
+        { status: 403 }
+      );
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Read current hyperparams from KV (3-tier: tenant → global → null)
     let currentParams: any = null;
@@ -58,19 +114,39 @@ export const POST: APIContext['POST'] = async ({ request, locals, env }) => {
     );
 
     // Run with candidate params (test)
-    const test = candidateParams
-      ? runScoringEngine(
-          paddedStream as PaddedStreamNode[] | PaddedStreamNode[][],
-          threatIntelVector || [0, 0, 0],
-          previous ? previous.paddedStream : undefined,
-          previous ? previous.threatIntelVector : undefined,
-          candidateParams as Partial<EngineParams>
-        )
-      : null;
+    let test = null;
+    if (candidateParams) {
+      const vErr = validateCandidateParams(candidateParams);
+      if (vErr) {
+        return new Response(JSON.stringify({ error: vErr }), { status: 400 });
+      }
+      test = runScoringEngine(
+        paddedStream as PaddedStreamNode[] | PaddedStreamNode[][],
+        threatIntelVector || [0, 0, 0],
+        previous ? previous.paddedStream : undefined,
+        previous ? previous.threatIntelVector : undefined,
+        candidateParams as Partial<EngineParams>
+      );
+    }
 
-    // If action is "commit", write to KV
+    // If action is "commit", validate then write to KV
     if (action === 'commit' && candidateParams) {
+      const vErr = validateCandidateParams(candidateParams);
+      if (vErr) {
+        return new Response(JSON.stringify({ error: vErr }), { status: 400 });
+      }
+
+      const previousRaw = await env.VM_TENANT_DIRECTORY.get(`hyperparams:${tenantId}`);
       await env.VM_TENANT_DIRECTORY.put(`hyperparams:${tenantId}`, JSON.stringify(candidateParams));
+
+      console.log(`[GOV-AUDIT] hyperparams commit`, {
+        tenantId,
+        actor: locals.user.email,
+        role: locals.user.role,
+        previous: previousRaw ? JSON.parse(previousRaw) : null,
+        committed: candidateParams,
+        timestamp: new Date().toISOString(),
+      });
     }
 
     return new Response(JSON.stringify({
@@ -85,9 +161,10 @@ export const POST: APIContext['POST'] = async ({ request, locals, env }) => {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (err) {
+    console.error(`[GOV-SANDBOX] Internal error:`, err);
     return new Response(
-      JSON.stringify({ error: (err as Error).message }),
+      JSON.stringify({ error: 'Internal server error' }),
       { status: 500 }
     );
   }
-};
+};   

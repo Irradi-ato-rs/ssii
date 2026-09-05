@@ -38,7 +38,7 @@ export function validateAdapterConfig(cfg: any): string | null {
   if (typeof cfg !== 'object' || cfg === null) return 'Config must be an object';
   if (!cfg.platform || typeof cfg.platform !== 'string') return 'platform is required (string)';
   if (typeof cfg.isArray !== 'boolean') return 'isArray is required (boolean)';
-  if (cfg.isArray === false && cfg.arrayItemField) return 'arrayItemField only valid when isArray is false and payload is a wrapper';
+  if (cfg.isArray === true && cfg.arrayItemField) return 'arrayItemField is not valid when isArray is true';
 
   if (!cfg.severity || typeof cfg.severity !== 'object') return 'severity block is required';
   if (!cfg.severity.field) return 'severity.field is required';
@@ -60,4 +60,4 @@ export function validateAdapterConfig(cfg: any): string | null {
   if (!cfg.entity.field) return 'entity.field is required';
 
   return null;
-}
+}   
