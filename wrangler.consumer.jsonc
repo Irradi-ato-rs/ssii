@@ -12,6 +12,12 @@
     }
   },
   "queues": {
+    "producers": [
+      {
+        "binding": "DISPATCH_QUEUE",
+        "queue": "voidmetric-dispatch"
+      }
+    ],
     "consumers": [
       {
         "queue": "voidmetric-events",
@@ -28,4 +34,4 @@
       "id": "b1bce78115ec487a914c6e7d3420dd6b"
     }
   ]
-}
+}   

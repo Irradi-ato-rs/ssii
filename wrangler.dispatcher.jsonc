@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "dispatcher",
+  "main": "./workers/dispatcher.ts",
+  "compatibility_date": "2026-08-16",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "invocation_logs": true,
+      "head_sampling_rate": 1
+    }
+  },
+  "kv_namespaces": [
+    {
+      "binding": "VM_LIVE_POSTURE_CACHE",
+      "id": "b1bce78115ec487a914c6e7d3420dd6b"
+    },
+    {
+      "binding": "VM_TENANT_DIRECTORY",
+      "id": "01d2aa05ebdf4a32b966bcd37d712bfe"
+    },
+    {
+      "binding": "VM_DISPATCH_STATE",
+      "id": "2ba882063b144145b3acdda249812e98"
+    }
+  ],
+  "queues": {
+    "consumers": [
+      {
+        "queue": "voidmetric-dispatch",
+        "max_batch_size": 10,
+        "max_batch_timeout": 10,
+        "max_retries": 5,
+        "dead_letter_queue": "voidmetric-dispatch-dlq"
+      }
+    ]
+  }
+}
