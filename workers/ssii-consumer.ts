@@ -1,9 +1,10 @@
 // workers/ssii-consumer.ts
 // Zero-persistence: pure computation + structured log + posture cache.
-import { runScoringEngine, type PaddedStreamNode, type EngineParams } from '../src/lib/scoring-engine';
+import { runScoringEngine, type PaddedStreamNode, type EngineParams, type ScoringResult } from '../src/lib/scoring-engine';
 
 export interface Env {
   VM_LIVE_POSTURE_CACHE: KVNamespace;
+  VOID_DISPATCH_PRODUCER: Queue;
 }
 
 export interface VoidMessage {
@@ -40,9 +41,9 @@ export default {
         } = body;
 
         const result = runScoringEngine(
-          paddedStream as PaddedStreamNode[] | PaddedStreamNode[][],
+          paddedStream,
           threatIntelVector || [0, 0, 0],
-          previousStream as PaddedStreamNode[] | PaddedStreamNode[][] | undefined,
+          previousStream,
           previousThreatIntelVector,
           hyperparams
         );
@@ -54,6 +55,14 @@ export default {
           { expirationTtl: 86400 }
         );
 
+        // Enqueue dispatch signal
+        await env.VOID_DISPATCH_PRODUCER.send({
+          type: 'posture_change',
+          tenantId: body.tenantId,
+          result,
+          timestamp: body.timestamp,
+        });
+
         console.log(`[SSII] ✅ Computed: ${body.tenantId}`, {
           metric_a: result.metric_a_compliance,
           metric_a_velocity: result.metric_a_velocity,
@@ -61,6 +70,11 @@ export default {
           status: result.status,
           wi: result.watermelon_index,
           hf: result.honest_failure_index,
+          temporal: result.temporal ? {
+            onset: result.temporal.onset_block,
+            persistence: result.temporal.persistence,
+            trend: result.temporal.trend,
+          } : undefined,
           params: hyperparams ? "custom" : "default",
         });
 
@@ -73,5 +87,5 @@ export default {
   },
   async fetch(): Promise<Response> {
     return new Response("SSII Consumer Active", { status: 200 });
-  }
-};   
+  },
+};

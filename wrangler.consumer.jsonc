@@ -14,7 +14,7 @@
   "queues": {
     "producers": [
       {
-        "binding": "DISPATCH_QUEUE",
+        "binding": "VOID_DISPATCH_PRODUCER",
         "queue": "voidmetric-dispatch"
       }
     ],
