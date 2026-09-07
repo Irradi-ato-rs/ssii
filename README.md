@@ -1,5 +1,4 @@
-# VoidMetric | Sovereign Systemic Integrity Intelligence 
-# (Extensible & On-Demand Core)
+# VoidMetric | Sovereign Systemic Integrity Intelligence (Extensible & On-Demand Core)
 
 A dual-math risk orchestration approach that closes the gap between reported compliance and actual operational integrity — the "watermelon metric effect," where a posture appears green on paper while harboring fatal operational exploits.
 
@@ -30,6 +29,8 @@ The math doesn't produce a number to look at. It produces a **dispatch protocol*
 
 This GitHub [public repository](https://github.com/Irradi-ato-rs/ssii) houses not only the open-core architecture but every artifact that powers VoidMetric except for a few proprietary dynamics, built natively using **Astro**, **Tailwind CSS** and optimized for zero-cold-start execution inside serverless **Cloudflare Workers** environments.
 
+---
+
 ## 1. Architectural Matrix Fabric
 
 [VoidMetric](https://ssii.fzoirm.com) operationalizes [Systemic Integrity Axiomatic 4 and Enablers 3](https://irradi.ato.rs/p/systemic-integrity-axiomatic-enablers.html), which serves as a cognitive catalyst in consulting engagements, aligning every stakeholder without requiring them to possess the formal notation to understand business system capabilities while uncovering value creators. It maps corporate (strategic velocity) governance system, security intelligence and risk mitigation as a static 4 × 3 continuous matrix crossing four **Axiomatic Domains (I)** against three **Technical Enablers (J)**:
@@ -47,7 +48,7 @@ Input metrics are continuously streamed via automated edge scripts and normalize
 
 ---
 
-## The Dual-Math
+## 2. The Dual-Math
 
 ### Metric A: Strategic Posture (Additive)
 
