@@ -56,8 +56,8 @@ export async function onRequest(context: APIContext, next: MiddlewareNext) {
     }
 
     try {
-      // ── PRIMARY: KV session lookup (new opaque tokens) ──
-      const sessionRaw = await env.VM_TENANT_DIRECTORY.get(`session:${sessionToken}`);
+      // ── PRIMARY: KV session lookup (SESSION namespace) ──
+      const sessionRaw = await env.SESSION.get(`session:${sessionToken}`);
 
       if (sessionRaw) {
         const session = JSON.parse(sessionRaw);

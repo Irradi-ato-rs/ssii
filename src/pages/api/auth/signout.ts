@@ -2,7 +2,7 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers'; // REQUIRED for Astro 6
+import { env } from 'cloudflare:workers';
 import { getIdPConfigByDomain } from '../../../config/tenants';
 
 function clearAuthCookies(headers: Headers) {
@@ -18,24 +18,33 @@ export const POST: APIRoute = async ({ cookies }) => {
   headers.append('Pragma', 'no-cache');
   headers.append('Expires', '0');
 
+  // 1. Delete KV session record (SESSION namespace — immediate invalidation)
+  const sessionToken = cookies.get('aim_session_token')?.value;
+  if (sessionToken) {
+    try {
+      await env.SESSION.delete(`session:${sessionToken}`);
+    } catch {
+      // Non-fatal: session will expire via TTL regardless
+    }
+  }
+
+  // 2. Resolve IdP for RP-Initiated Logout
   const domainCookie = cookies.get('auth_domain');
-  
-  // PASS env to getIdPConfigByDomain
   const config = domainCookie?.value ? await getIdPConfigByDomain(env, domainCookie.value) : null;
 
+  // 3. Clear all auth cookies
   clearAuthCookies(headers);
 
+  // 4. Redirect
   const redirectUri = encodeURIComponent('https://ssii.fzoirm.com/login');
 
   if (config?.endSessionEndpoint) {
-    // RP-Initiated Logout per the OIDC spec
     const separator = config.endSessionEndpoint.includes('?') ? '&' : '?';
     headers.append(
       'Location',
       `${config.endSessionEndpoint}${separator}post_logout_redirect_uri=${redirectUri}`
     );
   } else {
-    // Fallback to local logout
     headers.append('Location', '/login');
   }
 

@@ -19,7 +19,12 @@
     }
   },
   "vars": {
-    "PRIVATE_ROLE_ALLOWLIST": "governance,admin,executive,engineer,operator"
+    "PRIVATE_ROLE_ALLOWLIST": "governance,admin,executive,engineer,operator",
+    "IDP_ISSUER": "https://login.microsoftonline.com/<tenant-guid>/v2.0",
+    "IDP_AUTH_ENDPOINT": "https://login.microsoftonline.com/<tenant-guid>/v2.0/authorize",
+    "IDP_TOKEN_ENDPOINT": "https://login.microsoftonline.com/<tenant-guid>/v2.0/token",
+    "IDP_JWKS_URI": "https://login.microsoftonline.com/<tenant-guid>/v2.0/discovery/v2.0/keys",
+    "IDP_END_SESSION_ENDPOINT": "https://login.microsoftonline.com/<tenant-guid>/v2.0/logout"
   },
   "kv_namespaces": [
     {

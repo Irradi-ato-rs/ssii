@@ -10,28 +10,44 @@ export interface IdPConfig {
   authMethod?: 'client_secret_basic' | 'client_secret_post';
 }
 
-// Use 'Env' type from your env.d.ts for consistency, or keep explicit interface
-export async function getIdPConfig(
-  env: { VM_TENANT_DIRECTORY: KVNamespace }, // Valid if @cloudflare/workers-types is installed
-  email: string
-): Promise<IdPConfig | null> {
-  const at = email.lastIndexOf('@');
-  if (at <= 0 || at === email.length - 1) return null;
-  const domain = email.slice(at + 1).toLowerCase().trim();
-  
-  // Add null check in case key is missing in KV
-  const raw = await env.VM_TENANT_DIRECTORY.get(domain);
-  if (!raw) return null;
+export type TenantTier = 'enterprise' | 'self-serve';
 
-  return JSON.parse(raw) as IdPConfig;
+// Single IdP for all users (env-based)
+export function getIdPConfig(env: { VM_TENANT_DIRECTORY: KVNamespace } & Record<string, string>, email: string): Promise<IdPConfig | null> {
+  const at = email.lastIndexOf('@');
+  if (at <= 0 || at === email.length - 1) return Promise.resolve(null);
+  const domain = email.slice(at + 1).toLowerCase().trim();
+
+  return getIdPConfigByDomain(env, domain);
 }
 
 export async function getIdPConfigByDomain(
-  env: { VM_TENANT_DIRECTORY: KVNamespace },
+  env: { VM_TENANT_DIRECTORY: KVNamespace } & Record<string, string>,
   domain: string
 ): Promise<IdPConfig | null> {
   const raw = await env.VM_TENANT_DIRECTORY.get(domain.toLowerCase().trim());
-  if (!raw) return null;
-  
-  return JSON.parse(raw) as IdPConfig;
+  if (raw) return JSON.parse(raw) as IdPConfig;
+
+  // Self-serve fallback: no KV record → use default IdP from env
+  const clientId = env.IDP_CLIENT_ID?.trim();
+  if (!clientId) return null;
+
+  return {
+    issuer: env.IDP_ISSUER?.trim() || '',
+    authorizationEndpoint: env.IDP_AUTH_ENDPOINT?.trim() || '',
+    tokenEndpoint: env.IDP_TOKEN_ENDPOINT?.trim() || '',
+    jwksUri: env.IDP_JWKS_URI?.trim() || '',
+    endSessionEndpoint: env.IDP_END_SESSION_ENDPOINT?.trim() || undefined,
+    clientIdEnv: 'IDP_CLIENT_ID',
+    clientSecretEnv: 'IDP_CLIENT_SECRET',
+    authMethod: 'client_secret_basic',
+  };
+}
+
+export async function getTenantTier(
+  env: { VM_TENANT_DIRECTORY: KVNamespace },
+  domain: string
+): Promise<TenantTier> {
+  const raw = await env.VM_TENANT_DIRECTORY.get(`tenant:${domain.toLowerCase().trim()}`);
+  return raw ? 'enterprise' : 'self-serve';
 }   

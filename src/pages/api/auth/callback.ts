@@ -4,7 +4,7 @@ export const prerender = false;
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
-import { getIdPConfigByDomain } from '../../../config/tenants';
+import { getIdPConfigByDomain, getTenantTier } from '../../../config/tenants';
 
 interface DynamicIdPConfig {
   issuer: string;
@@ -48,6 +48,14 @@ function clearFlowCookies(headers: Headers) {
   headers.append('Set-Cookie', 'oidc_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
   headers.append('Set-Cookie', 'pkce_verifier=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
 }
+
+const ROLE_ROUTES: Record<string, string> = {
+  governance: '/governance',
+  admin: '/governance',
+  executive: '/integrity-portal',
+  engineer: '/integrity-portal',
+  operator: '/integrity-adapters',
+};
 
 export const GET: APIRoute = async ({ request, cookies }) => {
   try {
@@ -97,7 +105,7 @@ export const GET: APIRoute = async ({ request, cookies }) => {
       return errorRedirect('invalid_state');
     }
 
-    // 4. Get tenant config from KV
+    // 4. Get tenant config
     const config = await getIdPConfigByDomain(env, domain);
     if (!config) {
       console.error(`[VoidMetric Auth] No IdP config for domain=${domain}`);
@@ -203,31 +211,35 @@ export const GET: APIRoute = async ({ request, cookies }) => {
       return resp;
     }
 
-    // 9. Tenant provisioning (idempotent)
+    // 9. Tenant provisioning
     const tenantId = domain;
+    const tier = await getTenantTier(env, domain);
 
-    // Mint API key if absent
-    let apiKey = await env.VM_TENANT_DIRECTORY.get(`apikey:${tenantId}`);
-    if (!apiKey) {
-      const randomBytes = new Uint8Array(32);
-      crypto.getRandomValues(randomBytes);
-      apiKey = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
-      await env.VM_TENANT_DIRECTORY.put(`apikey:${tenantId}`, apiKey);
-      console.log(`[VoidMetric Auth] Minted API key for tenant=${tenantId}`);
+    if (tier === 'enterprise') {
+      // Mint API key if absent
+      let apiKey = await env.VM_TENANT_DIRECTORY.get(`apikey:${tenantId}`);
+      if (!apiKey) {
+        const randomBytes = new Uint8Array(32);
+        crypto.getRandomValues(randomBytes);
+        apiKey = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        await env.VM_TENANT_DIRECTORY.put(`apikey:${tenantId}`, apiKey);
+        console.log(`[VoidMetric Auth] Minted API key for tenant=${tenantId}`);
+      }
+
+      // Ensure portal ownership record exists
+      const portalRaw = await env.VM_TENANT_DIRECTORY.get(`portal:${tenantId}`);
+      if (!portalRaw) {
+        await env.VM_TENANT_DIRECTORY.put(`portal:${tenantId}`, JSON.stringify({ owner: sub }));
+        console.log(`[VoidMetric Auth] Created portal record for tenant=${tenantId} owner=${sub}`);
+      }
     }
 
-    // Ensure portal ownership record exists
-    const portalRaw = await env.VM_TENANT_DIRECTORY.get(`portal:${tenantId}`);
-    if (!portalRaw) {
-      await env.VM_TENANT_DIRECTORY.put(`portal:${tenantId}`, JSON.stringify({ owner: sub }));
-      console.log(`[VoidMetric Auth] Created portal record for tenant=${tenantId} owner=${sub}`);
-    }
-
-    // Ensure role record exists (default: operator)
+    // Ensure role record exists
     const roleRaw = await env.VM_TENANT_DIRECTORY.get(`roles:${sub}`);
     if (!roleRaw) {
-      await env.VM_TENANT_DIRECTORY.put(`roles:${sub}`, JSON.stringify({ role: 'operator' }));
-      console.log(`[VoidMetric Auth] Provisioned role=operator for sub=${sub} (mode=${mode})`);
+      const defaultRole = 'operator';
+      await env.VM_TENANT_DIRECTORY.put(`roles:${sub}`, JSON.stringify({ role: defaultRole }));
+      console.log(`[VoidMetric Auth] Provisioned role=${defaultRole} for sub=${sub} (tier=${tier})`);
     }
 
     // Ensure tenantName record exists
@@ -239,9 +251,9 @@ export const GET: APIRoute = async ({ request, cookies }) => {
     // 10. Resolve role
     const role = await resolveRole(sub, env);
 
-    // 11. Mint opaque session token (decoupled from IdP token lifetime)
+    // 11. Mint opaque session token (SESSION namespace)
     const sessionToken = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, '');
-    await env.VM_TENANT_DIRECTORY.put(`session:${sessionToken}`, JSON.stringify({
+    await env.SESSION.put(`session:${sessionToken}`, JSON.stringify({
       sub,
       tenantId,
       role,
@@ -249,13 +261,15 @@ export const GET: APIRoute = async ({ request, cookies }) => {
       createdAt: Date.now(),
     }), { expirationTtl: 86400 });
 
+    // 12. Redirect by role
     const headers = new Headers();
-    headers.set('Location', `/integrity-portal?tenant=${tenantId}`);
+    const target = `${ROLE_ROUTES[role] || '/integrity-adapters'}?tenant=${tenantId}`;
+    headers.set('Location', target);
     headers.append('Set-Cookie', `aim_session_token=${sessionToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`);
     headers.append('Set-Cookie', `auth_domain=${tenantId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`);
     clearFlowCookies(headers);
 
-    console.log(`[VoidMetric Auth] ✅ Session established: sub=${sub} tenant=${tenantId} role=${role} mode=${mode}`);
+    console.log(`[VoidMetric Auth] ✅ Session established: sub=${sub} tenant=${tenantId} role=${role} tier=${tier}`);
 
     return new Response(null, { status: 302, headers });
 

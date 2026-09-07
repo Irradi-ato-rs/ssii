@@ -1,0 +1,150 @@
+---
+// src/pages/integrity-adapters.astro
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { env } from 'cloudflare:workers';
+
+export const prerender = false;
+
+const { locals } = Astro;
+const user = locals.user;
+
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const tenantId = user.tenant;
+const postureRaw = await env.VM_LIVE_POSTURE_CACHE?.get(`posture:${tenantId}`);
+const posture = postureRaw ? JSON.parse(postureRaw) : null;
+const tenantName = await env.VM_TENANT_DIRECTORY?.get(`tenantName:${tenantId}`) || tenantId;
+
+const s = posture?.scores ?? posture;
+
+const isCritical = s?.status === 'CRITICAL_RISK_SWITCH_TRIGGERED';
+const trendIcon = s?.temporal?.trend === 'improving' ? '↑'
+  : s?.temporal?.trend === 'degrading' ? '↓' : '→';
+const breakerCount = s?.temporal?.breakerBlocks?.length ?? 0;
+---
+
+<BaseLayout title="VoidMetric | Integrity Adapters">
+  <main class="container">
+    <h1>INTEGRITY ADAPTERS // reader </h1>
+    <p class="tenant-label">Tenant: <strong>{tenantName}</strong></p>
+
+    {s ? (
+      <>
+        <!-- Status banner -->
+        <div class={`status-banner ${isCritical ? 'critical' : 'nominal'}`}>
+          <span class="status-dot"></span>
+          {s.status}
+        </div>
+
+        <!-- Primary scores -->
+        <div class="metrics">
+          <div class="metric">
+            <span class="metric-label">Metric A — Compliance</span>
+            <span class="metric-value">{s.metricACompliance?.toFixed(4)}</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Metric A — Velocity</span>
+            <span class="metric-value">{s.metricAVelocity != null ? s.metricAVelocity.toFixed(4) : '—'}</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Metric B — Integrity</span>
+            <span class="metric-value">{s.metricBIntegrity?.toFixed(4)}</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Watermelon Index</span>
+            <span class="metric-value">{s.watermelonIndex?.toFixed(4)}</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Honest Failure Index</span>
+            <span class="metric-value">{s.honestFailureIndex?.toFixed(4)}</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Trend</span>
+            <span class="metric-value">{trendIcon} {s.temporal?.trend ?? '—'}</span>
+          </div>
+        </div>
+
+        <!-- Spectral + threat flags -->
+        <div class="flags">
+          <div class={`flag ${s.spectralAnalysis?.resonanceExploitChainDetected ? 'alert' : ''}`}>
+            <span>Resonance Exploit Chain</span>
+            <strong>{s.spectralAnalysis?.resonanceExploitChainDetected ? 'DETECTED' : 'None'}</strong>
+          </div>
+          <div class={`flag ${s.threatIntelStale ? 'alert' : ''}`}>
+            <span>Threat Intel Stale</span>
+            <strong>{s.threatIntelStale ? 'YES' : 'No'}</strong>
+          </div>
+          <div class={`flag ${s.threatVectorAnomaly ? 'alert' : ''}`}>
+            <span>Threat Vector Anomaly</span>
+            <strong>{s.threatVectorAnomaly ? 'YES' : 'No'}</strong>
+          </div>
+          <div class={`flag ${breakerCount > 0 ? 'alert' : ''}`}>
+            <span>Breaker Trips</span>
+            <strong>{breakerCount}</strong>
+          </div>
+        </div>
+
+        <p class="last-scored">
+          Last scored: {posture ? new Date(posture.timestamp * 1000).toISOString() : '—'}
+        </p>
+
+        <!-- Collapsed detail -->
+        <details>
+          <summary>Temporal detail</summary>
+          <div class="detail-grid">
+            <p>Blocks analyzed: {s.temporal?.blockCount ?? 0}</p>
+            <p>Onset block: {s.temporal?.onsetBlock ?? '—'}</p>
+            <p>Persistence: {s.temporal?.persistence ?? 0}</p>
+            <p>Principal eigenvalue: {s.spectralAnalysis?.principalEigenvalue?.toFixed(4)}</p>
+            <p>Chaos index penalty: {s.spectralAnalysis?.chaosIndexPenalty?.toFixed(4)}</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>Row validations</summary>
+          <table class="row-table">
+            <thead><tr><th>Row</th><th>Value</th></tr></thead>
+            <tbody>
+              {s.rowValidations?.map((v: number, i: number) => (
+                <tr><td>R{i}</td><td>{v.toFixed(4)}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </details>
+      </>
+    ) : (
+      <p class="no-data">No posture data available yet. An adapter run is pending or has not been initiated.</p>
+    )}
+  </main>
+</BaseLayout>
+
+<style>
+  .container { max-width: 720px; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, sans-serif; }
+  .tenant-label { color: #888; margin-bottom: 1.5rem; }
+  .status-banner {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.5rem;
+    font-weight: 600; font-size: 0.9rem;
+  }
+  .status-banner.nominal { background: #0d2818; color: #4ade80; }
+  .status-banner.critical { background: #2d0a0a; color: #f87171; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem; }
+  .metric { background: #1a1a2e; padding: 0.65rem 0.9rem; border-radius: 6px; }
+  .metric-label { display: block; font-size: 0.65rem; color: #888; text-transform: uppercase; letter-spacing: 0.04em; }
+  .metric-value { display: block; font-size: 1.05rem; font-weight: 600; margin-top: 0.2rem; }
+  .flags { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.5rem; margin-bottom: 1.25rem; }
+  .flag { background: #1a1a2e; padding: 0.5rem 0.75rem; border-radius: 4px; font-size: 0.8rem; color: #aaa; }
+  .flag strong { display: block; margin-top: 0.15rem; color: #ccc; }
+  .flag.alert strong { color: #f87171; }
+  .last-scored { color: #666; font-size: 0.8rem; margin-bottom: 1rem; }
+  details { margin-top: 0.75rem; }
+  summary { cursor: pointer; color: #aaa; font-size: 0.85rem; }
+  .detail-grid p { margin: 0.2rem 0; color: #ccc; font-size: 0.85rem; }
+  .row-table { width: 100%; margin-top: 0.5rem; border-collapse: collapse; }
+  .row-table th, .row-table td { text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid #333; font-size: 0.85rem; }
+  .row-table th { color: #888; }
+  .no-data { color: #666; font-style: italic; }
+</style>   
