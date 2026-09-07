@@ -64,7 +64,7 @@ export const POST: APIRoute = async ({ request }) => {
     // ─── SELF-SERVE PATH (register + no enterprise KV record) ───
     const tenantRecord = await env.VM_TENANT_DIRECTORY.get(`tenant:${domain}`);
 
-    if (mode === 'register' && !tenantRecord) {
+    if (!tenantRecord) {   
       const tenantId = domain;
 
       // Mint API key if absent
