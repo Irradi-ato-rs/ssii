@@ -169,9 +169,9 @@ The status threshold (0.20) is wider than the breaker threshold (0.05): a system
 
 ```
 ├── .github/workflows/          <-- CI Automation pipeline validations // planned
-├── integrity-adapters/         <-- Download [here](https://github.com/Irradiators/integrity-adapters) for independent
-├── src/                            VoidMetric deployment or running only a specific 
-│   ├── components/                 open-source platform adapter   
+├── integrity-adapters/         <-- See note below
+├── src/                            
+│   ├── components/                 
 │   │   └── Footer.astro
 │   ├── config/
 │   │   └── tenants.ts          <-- Generic, auditable KV lookup logic. Actual tenant records
@@ -202,6 +202,7 @@ The status threshold (0.20) is wider than the breaker threshold (0.05): a system
 ├── astro.config.mjs
 └── wrangler.jsonc
 ```
+> `integrity-adapters/` — [Download here](https://github.com/Irradiators/integrity-adapters) for independent VoidMetric deployment or running only a specific open-source platform adapter.
 
 *(Note: an earlier `register.astro` UI page has been superseded — `login.astro` now submits directly to `api/register.ts`. See open items in project tracking for its final disposition. Project structure is being reconsidered and any changes should appear in the public repository immediately.)*
 

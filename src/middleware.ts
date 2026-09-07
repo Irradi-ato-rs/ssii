@@ -4,7 +4,7 @@ import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { env } from 'cloudflare:workers';
 import { getIdPConfigByDomain } from './config/tenants';
 
-// Module-level JWKS cache (per-isolate)
+// Module-level JWKS cache (per-isolate) — kept for legacy JWT sessions
 const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 function getJwks(jwksUri: string) {
   let jwks = jwksCache.get(jwksUri);
@@ -13,6 +13,18 @@ function getJwks(jwksUri: string) {
     jwksCache.set(jwksUri, jwks);
   }
   return jwks;
+}
+
+async function resolveRole(sub: string, env: any): Promise<string> {
+  try {
+    const record = await env.VM_TENANT_DIRECTORY?.get(`roles:${sub}`);
+    if (!record) return 'operator';
+    const { role } = JSON.parse(record);
+    const allowed = (env.PRIVATE_ROLE_ALLOWLIST || '').split(',').map((r: string) => r.trim());
+    return allowed.includes(role) ? role : 'operator';
+  } catch {
+    return 'operator';
+  }
 }
 
 export async function onRequest(context: APIContext, next: MiddlewareNext) {
@@ -28,7 +40,7 @@ export async function onRequest(context: APIContext, next: MiddlewareNext) {
   const publicPaths = ['login', 'api/auth', 'api/register', 'portal', 'architecture', 'onboarding', 'documentation'];
   const isPublic = url.pathname === '/' || publicPaths.some(p => pathParts[0] === p || url.pathname.startsWith(`/${p}`));
 
-  // ─── OIDC SESSION VERIFICATION ───
+  // ─── MAIN SESSION VERIFICATION ───
   if (!isPublic) {
     const sessionToken = context.cookies.get('aim_session_token')?.value;
     const authDomain = context.cookies.get('auth_domain')?.value;
@@ -44,6 +56,22 @@ export async function onRequest(context: APIContext, next: MiddlewareNext) {
     }
 
     try {
+      // ── PRIMARY: KV session lookup (new opaque tokens) ──
+      const sessionRaw = await env.VM_TENANT_DIRECTORY.get(`session:${sessionToken}`);
+
+      if (sessionRaw) {
+        const session = JSON.parse(sessionRaw);
+        const role = await resolveRole(session.sub, env);
+        context.locals.user = {
+          sub: session.sub,
+          email: session.email || '',
+          tenant: session.tenantId,
+          role,
+        };
+        return next();
+      }
+
+      // ── LEGACY FALLBACK: JWT validation (existing id_token sessions, expires in 24h) ──
       const config = await getIdPConfigByDomain(env, authDomain);
       if (!config) {
         if (pathParts[0] === 'api') {
@@ -80,11 +108,12 @@ export async function onRequest(context: APIContext, next: MiddlewareNext) {
       const role = await resolveRole(payload.sub, env);
       context.locals.user = {
         sub: payload.sub,
-        email: payload.preferred_username || payload.email || '',
+        email: payload.email || '',
         tenant: authDomain,
         role,
-        rawClaimsPayload: payload,
       };
+      return next();
+
     } catch {
       if (pathParts[0] === 'api') {
         return new Response(JSON.stringify({ error: 'session_error' }), {
@@ -104,29 +133,19 @@ export async function onRequest(context: APIContext, next: MiddlewareNext) {
 
     if (sessionToken && authDomain) {
       try {
-        const config = await getIdPConfigByDomain(env, authDomain);
-        if (config) {
-          const clientId = env[config.clientIdEnv]?.trim();
-          const JWKS = getJwks(config.jwksUri);
-          const verified = await jwtVerify(sessionToken, JWKS, {
-            issuer: config.issuer,
-            audience: clientId,
-            algorithms: ['RS256', 'RS384', 'RS512'],
-            clockTolerance: '60s',
-          });
+        // ── PRIMARY: KV session lookup ──
+        const sessionRaw = await env.VM_TENANT_DIRECTORY.get(`session:${sessionToken}`);
 
+        if (sessionRaw) {
+          const session = JSON.parse(sessionRaw);
           const user = {
-            sub: verified.payload.sub,
-            email: verified.payload.preferred_username || verified.payload.email || '',
-            tenant: authDomain,
-            role: await resolveRole(verified.payload.sub, env),
-            rawClaimsPayload: verified.payload,
+            sub: session.sub,
+            email: session.email || '',
+            tenant: session.tenantId,
+            role: await resolveRole(session.sub, env),
           };
 
-          const portalRecord = env.VM_TENANT_DIRECTORY
-            ? await env.VM_TENANT_DIRECTORY.get(`portal:${requestedTenantId}`)
-            : null;
-
+          const portalRecord = await env.VM_TENANT_DIRECTORY.get(`portal:${requestedTenantId}`);
           if (!portalRecord) {
             return new Response('404 — Tenant not found', { status: 404 });
           }
@@ -139,27 +158,54 @@ export async function onRequest(context: APIContext, next: MiddlewareNext) {
           context.locals.user = user;
           context.locals.tenantId = requestedTenantId;
           context.locals.portalRecord = JSON.parse(portalRecord);
+          return next();
         }
+
+        // ── LEGACY FALLBACK: JWT validation ──
+        const config = await getIdPConfigByDomain(env, authDomain);
+        if (!config) {
+          // No IdP config → self-serve path, let the page handle API-key auth
+          return next();
+        }
+
+        const clientId = env[config.clientIdEnv]?.trim();
+        const JWKS = getJwks(config.jwksUri);
+        const verified = await jwtVerify(sessionToken, JWKS, {
+          issuer: config.issuer,
+          audience: clientId,
+          algorithms: ['RS256', 'RS384', 'RS512'],
+          clockTolerance: '60s',
+        });
+
+        const user = {
+          sub: verified.payload.sub,
+          email: verified.payload.email || '',
+          tenant: authDomain,
+          role: await resolveRole(verified.payload.sub, env),
+        };
+
+        const portalRecord = await env.VM_TENANT_DIRECTORY.get(`portal:${requestedTenantId}`);
+        if (!portalRecord) {
+          return new Response('404 — Tenant not found', { status: 404 });
+        }
+
+        const { owner } = JSON.parse(portalRecord);
+        if (owner !== user.sub) {
+          return new Response('403 — Access denied', { status: 403 });
+        }
+
+        context.locals.user = user;
+        context.locals.tenantId = requestedTenantId;
+        context.locals.portalRecord = JSON.parse(portalRecord);
+        return next();
+
       } catch {
-        return context.redirect('/login?error=expired_session');
+        return new Response('Internal error', { status: 500 });
       }
     }
     // No session → self-serve path, let the page handle API-key auth
+    return next();
   }
 
   return next();
-}
-
-// ─── HELPERS ──────────────────────────────────────────────────────────────
-
-async function resolveRole(sub: string, env: any): Promise<string> {
-  try {
-    const record = await env.VM_TENANT_DIRECTORY?.get(`roles:${sub}`);
-    if (!record) return 'operator';
-    const { role } = JSON.parse(record);
-    const allowed = (env.PRIVATE_ROLE_ALLOWLIST || '').split(',').map((r: string) => r.trim());
-    return allowed.includes(role) ? role : 'operator';
-  } catch {
-    return 'operator';
-  }
 }   
