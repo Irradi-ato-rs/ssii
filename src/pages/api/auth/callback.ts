@@ -250,7 +250,7 @@ export const GET: APIRoute = async ({ request, cookies }) => {
     }), { expirationTtl: 86400 });
 
     const headers = new Headers();
-    headers.set('Location', `/portal/${tenantId}`);
+    headers.set('Location', `/integrity-portal?tenant=${tenantId}`);
     headers.append('Set-Cookie', `aim_session_token=${sessionToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`);
     headers.append('Set-Cookie', `auth_domain=${tenantId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`);
     clearFlowCookies(headers);
