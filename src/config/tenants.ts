@@ -29,7 +29,7 @@ export async function getIdPConfigByDomain(
   if (raw) return JSON.parse(raw) as IdPConfig;
 
   // Self-serve fallback: no KV record → use default IdP from env
-  const clientId = env.IDP_CLIENT_ID?.trim();
+  const clientId = env.PRIVATE_ENTRA_ICLASSED_CLIENT_ID?.trim();
   if (!clientId) return null;
 
   return {
