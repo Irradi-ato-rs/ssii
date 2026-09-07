@@ -38,8 +38,8 @@ export async function getIdPConfigByDomain(
     tokenEndpoint: env.IDP_TOKEN_ENDPOINT?.trim() || '',
     jwksUri: env.IDP_JWKS_URI?.trim() || '',
     endSessionEndpoint: env.IDP_END_SESSION_ENDPOINT?.trim() || undefined,
-    clientIdEnv: 'IDP_CLIENT_ID',
-    clientSecretEnv: 'IDP_CLIENT_SECRET',
+    clientIdEnv: 'PRIVATE_ENTRA_ICLASSED_CLIENT_ID',
+    clientSecretEnv: 'PRIVATE_ENTRA_ICLASSED_CLIENT_SECRET',
     authMethod: 'client_secret_basic',
   };
 }
