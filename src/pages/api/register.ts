@@ -61,6 +61,57 @@ export const POST: APIRoute = async ({ request }) => {
       return jsonError('Invalid email address', 400);
     }
 
+    // ─── SELF-SERVE PATH (register + no enterprise KV record) ───
+    const tenantRecord = await env.VM_TENANT_DIRECTORY.get(`tenant:${domain}`);
+
+    if (mode === 'register' && !tenantRecord) {
+      const tenantId = domain;
+
+      // Mint API key if absent
+      let apiKey = await env.VM_TENANT_DIRECTORY.get(`apikey:${tenantId}`);
+      if (!apiKey) {
+        const bytes = new Uint8Array(32);
+        crypto.getRandomValues(bytes);
+        apiKey = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        await env.VM_TENANT_DIRECTORY.put(`apikey:${tenantId}`, apiKey);
+        console.log(`[register] Minted API key for self-serve tenant=${tenantId}`);
+      }
+
+      // Role (default: operator)
+      const roleKey = `roles:${email}`;
+      if (!(await env.VM_TENANT_DIRECTORY.get(roleKey))) {
+        await env.VM_TENANT_DIRECTORY.put(roleKey, JSON.stringify({ role: 'operator' }));
+      }
+
+      // Tenant name
+      if (!(await env.VM_TENANT_DIRECTORY.get(`tenantName:${tenantId}`))) {
+        await env.VM_TENANT_DIRECTORY.put(`tenantName:${tenantId}`, tenantId);
+      }
+
+      // Session
+      const sessionToken = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, '');
+      await env.SESSION.put(`session:${sessionToken}`, JSON.stringify({
+        sub: email,
+        tenantId,
+        role: 'operator',
+        email,
+        createdAt: Date.now(),
+      }), { expirationTtl: 86400 });
+
+      const headers = new Headers();
+      headers.set('Content-Type', 'application/json');
+      headers.append('Set-Cookie', `aim_session_token=${sessionToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`);
+      headers.append('Set-Cookie', `auth_domain=${tenantId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`);
+
+      console.log(`[register] Self-serve session established: email=${email} tenant=${tenantId}`);
+
+      return new Response(JSON.stringify({ success: true, redirectUrl: `/integrity-adapters?tenant=${tenantId}` }), {
+        status: 200,
+        headers,
+      });
+    }
+
+    // ─── ENTERPRISE / LOGIN PATH (full OIDC) ───
     const config = await getIdPConfig(env, email);
     if (!config) {
       return jsonError('Unable to start sign-in for this account.', 403);
@@ -101,12 +152,13 @@ export const POST: APIRoute = async ({ request }) => {
     headers.append('Set-Cookie', `oidc_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=300`);
     headers.append('Set-Cookie', `pkce_verifier=${verifier}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=300`);
 
-    console.log(`register: handshake initiated for domain=${domain} mode=${mode}`);
+    console.log(`[register] OIDC handshake initiated for domain=${domain} mode=${mode}`);
 
     return new Response(JSON.stringify({ success: true, redirectUrl: finalOutboundHandshakeUrl }), {
       status: 200,
       headers,
     });
+
   } catch (error) {
     console.error('register: unhandled error', error);
     return jsonError('Sign-in failed. Please try again.', 500);
