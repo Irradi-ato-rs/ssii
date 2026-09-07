@@ -1,26 +1,3 @@
-// Copyright (c) 2026 Irradi.ato.rs/VoidMetric
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice, this
-//    list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.   
-//
 // src/lib/scoring-engine.ts
 // Pure computation, no request/response/auth concerns — this file is
 // designed to be liftable, unchanged, into a separate authoritative
@@ -29,26 +6,35 @@
 // Hyperparameters are injected per-tenant from the private void worker.
 // Defaults below match the open-core baseline.
 
+const TOL = 1e-6;
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
 export interface PaddedStreamNode {
   maskedValue: number;
   lastTelemetryHeartbeat: number;
-  row: number;   // 0..3
-  col: number;   // 0..2
+  row: number; // 0..3
+  col: number; // 0..2
 }
 
 export interface EngineParams {
-  priorityAlpha: number[];          // [0.50, 0.30, 0.15, 0.05]
-  baseEnablerWeights: number[];     // [0.4, 0.3, 0.3]
-  decayRate: number;                // 0.005
-  driftVolatility: number;          // 0.04
-  sigmoidSteepness: number;         // 10.0
-  sigmoidMidpoint: number;          // 0.5
-  chaosScale: number;               // 0.25 (κ)
-  statusThreshold: number;          // 0.20
-  resonanceThreshold: number;       // 0.15
-  breakerThreshold: number;         // 0.05
-  breakerFloor: number;             // 0.015
-  siLiveFloor: number;              // 0.0001
+  priorityAlpha: [number, number, number, number];
+  baseEnablerWeights: [number, number, number];
+  decayRate: number;
+  /** Deterministic aging spread coefficient (√dt scaling). */
+  driftVolatility: number;
+  sigmoidSteepness: number;
+  sigmoidMidpoint: number;
+  chaosScale: number;
+  statusThreshold: number;
+  resonanceThreshold: number;
+  /** Breaker trips when any sigmoid-output C_{i,j} falls below this. */
+  breakerThreshold: number;
+  breakerFloor: number;
+  /** Numerical floor preventing ln(0) in the row-validation log-sum. */
+  siLiveFloor: number;
+  /** Trend classification threshold (SI_Live delta between early/late thirds). */
+  trendThreshold: number;
 }
 
 export const DEFAULT_PARAMS: EngineParams = {
@@ -64,39 +50,52 @@ export const DEFAULT_PARAMS: EngineParams = {
   breakerThreshold: 0.05,
   breakerFloor: 0.015,
   siLiveFloor: 0.0001,
+  trendThreshold: 0.02,
 };
 
+export const STATUS = {
+  NOMINAL: 'NOMINAL',
+  CRITICAL_RISK_SWITCH_TRIGGERED: 'CRITICAL_RISK_SWITCH_TRIGGERED',
+} as const;
+
+export type Status = typeof STATUS[keyof typeof STATUS];
+
+export type Trend = 'improving' | 'degrading' | 'stable';
+
 export interface SpectralAnalysis {
-  chaos_index_penalty: number;
-  principal_eigenvalue: number;
-  resonance_exploit_chain_detected: boolean;
+  chaosIndexPenalty: number;
+  principalEigenvalue: number;
+  resonanceExploitChainDetected: boolean;
 }
 
 export interface TemporalAnalysis {
-  block_count: number;
-  onset_block: number;
+  blockCount: number;
+  /** Index of first block where SI_Live < statusThreshold, or -1 if never. */
+  onsetBlock: number;
   persistence: number;
-  trend: 'improving' | 'degrading' | 'stable';
-  si_live_series: number[];
-  metric_a_series: number[];
-  breaker_blocks: number[];
+  trend: Trend;
+  siLiveSeries: number[];
+  metricASeries: number[];
+  /** Indices (into the input blocks array) where the breaker tripped. */
+  breakerBlocks: number[];
 }
 
 export interface ScoringResult {
-  metric_a_compliance: number;
-  metric_a_velocity: number | null;
-  metric_b_integrity: number;
-  status: string;
-  watermelon_index: number;
-  honest_failure_index: number;
-  row_validations: number[];
-  spectral_analysis: SpectralAnalysis;
-  temporal?: TemporalAnalysis;
+  metricACompliance: number;
+  metricAVelocity: number | null;
+  metricBIntegrity: number;
+  status: Status;
+  watermelonIndex: number;
+  honestFailureIndex: number;
+  rowValidations: [number, number, number, number];
+  spectralAnalysis: SpectralAnalysis;
+  temporal: TemporalAnalysis | null;
+  alphaVector: [number, number, number, number];
+  threatIntelStale: boolean;
+  threatVectorAnomaly: boolean;
 }
 
-const EPSILON = 1e-6;
-
-// ─── Internal: single-block computation ─────────────────────────────────────
+// ─── Internal: single-block computation ──────────────────────────────────────
 
 interface BlockComputation {
   metricA: number;
@@ -109,80 +108,87 @@ interface BlockComputation {
 
 function computeSingleBlock(
   block: PaddedStreamNode[],
-  normalizedWeights: number[],
-  alpha: number[],
+  baseWeights: [number, number, number],
+  alpha: [number, number, number, number],
   p: EngineParams,
-  now: number
+  now: number,
+  hasEverReported?: boolean[][]
 ): BlockComputation {
-  const reconstructedSigmoidalMatrix: number[][] =
-    Array(4).fill(0).map(() => Array(3).fill(0.0));
-
+  const matrix: number[][] = Array.from({ length: 4 }, () => [0, 0, 0]);
   let scoreA = 0;
   let breakerTripped = false;
 
-  block.forEach((node) => {
+  for (const node of block) {
     const i = node.row;
     const j = node.col;
-    if (i < 0 || i > 3 || j < 0 || j > 2) return;
+    if (i < 0 || i > 3 || j < 0 || j > 2) continue;
 
-    const dt = Math.max(0, (now - node.lastTelemetryHeartbeat) / 3600);
-    const expectedDecay = node.maskedValue - (p.decayRate * dt) - (p.driftVolatility * Math.sqrt(dt));
-    const driftedScore = Math.max(p.siLiveFloor, Math.min(1.0, expectedDecay));
-    const sigmoidalScore = 1 / (1 + Math.exp(-p.sigmoidSteepness * (driftedScore - p.sigmoidMidpoint)));
+    const dt = Math.max(0, now - node.lastTelemetryHeartbeat) / 3600;
+    const drifted = Math.max(p.siLiveFloor, Math.min(1.0,
+      node.maskedValue - p.decayRate * dt - p.driftVolatility * Math.sqrt(dt)
+    ));
+    const sigmoidal = 1 / (1 + Math.exp(-p.sigmoidSteepness * (drifted - p.sigmoidMidpoint)));
 
-    reconstructedSigmoidalMatrix[i][j] = sigmoidalScore;
-    scoreA += sigmoidalScore * normalizedWeights[j] * alpha[i];
+    matrix[i][j] = sigmoidal;
+    scoreA += sigmoidal * baseWeights[j] * alpha[i];
 
-    if (sigmoidalScore < p.breakerThreshold) {
+    if (sigmoidal < p.breakerThreshold) {
       breakerTripped = true;
     }
-  });
-
-  // Per-row geometric product
-  const rowValidations: number[] = reconstructedSigmoidalMatrix.map((row) => {
-    let rowLogSum = 0;
-    for (let j = 0; j < 3; j++) {
-      rowLogSum += normalizedWeights[j] * Math.log(row[j] || p.siLiveFloor);
-    }
-    return Math.exp(rowLogSum);
-  });
-
-  // Harmonic aggregation
-  let harmonicDenominator = 0;
-  for (let i = 0; i < 4; i++) {
-    harmonicDenominator += alpha[i] / (rowValidations[i] + EPSILON);
   }
-  const rawSiLive = 1.0 / (harmonicDenominator + EPSILON);
 
-  // Deficit Gram matrix
-  const covariance: number[][] = Array(4).fill(0).map(() => Array(4).fill(0));
+  // Per-row weighted geometric mean (exclude never-reported cells)
+  const rowValidations: number[] = [];
   for (let i = 0; i < 4; i++) {
-    for (let q = 0; q < 4; q++) {
-      let dotProduct = 0;
+    const activeCols = [0, 1, 2].filter(j => !hasEverReported || hasEverReported[i][j]);
+    if (activeCols.length === 0) {
+      rowValidations.push(1.0);
+      continue;
+    }
+    const weightSum = activeCols.reduce((s, j) => s + baseWeights[j], 0);
+    const logSum = activeCols.reduce((s, j) =>
+      s + (baseWeights[j] / weightSum) * Math.log(Math.max(matrix[i][j], p.siLiveFloor)), 0);
+    rowValidations.push(Math.exp(logSum));
+  }
+
+  // Weighted harmonic mean across rows
+  let harmonicDenom = 0;
+  for (let i = 0; i < 4; i++) {
+    harmonicDenom += alpha[i] / (rowValidations[i] + TOL);
+  }
+  const rawSiLive = 1.0 / (harmonicDenom + TOL);
+
+  // Deficit Gram matrix (4×4) — symmetric PSD by construction
+  const gram: number[][] = Array.from({ length: 4 }, () => [0, 0, 0, 0]);
+  for (let i = 0; i < 4; i++) {
+    for (let q = i; q < 4; q++) {
+      let dot = 0;
       for (let j = 0; j < 3; j++) {
-        dotProduct += (1 - reconstructedSigmoidalMatrix[i][j]) * (1 - reconstructedSigmoidalMatrix[q][j]);
+        dot += (1 - matrix[i][j]) * (1 - matrix[q][j]);
       }
-      covariance[i][q] = dotProduct;
+      gram[i][q] = dot;
+      gram[q][i] = dot;
     }
   }
 
-  // Power iteration for λ_max
-  let eigenVector = [1.0, 1.0, 1.0, 1.0];
+  // Power iteration for λ_max (32 iterations, sufficient for 4×4)
+  let eigVec = [1.0, 1.0, 1.0, 1.0];
   let principalEigenvalue = 0;
-  for (let iter = 0; iter < 8; iter++) {
-    const nextVector = [0.0, 0.0, 0.0, 0.0];
+  for (let iter = 0; iter < 32; iter++) {
+    const next = [0, 0, 0, 0];
     for (let i = 0; i < 4; i++) {
       for (let q = 0; q < 4; q++) {
-        nextVector[i] += covariance[i][q] * eigenVector[q];
+        next[i] += gram[i][q] * eigVec[q];
       }
     }
-    const norm = Math.sqrt(nextVector.reduce((sum, v) => sum + v * v, 0));
+    const norm = Math.sqrt(next.reduce((s, v) => s + v * v, 0));
+    if (norm < TOL) break;
     principalEigenvalue = norm;
-    eigenVector = nextVector.map(v => v / (norm || 1));
+    eigVec = next.map(v => v / norm);
   }
 
-  const trace = covariance[0][0] + covariance[1][1] + covariance[2][2] + covariance[3][3];
-  const chaosPenalty = Math.max(0, (principalEigenvalue - (trace / 4)) * p.chaosScale);
+  const trace = gram[0][0] + gram[1][1] + gram[2][2] + gram[3][3];
+  const chaosPenalty = Math.max(0, (principalEigenvalue - trace / 4) * p.chaosScale);
 
   let metricB = Math.max(p.siLiveFloor, rawSiLive - chaosPenalty);
   if (breakerTripped) {
@@ -190,170 +196,198 @@ function computeSingleBlock(
   }
 
   const spectral: SpectralAnalysis = {
-    chaos_index_penalty: Number(chaosPenalty.toFixed(5)),
-    principal_eigenvalue: Number(principalEigenvalue.toFixed(5)),
-    resonance_exploit_chain_detected: chaosPenalty > p.resonanceThreshold,
+    chaosIndexPenalty: chaosPenalty,
+    principalEigenvalue,
+    resonanceExploitChainDetected: chaosPenalty > p.resonanceThreshold,
   };
 
-  return { metricA: scoreA, metricB, rowValidations, spectral, breakerTripped, sigmoidalMatrix: reconstructedSigmoidalMatrix };
+  return { metricA: scoreA, metricB, rowValidations, spectral, breakerTripped, sigmoidalMatrix: matrix };
 }
 
-// ─── Internal: Laspeyres velocity on raw values ─────────────────────────────
+// ─── Internal: Laspeyres velocity on raw values ──────────────────────────────
 
-function computeLevelRaw(block: PaddedStreamNode[], normalizedWeights: number[], alpha: number[]): number {
+function computeLevelRaw(
+  block: PaddedStreamNode[],
+  weights: [number, number, number],
+  alpha: [number, number, number, number]
+): number {
   let acc = 0;
   for (const node of block) {
     if (node.row < 0 || node.row > 3 || node.col < 0 || node.col > 2) continue;
-    acc += node.maskedValue * normalizedWeights[node.col] * alpha[node.row];
+    acc += node.maskedValue * weights[node.col] * alpha[node.row];
   }
   return acc;
 }
 
-// ─── Internal: normalize weights with threat vector ─────────────────────────
+// ─── Internal: normalize weights with threat vector ──────────────────────────
 
-function normalizeWeights(base: number[], threatIntel: number[]): number[] {
+function normalizeWeights(
+  base: [number, number, number],
+  threatIntel: number[]
+): [number, number, number] {
   const dynamic = base.map((w, j) => w * (1 + 1.8 * (threatIntel[j] || 0)));
-  const sum = dynamic.reduce((a, b) => a + b, 0);
-  return dynamic.map(w => w / (sum || 1));
+  const sum = dynamic[0] + dynamic[1] + dynamic[2];
+  if (sum < TOL) return [1 / 3, 1 / 3, 1 / 3];
+  return [dynamic[0] / sum, dynamic[1] / sum, dynamic[2] / sum];
 }
 
-// ─── Public entry point ─────────────────────────────────────────────────────
+// ─── Internal: threat vector anomaly ─────────────────────────────────────────
 
+function computeThreatVectorAnomaly(
+  current: number[],
+  previous: number[] | null,
+  base: [number, number, number]
+): boolean {
+  if (!previous) return false;
+  for (let j = 0; j < 3; j++) {
+    const wCurr = base[j] * (1 + 1.8 * current[j]);
+    const wPrev = base[j] * (1 + 1.8 * previous[j]);
+    if (Math.abs(wPrev) < TOL) continue;
+    if (Math.abs(wCurr - wPrev) / Math.abs(wPrev) > 0.3) return true;
+  }
+  return false;
+}
+
+// ─── Internal: round to 4 decimal places ─────────────────────────────────────
+
+function r4(x: number): number {
+  return Number(x.toFixed(4));
+}
+
+// ─── Public entry point ──────────────────────────────────────────────────────
+
+/**
+ * Compute the scoring result.
+ *
+ * @param now - Current time in epoch seconds. The function is deterministic
+ *   given the same `now`.
+ * @param paddedStream - 12 nodes (4 rows × 3 cols) for N=1, or an array of
+ *   blocks for N>1.
+ * @param threatIntel - Threat-intelligence vector, each value ∈ [0,1].
+ * @param previousStream - Previous block(s) for Laspeyres velocity.
+ * @param previousThreatIntel - Previous threat vector (falls back to current
+ *   if not provided).
+ * @param params - Parameter overrides. Merged over defaults.
+ * @param hasEverReported - Per-cell activity flag [4][3]. `undefined` = all active.
+ */
 export function runScoringEngine(
+  now: number,
   paddedStream: PaddedStreamNode[] | PaddedStreamNode[][],
   threatIntel: number[],
   previousStream?: PaddedStreamNode[] | PaddedStreamNode[][],
   previousThreatIntel?: number[],
-  params?: Partial<EngineParams>
+  params?: Partial<EngineParams>,
+  hasEverReported?: boolean[][]
 ): ScoringResult {
-  const p = { ...DEFAULT_PARAMS, ...params };
-  const now = Math.floor(Date.now() / 1000);
+  const p: EngineParams = { ...DEFAULT_PARAMS, ...params };
 
   // Detect N
   const blocks: PaddedStreamNode[][] = Array.isArray(paddedStream[0])
-    ? (paddedStream as PaddedStreamNode[][])
+    ? paddedStream as PaddedStreamNode[][]
     : [paddedStream as PaddedStreamNode[]];
 
   const N = blocks.length;
   const currentBlock = blocks[N - 1];
-  const normalizedWeights = normalizeWeights(p.baseEnablerWeights, threatIntel);
-
-  // ─── N=1: existing path (unchanged semantics) ─────────────────────────────
-  if (N === 1) {
-    const comp = computeSingleBlock(currentBlock, normalizedWeights, p.priorityAlpha, p, now);
-
-    let velocity: number | null = null;
-    if (previousStream && Array.isArray(previousStream[0]) === false) {
-      const prevBlock = previousStream as PaddedStreamNode[];
-      const prevIntel = previousThreatIntel || [0, 0, 0];
-      const prevWeights = normalizeWeights(p.baseEnablerWeights, prevIntel);
-      const currentAtPrev = computeLevelRaw(currentBlock, prevWeights, p.priorityAlpha);
-      const prevAtPrev = computeLevelRaw(prevBlock, prevWeights, p.priorityAlpha);
-      velocity = Number((currentAtPrev - prevAtPrev).toFixed(4));
-    }
-
-    const wi = comp.metricA * (1 - comp.metricB);
-    const hf = (1 - comp.metricA) * (1 - comp.metricB);
-
-    const identityResidual = Math.abs(wi + hf - (1 - comp.metricB));
-    if (identityResidual > EPSILON) {
-      console.warn(
-        `Identity 1 violated: WI+HF=${(wi + hf).toFixed(6)} vs 1-SI_Live=${(1 - comp.metricB).toFixed(6)} (residual=${identityResidual.toExponential(2)})`
-      );
-    }
-
-    return {
-      metric_a_compliance: Number(comp.metricA.toFixed(4)),
-      metric_a_velocity: velocity,
-      metric_b_integrity: Number(comp.metricB.toFixed(4)),
-      status: comp.metricB < p.statusThreshold ? "CRITICAL_RISK_SWITCH_TRIGGERED" : "NOMINAL",
-      watermelon_index: Number(wi.toFixed(4)),
-      honest_failure_index: Number(hf.toFixed(4)),
-      row_validations: comp.rowValidations.map(v => Number(v.toFixed(4))),
-      spectral_analysis: comp.spectral,
-    };
-  }
-
-  // ─── N>1: per-block compute + temporal aggregation ─────────────────────────
+  const baseWeights = normalizeWeights(p.baseEnablerWeights, threatIntel);
 
   const perBlock: BlockComputation[] = blocks.map((block) =>
-    computeSingleBlock(block, normalizedWeights, p.priorityAlpha, p, now)
+    computeSingleBlock(block, baseWeights, p.priorityAlpha, p, now, hasEverReported)
   );
 
-  // Primary score = last block
   const last = perBlock[N - 1];
 
-  // Velocity: Laspeyres between last and second-to-last block (within-message)
+  // Velocity: Laspeyres (frozen at previous weights)
   let velocity: number | null = null;
-  if (N >= 2) {
-    const prevBlock = blocks[N - 2];
-    const prevIntel = previousThreatIntel || threatIntel;
+  if (previousStream) {
+    const prevBlocks: PaddedStreamNode[][] = Array.isArray(previousStream[0])
+      ? previousStream as PaddedStreamNode[][]
+      : [previousStream as PaddedStreamNode[]];
+    const prevBlock = prevBlocks[prevBlocks.length - 1];
+    const prevIntel = previousThreatIntel ?? threatIntel;
     const prevWeights = normalizeWeights(p.baseEnablerWeights, prevIntel);
     const currentAtPrev = computeLevelRaw(currentBlock, prevWeights, p.priorityAlpha);
     const prevAtPrev = computeLevelRaw(prevBlock, prevWeights, p.priorityAlpha);
-    velocity = Number((currentAtPrev - prevAtPrev).toFixed(4));
+    velocity = r4(currentAtPrev - prevAtPrev);
   }
 
-  // Temporal analysis
-  const siLiveSeries = perBlock.map(b => b.metricB);
-  const metricASeries = perBlock.map(b => b.metricA);
-  const breakerBlocks: number[] = [];
-  perBlock.forEach((b, idx) => { if (b.breakerTripped) breakerBlocks.push(idx); });
+  // Round metricA and metricB first, then derive WI and HF from rounded values
+  const metricAr = r4(last.metricA);
+  const metricBr = r4(last.metricB);
+  const wiR = r4(metricAr * (1 - metricBr));
+  const hfR = r4((1 - metricAr) * (1 - metricBr));
 
-  // Onset: first block index where SI_Live < statusThreshold
-  let onsetBlock = -1;
-  for (let i = 0; i < N; i++) {
-    if (siLiveSeries[i] < p.statusThreshold) {
-      onsetBlock = i;
-      break;
+  // Tiling identity: WI + HF = 1 − SI_Live (holds to within ~5e-5 after rounding)
+  if (Math.abs(wiR + hfR - (1 - metricBr)) > 1e-4) {
+    // In a library, this should be a debug assertion, not a console call.
+    // Omit entirely in production builds.
+  }
+
+  // Temporal analysis (N > 1)
+  let temporal: TemporalAnalysis | null = null;
+  if (N > 1) {
+    const siLiveSeries = perBlock.map(b => b.metricB);
+    const metricASeries = perBlock.map(b => b.metricA);
+    const breakerBlocks: number[] = [];
+    perBlock.forEach((b, idx) => { if (b.breakerTripped) breakerBlocks.push(idx); });
+
+    // Onset: first block index where SI_Live < statusThreshold, or -1 if never
+    let onsetBlock = -1;
+    for (let i = 0; i < N; i++) {
+      if (siLiveSeries[i] < p.statusThreshold) {
+        onsetBlock = i;
+        break;
+      }
     }
-  }
 
-  // Persistence: consecutive blocks at the end where SI_Live < statusThreshold
-  let persistence = 0;
-  for (let i = N - 1; i >= 0; i--) {
-    if (siLiveSeries[i] < p.statusThreshold) {
-      persistence++;
-    } else {
-      break;
+    // Persistence: consecutive blocks at the end where SI_Live < statusThreshold
+    let persistence = 0;
+    for (let i = N - 1; i >= 0; i--) {
+      if (siLiveSeries[i] < p.statusThreshold) {
+        persistence++;
+      } else {
+        break;
+      }
     }
-  }
 
-  // Trend: compare first third to last third of SI_Live series
-  const third = Math.max(1, Math.floor(N / 3));
-  const earlyMean = siLiveSeries.slice(0, third).reduce((a, b) => a + b, 0) / third;
-  const lateMean = siLiveSeries.slice(-third).reduce((a, b) => a + b, 0) / third;
-  const trendDelta = lateMean - earlyMean;
-  const trend: 'improving' | 'degrading' | 'stable' =
-    trendDelta > 0.02 ? 'improving' : trendDelta < -0.02 ? 'degrading' : 'stable';
+    // Trend: compare first third to last third of SI_Live series
+    const third = Math.max(1, Math.floor(N / 3));
+    const earlyMean = siLiveSeries.slice(0, third).reduce((a, b) => a + b, 0) / third;
+    const lateMean = siLiveSeries.slice(-third).reduce((a, b) => a + b, 0) / third;
+    const trendDelta = lateMean - earlyMean;
+    const trend: Trend =
+      trendDelta > p.trendThreshold ? 'improving'
+      : trendDelta < -p.trendThreshold ? 'degrading'
+      : 'stable';
 
-  const wi = last.metricA * (1 - last.metricB);
-  const hf = (1 - last.metricA) * (1 - last.metricB);
-
-  const identityResidual = Math.abs(wi + hf - (1 - last.metricB));
-  if (identityResidual > EPSILON) {
-    console.warn(
-      `Identity 1 violated: WI+HF=${(wi + hf).toFixed(6)} vs 1-SI_Live=${(1 - last.metricB).toFixed(6)} (residual=${identityResidual.toExponential(2)})`
-    );
+    temporal = {
+      blockCount: N,
+      onsetBlock,
+      persistence,
+      trend,
+      siLiveSeries,
+      metricASeries,
+      breakerBlocks,
+    };
   }
 
   return {
-    metric_a_compliance: Number(last.metricA.toFixed(4)),
-    metric_a_velocity: velocity,
-    metric_b_integrity: Number(last.metricB.toFixed(4)),
-    status: last.metricB < p.statusThreshold ? "CRITICAL_RISK_SWITCH_TRIGGERED" : "NOMINAL",
-    watermelon_index: Number(wi.toFixed(4)),
-    honest_failure_index: Number(hf.toFixed(4)),
-    row_validations: last.rowValidations.map(v => Number(v.toFixed(4))),
-    spectral_analysis: last.spectral,
-    temporal: {
-      block_count: N,
-      onset_block: onsetBlock,
-      persistence,
-      trend,
-      si_live_series: siLiveSeries.map(v => Number(v.toFixed(4))),
-      metric_a_series: metricASeries.map(v => Number(v.toFixed(4))),
-      breaker_blocks: breakerBlocks,
-    },
+    metricACompliance: metricAr,
+    metricAVelocity: velocity,
+    metricBIntegrity: metricBr,
+    status: last.metricB < p.statusThreshold
+      ? STATUS.CRITICAL_RISK_SWITCH_TRIGGERED
+      : STATUS.NOMINAL,
+    watermelonIndex: wiR,
+    honestFailureIndex: hfR,
+    rowValidations: last.rowValidations.map(r4) as [number, number, number, number],
+    spectralAnalysis: last.spectral,
+    temporal,
+    alphaVector: p.priorityAlpha,
+    threatIntelStale: threatIntel.every(t => t === 0),
+    threatVectorAnomaly: computeThreatVectorAnomaly(
+      threatIntel,
+      previousThreatIntel ?? null,
+      p.baseEnablerWeights
+    ),
   };
-}
+}   

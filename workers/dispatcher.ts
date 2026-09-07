@@ -87,8 +87,8 @@ export default {
         if (action !== 'none') {
           await executeDispatch(action, result, state, config, tenantId);
           state.last_dispatch_ts = timestamp;
-          state.last_status = result.status;
         }
+        state.last_status = result.status; // always track current status
 
         // 6. Persist state (TTL 7d — clears stale state for inactive tenants)
         await env.VM_DISPATCH_STATE.put(
@@ -101,7 +101,12 @@ export default {
         message.ack();
       } catch (err) {
         console.error(`[DISPATCH] ❌ Error: ${(err as Error).message}`, message.body);
-        message.retry();
+        if (message.attempts > 5) {
+          console.error(`[DISPATCH] Poison message after ${message.attempts} attempts. Acking to skip.`);
+          message.ack();
+        } else {
+          message.retry();
+        }
       }
     }
   },
@@ -134,13 +139,13 @@ function determineAction(
   }
 
   // Watermelon: compliance masking failure
-  if (result.watermelon_index > 0.5) {
+  if (result.watermelonIndex > 0.5) {
     if (inCooldown) return 'none';
     return 'notify_watermelon';
   }
 
   // Resonance: probable exploit chain
-  if (result.spectral_analysis.resonance_exploit_chain_detected) {
+  if (result.spectralAnalysis.resonanceExploitChainDetected) {
     if (inCooldown) return 'none';
     return 'notify_resonance';
   }
@@ -220,22 +225,22 @@ function buildSummary(result: ScoringResult, state: DispatchState, tenantId: str
   const lines: string[] = [
     `Tenant: ${tenantId}`,
     `Status: ${result.status.replace(/_/g, ' ')}`,
-    `Metric A (Compliance): ${(result.metric_a_compliance * 100).toFixed(1)}%`,
-    `Metric B (Integrity): ${(result.metric_b_integrity * 100).toFixed(1)}%`,
-    `Velocity: ${result.metric_a_velocity !== null ? (result.metric_a_velocity > 0 ? '+' : '') + (result.metric_a_velocity * 100).toFixed(2) : 'n/a'}`,
-    `Watermelon Index: ${(result.watermelon_index * 100).toFixed(1)}%`,
-    `Honest Failure: ${(result.honest_failure_index * 100).toFixed(1)}%`,
-    `Chaos Penalty: ${result.spectral_analysis.chaos_index_penalty}`,
-    `Resonance: ${result.spectral_analysis.resonance_exploit_chain_detected ? 'DETECTED' : 'none'}`,
+    `Metric A (Compliance): ${(result.metricACompliance * 100).toFixed(1)}%`,
+    `Metric B (Integrity): ${(result.metricBIntegrity * 100).toFixed(1)}%`,
+    `Velocity: ${result.metricAVelocity !== null ? (result.metricAVelocity > 0 ? '+' : '') + (result.metricAVelocity * 100).toFixed(2) : 'n/a'}`,
+    `Watermelon Index: ${(result.watermelonIndex * 100).toFixed(1)}%`,
+    `Honest Failure: ${(result.honestFailureIndex * 100).toFixed(1)}%`,
+    `Chaos Penalty: ${result.spectralAnalysis.chaosIndexPenalty}`,
+    `Resonance: ${result.spectralAnalysis.resonanceExploitChainDetected ? 'DETECTED' : 'none'}`,
   ];
 
   if (result.temporal) {
-    lines.push(`Blocks: ${result.temporal.block_count}`);
-    lines.push(`Onset: block ${result.temporal.onset_block === -1 ? 'none' : result.temporal.onset_block}`);
+    lines.push(`Blocks: ${result.temporal.blockCount}`);
+    lines.push(`Onset: block ${result.temporal.onsetBlock === -1 ? 'none' : result.temporal.onsetBlock}`);
     lines.push(`Persistence: ${result.temporal.persistence} consecutive block(s)`);
     lines.push(`Trend: ${result.temporal.trend}`);
-    if (result.temporal.breaker_blocks.length > 0) {
-      lines.push(`Breaker trips: blocks [${result.temporal.breaker_blocks.join(', ')}]`);
+    if (result.temporal.breakerBlocks.length > 0) {
+      lines.push(`Breaker trips: blocks [${result.temporal.breakerBlocks.join(', ')}]`);
     }
   }
 

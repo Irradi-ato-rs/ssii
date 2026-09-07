@@ -41,6 +41,7 @@ export default {
         } = body;
 
         const result = runScoringEngine(
+          body.timestamp,
           paddedStream,
           threatIntelVector || [0, 0, 0],
           previousStream,
@@ -64,14 +65,14 @@ export default {
         });
 
         console.log(`[SSII] ✅ Computed: ${body.tenantId}`, {
-          metric_a: result.metric_a_compliance,
-          metric_a_velocity: result.metric_a_velocity,
-          metric_b: result.metric_b_integrity,
+          metric_a: result.metricACompliance,
+          metric_a_velocity: result.metricAVelocity,
+          metric_b: result.metricBIntegrity,
           status: result.status,
-          wi: result.watermelon_index,
-          hf: result.honest_failure_index,
+          wi: result.watermelonIndex,
+          hf: result.honestFailureIndex,
           temporal: result.temporal ? {
-            onset: result.temporal.onset_block,
+            onset: result.temporal.onsetBlock,
             persistence: result.temporal.persistence,
             trend: result.temporal.trend,
           } : undefined,
@@ -88,4 +89,4 @@ export default {
   async fetch(): Promise<Response> {
     return new Response("SSII Consumer Active", { status: 200 });
   },
-};
+};   
