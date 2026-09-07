@@ -164,50 +164,6 @@ The status threshold (0.20) is wider than the breaker threshold (0.05): a system
 
 ---
 
-## Diagnostics
-
-**Watermelon Index (Primary Diagnostic)**
-
-A deception detector that measures the divergence between administrative compliance and operational integrity. It peaks when the rind is green and the flesh is red — the case where checkmark compliance is masking a collapsed operational blueprint. It is zero when the two metrics agree in either direction.
-
-$$
-\boxed{\text{WI}(t) = \text{Score}_A(t)\cdot\bigl(1 - SI_{\text{Live}}(t)\bigr)}
-$$
-
-WI is intentionally one-sided. It is a deception detector, not a severity ranker. The honest-failure case (both metrics low) is not deceptive — it is visible in the constituent metrics and caught by the Risk Switch. Flagging it here would dilute the diagnostic's purpose.
-
-Under the Risk Switch floor ($SI_{\text{Live}} \approx 0.015$), $1 - SI_{\text{Live}} \approx 1$, so $\text{WI} \approx \text{Score}_A$. The diagnostic passes through rather than collapsing.
-
-**Honest Failure Index (Companion Diagnostic)**
-
-The companion to the Watermelon Index. Where WI detects deception (compliance high, integrity low), HF detects honest failure (both low, visible, not masked). Together they tile the degraded space: any point where $SI_{\text{Live}} < 1$ is either watermelon or honest failure, never both.
-
-$$
-\boxed{\text{HF}(t) = \bigl(1 - \text{Score}_A(t)\bigr)\cdot\bigl(1 - SI_{\text{Live}}(t)\bigr)}
-$$
-
-**Identity 1 (Complementary Tiling):** For all $t$,
-
-$$
-\text{WI}(t) + \text{HF}(t) = 1 - SI_{\text{Live}}(t)
-$$
-
-This identity provides a free check for unit testing: assert $\left|\text{WI} + \text{HF} - (1 - SI_{\text{Live}})\right| < \varepsilon$ on every cycle.
-
-HF is not a substitute for reading Score_A and SI_Live individually. It is a convenience aggregate for the consulting narrative — the number that answers "how bad is it, honestly?" when the answer is "bad, and no one is being fooled by it."
-
----
-
-## Joint Reading
-
-| WI | HF | Diagnosis |
-|:---:|:---:|---|
-| High | Low | Watermelon — compliance masking failure |
-| Low | High | Honest failure — both degraded, visible |
-| Low | Low | Healthy — aligned |
-
----
-
 ## 3. Governance System & Capabilities Blueprint — Project File Directory
 
 ```
