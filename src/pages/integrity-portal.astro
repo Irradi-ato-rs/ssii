@@ -21,6 +21,12 @@ if (!Astro.locals.user) {
 const user = Astro.locals.user;
 const tenantId = user.tenant;
 
+// 2b. ENTERPRISE-ONLY GUARD
+const tenantRecord = await env.VM_TENANT_DIRECTORY.get(`domain:${tenantId}`);
+if (!tenantRecord) {
+  return Astro.redirect(`/integrity-adapters?tenant=${tenantId}`);
+}
+
 // 3. API KEY MANAGEMENT
 let apiKey = "pending-generation";
 let apiKeyError = false;
