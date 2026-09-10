@@ -61,11 +61,17 @@ export const POST: APIRoute = async ({ request }) => {
       return jsonError('Invalid email address', 400);
     }
 
-    // ─── SELF-SERVE PATH (register + no enterprise KV record) ───
+    // ─── SELF-SERVE PATH (no enterprise KV record) ───────────────────────────
     const tenantRecord = await env.VM_TENANT_DIRECTORY.get(`tenant:${domain}`);
 
-    if (!tenantRecord) {   
+    if (!tenantRecord) {
       const tenantId = domain;
+      const roleKey = `roles:${email}`;
+      const existingRole = await env.VM_TENANT_DIRECTORY.get(roleKey);
+
+      if (mode === 'login' && !existingRole) {
+        return jsonError('Account not found. Please register first.', 404);
+      }
 
       // Mint API key if absent
       let apiKey = await env.VM_TENANT_DIRECTORY.get(`apikey:${tenantId}`);
@@ -78,8 +84,7 @@ export const POST: APIRoute = async ({ request }) => {
       }
 
       // Role (default: operator)
-      const roleKey = `roles:${email}`;
-      if (!(await env.VM_TENANT_DIRECTORY.get(roleKey))) {
+      if (!existingRole) {
         await env.VM_TENANT_DIRECTORY.put(roleKey, JSON.stringify({ role: 'operator' }));
       }
 
@@ -103,7 +108,7 @@ export const POST: APIRoute = async ({ request }) => {
       headers.append('Set-Cookie', `aim_session_token=${sessionToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`);
       headers.append('Set-Cookie', `auth_domain=${tenantId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`);
 
-      console.log(`[register] Self-serve session established: email=${email} tenant=${tenantId}`);
+      console.log(`[register] Self-serve session established: email=${email} tenant=${tenantId} mode=${mode}`);
 
       return new Response(JSON.stringify({ success: true, redirectUrl: `/integrity-adapters?tenant=${tenantId}` }), {
         status: 200,
@@ -111,7 +116,7 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
-    // ─── ENTERPRISE / LOGIN PATH (full OIDC) ───
+    // ─── ENTERPRISE / LOGIN PATH (full OIDC) ─────────────────────────────────
     const config = await getIdPConfig(env, email);
     if (!config) {
       return jsonError('Unable to start sign-in for this account.', 403);
