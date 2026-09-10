@@ -62,8 +62,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // ─── SELF-SERVE PATH (no enterprise KV record) ───────────────────────────
-    const tenantRecord = await env.VM_TENANT_DIRECTORY.get(`tenant:${domain}`);
-    console.log(`[register] KV lookup: tenant:${domain} → ${tenantRecord ? 'FOUND' : 'MISSING'}`);
+    const tenantRecord = await env.VM_TENANT_DIRECTORY.get(`domain:${domain}`);
 
     if (!tenantRecord) {
       const tenantId = domain;
